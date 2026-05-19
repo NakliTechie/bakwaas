@@ -533,6 +533,72 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .cm-row .cm-users { color: var(--text); }
 .cm-row .cm-count { color: var(--muted); }
 
+/* Wrapped — the shareable artefact */
+.wrapped-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+.wrapped-controls select {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px; font-size: 13px; font-family: inherit;
+}
+.wrapped-controls button {
+  background: transparent; color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px;
+}
+.wrapped-controls button:hover { border-color: var(--accent); color: var(--accent); }
+
+.wrapped-card {
+  background: linear-gradient(160deg, #0d1117 0%, #1a1f3a 60%, #2a2050 100%);
+  border: 1px solid var(--border); border-radius: 18px;
+  padding: 36px 40px;
+  position: relative; overflow: hidden;
+}
+.wrapped-card::before {
+  content: ''; position: absolute; top: -120px; right: -120px;
+  width: 300px; height: 300px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(125,138,239,0.35), transparent 70%);
+  pointer-events: none;
+}
+.wrapped-card::after {
+  content: ''; position: absolute; bottom: -100px; left: -100px;
+  width: 260px; height: 260px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(108,123,191,0.22), transparent 70%);
+  pointer-events: none;
+}
+.wrapped-card .wr-header {
+  display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px;
+  position: relative; z-index: 1; flex-wrap: wrap;
+}
+.wrapped-card .wr-brand { font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; }
+.wrapped-card .wr-period { font-size: 36px; font-weight: 800; color: #fff; margin-left: auto; font-family: var(--mono); }
+.wrapped-card .wr-handle { font-size: 14px; color: var(--muted); font-family: var(--mono); width: 100%; margin-top: -8px; }
+
+.wrapped-card .wr-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px; position: relative; z-index: 1;
+}
+.wrapped-card .wr-tile {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(4px);
+}
+.wrapped-card .wr-tile.wide { grid-column: span 2; }
+.wrapped-card .wr-tile .wr-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
+.wrapped-card .wr-tile .wr-value { font-size: 24px; font-weight: 700; color: #fff; font-family: var(--mono); line-height: 1.15; }
+.wrapped-card .wr-tile .wr-sub { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px; line-height: 1.5; }
+.wrapped-card .wr-tile.wr-quote .wr-value {
+  font-size: 16px; font-family: var(--sans); line-height: 1.5; font-weight: 500;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical;
+}
+.wrapped-card .wr-tile.wr-era .wr-value { color: var(--accent); }
+.wrapped-card .wr-archetype {
+  background: rgba(125,138,239,0.18); border: 1px solid rgba(125,138,239,0.3);
+  color: #fff; border-radius: 999px; padding: 4px 12px; font-size: 12px;
+  display: inline-block; margin-top: 6px; font-family: var(--mono);
+}
+.wrapped-card .wr-footer {
+  margin-top: 28px; font-size: 11px; color: rgba(255,255,255,0.5);
+  display: flex; gap: 14px; flex-wrap: wrap; position: relative; z-index: 1;
+}
+.wrapped-card .wr-footer .wr-tag { background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 6px; font-family: var(--mono); }
+
 .zero-by-year { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .zero-by-year .zy {
   background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
@@ -566,7 +632,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.8 · phase 8</span>
+      <span class="phase" id="phase-tag">v0.9 · wrapped</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -625,6 +691,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <button class="tab active" data-tab="tab-stats" type="button">Stats</button>
         <button class="tab" data-tab="tab-search" type="button">Search</button>
         <button class="tab" data-tab="tab-patterns" type="button">Patterns</button>
+        <button class="tab" data-tab="tab-wrapped" type="button">Wrapped</button>
         <button class="tab" data-tab="tab-topics" type="button">Topics</button>
         <button class="tab" data-tab="tab-selection" type="button">Selection</button>
       </div>
@@ -652,6 +719,19 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <div class="tab-panel" id="tab-patterns">
         <div id="patterns-host">
           <div class="stats-loading">Open this tab to compute patterns (one-time pass over your archive).</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-wrapped">
+        <div class="wrapped-controls">
+          <label for="wrapped-period">Period:</label>
+          <select id="wrapped-period"></select>
+          <span class="sel-spacer"></span>
+          <button type="button" id="wrapped-export-html">Download HTML</button>
+          <button type="button" id="wrapped-export-png">Download PNG</button>
+        </div>
+        <div id="wrapped-card-host">
+          <div class="stats-loading">Open this tab to render your Bakwaas Wrapped card.</div>
         </div>
       </div>
 
@@ -1587,7 +1667,7 @@ const patterns = (() => {
     if (inflight) return inflight;
     inflight = (async () => {
       const cached = await store.metaGet('patterns_cache');
-      if (cached && cached.version === SCHEMA_VERSION) return cached;
+      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats) return cached;
 
       const db = await store.open();
       const TOP_VIRAL = 30;
@@ -1629,6 +1709,13 @@ const patterns = (() => {
       };
       let bigramsTweetsSeen = 0;
       const BIGRAM_PRUNE_INTERVAL = 50000;
+
+      // Phase 9 (Wrapped) trackers
+      const perYearHashtags = new Map();       // year → Map<tag, count>
+      const perYearMentions = new Map();       // year → Map<user, count>
+      const perYearSources = new Map();        // year → Map<source, count>
+      const perYearCounts = new Map();         // year → { total, originals, replies, retweets, sumFav, sumRT, sumLen }
+      const perYearMonth = new Map();          // year → Map<YYYY-MM, count>  (for peak-month per year)
 
       await new Promise((res, rej) => {
         const tx = db.transaction('tweets', 'readonly');
@@ -1778,6 +1865,39 @@ const patterns = (() => {
             let hrs = perYearHour.get(yr);
             if (!hrs) { hrs = new Array(24).fill(0); perYearHour.set(yr, hrs); }
             hrs[new Date(t.created_at).getUTCHours()]++;
+
+            // Phase 9 — per-year breakouts (used by the Wrapped tab)
+            let pyc = perYearCounts.get(yr);
+            if (!pyc) { pyc = { total: 0, originals: 0, replies: 0, retweets: 0, sumFav: 0, sumRT: 0, sumLen: 0 }; perYearCounts.set(yr, pyc); }
+            pyc.total++;
+            if (t.is_retweet) pyc.retweets++;
+            else if (t.is_reply) pyc.replies++;
+            else pyc.originals++;
+            pyc.sumFav += t.favorite_count || 0;
+            pyc.sumRT += t.retweet_count || 0;
+            pyc.sumLen += (t.text || '').length;
+            const ymKey = ymOf(t.created_at);
+            let pym = perYearMonth.get(yr);
+            if (!pym) { pym = new Map(); perYearMonth.set(yr, pym); }
+            pym.set(ymKey, (pym.get(ymKey) || 0) + 1);
+            for (const raw of (t.hashtags || [])) {
+              const tg = (raw || '').toLowerCase();
+              if (!tg) continue;
+              let yh = perYearHashtags.get(yr);
+              if (!yh) { yh = new Map(); perYearHashtags.set(yr, yh); }
+              yh.set(tg, (yh.get(tg) || 0) + 1);
+            }
+            for (const m of (t.mentions || [])) {
+              if (!m) continue;
+              let ym = perYearMentions.get(yr);
+              if (!ym) { ym = new Map(); perYearMentions.set(yr, ym); }
+              ym.set(m, (ym.get(m) || 0) + 1);
+            }
+            if (t.source) {
+              let ys = perYearSources.get(yr);
+              if (!ys) { ys = new Map(); perYearSources.set(yr, ys); }
+              ys.set(t.source, (ys.get(t.source) || 0) + 1);
+            }
 
             // First / last tweet of each year (skip RTs — they're not yours)
             if (!t.is_retweet) {
@@ -2019,6 +2139,40 @@ const patterns = (() => {
         ? { firstDate: baseStats.firstDate, daysSince: Math.floor((Date.now() - baseStats.firstDate) / 86400000) }
         : null;
 
+      // Per-year stats summary (Wrapped feed)
+      function topNFromMap(map, n) {
+        return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+      }
+      const perYearStats = [...perYearCounts.keys()].sort((a, b) => a - b).map(yr => {
+        const c = perYearCounts.get(yr);
+        const pym = perYearMonth.get(yr) || new Map();
+        let peakMonth = null, peakCount = 0;
+        for (const [m, n] of pym) if (n > peakCount) { peakCount = n; peakMonth = m; }
+        const topHashtag = topNFromMap(perYearHashtags.get(yr) || new Map(), 1)[0] || null;
+        const topMention = topNFromMap(perYearMentions.get(yr) || new Map(), 1)[0] || null;
+        const topSource = topNFromMap(perYearSources.get(yr) || new Map(), 1)[0] || null;
+        // Find a burst whose peak month is in this year — first match wins (sorted by total volume).
+        const era = bursts.find(b => b.peakMonth && b.peakMonth.startsWith(String(yr)));
+        const yp = topPerYearArr.find(x => x.year === yr);
+        return {
+          year: yr,
+          total: c.total,
+          originals: c.originals, replies: c.replies, retweets: c.retweets,
+          avgFav: c.total ? c.sumFav / c.total : 0,
+          avgRT: c.total ? c.sumRT / c.total : 0,
+          avgLen: c.total ? c.sumLen / c.total : 0,
+          peakMonth: peakMonth ? { month: peakMonth, count: peakCount } : null,
+          topHashtag: topHashtag ? { tag: topHashtag[0], count: topHashtag[1] } : null,
+          topMention: topMention ? { user: topMention[0], count: topMention[1] } : null,
+          topSource: topSource ? { source: topSource[0], count: topSource[1] } : null,
+          topHashtags: topNFromMap(perYearHashtags.get(yr) || new Map(), 5).map(([t, n]) => ({ tag: t, count: n })),
+          topMentions: topNFromMap(perYearMentions.get(yr) || new Map(), 5).map(([u, n]) => ({ user: u, count: n })),
+          era: era ? { tag: era.tag, peakMonth: era.peakMonth, concentration: era.concentration } : null,
+          topTweet: (yp && yp.top && yp.top[0]) || null,
+          sleep: (yearHours.find(x => x.year === yr) || {}).sleep || null
+        };
+      });
+
       const out = {
         version: SCHEMA_VERSION,
         topViral: topViral.sort((a, b) => b.eng - a.eng).slice(0, 20),
@@ -2044,6 +2198,7 @@ const patterns = (() => {
         topPerYear: topPerYearArr,
         style: styleAvg,
         accountAge,
+        perYearStats,
         computed_at: Date.now()
       };
 
@@ -2567,6 +2722,7 @@ const ui = (() => {
       nav.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('#screen-summary .tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
       if (target === 'tab-patterns') renderPatterns();
+      if (target === 'tab-wrapped') renderWrapped();
       if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
       if (target === 'tab-selection') renderTray();
     });
@@ -3089,6 +3245,287 @@ const ui = (() => {
     return rows + cols;
   }
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Wrapped — per-period card + exports
+  // ────────────────────────────────────────────────────────────────────────
+  let wrappedRendering = false;
+
+  function monthLabel(ym) {
+    if (!ym) return '—';
+    const [y, m] = ym.split('-');
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return `${months[parseInt(m,10)-1]} ${y}`;
+  }
+  function pctOf(n, total) { return total ? Math.round((n / total) * 100) : 0; }
+
+  function wrappedScopedData(patternsData, period) {
+    // period: 'all' | year-string
+    if (period === 'all') {
+      const t = patternsData.total || 0;
+      const months = patternsData.perMonth || [];
+      let peak = null;
+      for (const m of months) if (!peak || m.count > peak.count) peak = { month: m.month, count: m.count };
+      // Top hashtag / mention from hashtagByEng + topCoMentions are global enough
+      const topTweet = (patternsData.topViral || [])[0] || null;
+      // Sum across years for counts
+      const all = (patternsData.perYearStats || []).reduce((acc, y) => {
+        acc.total += y.total; acc.originals += y.originals; acc.replies += y.replies; acc.retweets += y.retweets;
+        for (const h of y.topHashtags || []) acc.hashtags.set(h.tag, (acc.hashtags.get(h.tag) || 0) + h.count);
+        for (const m of y.topMentions || []) acc.mentions.set(m.user, (acc.mentions.get(m.user) || 0) + m.count);
+        return acc;
+      }, { total: 0, originals: 0, replies: 0, retweets: 0, hashtags: new Map(), mentions: new Map() });
+      const topH = [...all.hashtags.entries()].sort((a,b) => b[1]-a[1])[0];
+      const topM = [...all.mentions.entries()].sort((a,b) => b[1]-a[1])[0];
+      const era = (patternsData.bursts || [])[0] || null;
+      return {
+        label: 'All time',
+        total: all.total, originals: all.originals, replies: all.replies, retweets: all.retweets,
+        peakMonth: peak,
+        topHashtag: topH ? { tag: topH[0], count: topH[1] } : null,
+        topMention: topM ? { user: topM[0], count: topM[1] } : null,
+        era: era ? { tag: era.tag, peakMonth: era.peakMonth } : null,
+        topTweet, archetype: patternsData.style?.archetype || '—',
+        longestStreak: patternsData.longestStreak,
+        accountAge: patternsData.accountAge,
+        sleep: null,
+        topSource: null
+      };
+    }
+    const yr = parseInt(period, 10);
+    const y = (patternsData.perYearStats || []).find(x => x.year === yr);
+    if (!y) return null;
+    return {
+      label: String(yr),
+      total: y.total, originals: y.originals, replies: y.replies, retweets: y.retweets,
+      peakMonth: y.peakMonth,
+      topHashtag: y.topHashtag,
+      topMention: y.topMention,
+      era: y.era,
+      topTweet: y.topTweet,
+      archetype: patternsData.style?.archetype || '—',
+      sleep: y.sleep,
+      topSource: y.topSource,
+      avgLen: y.avgLen,
+      avgFav: y.avgFav,
+      avgRT: y.avgRT
+    };
+  }
+
+  function wrappedCardHTML(d, accountHandle) {
+    if (!d) return '<div class="topics-empty">No data for this period.</div>';
+    const totalNice = d.total.toLocaleString();
+    const origPct = pctOf(d.originals, d.total);
+    const repPct = pctOf(d.replies, d.total);
+    const rtPct = pctOf(d.retweets, d.total);
+    const sleepStr = d.sleep ? `${String(d.sleep.start).padStart(2,'0')}:00–${String(d.sleep.end).padStart(2,'0')}:00 UTC` : null;
+    const peakStr = d.peakMonth ? `${monthLabel(d.peakMonth.month)} (${d.peakMonth.count.toLocaleString()} tweets)` : '—';
+    const topHashtag = d.topHashtag ? `#${safe(d.topHashtag.tag)}` : '—';
+    const topHashtagCount = d.topHashtag ? `used ${d.topHashtag.count.toLocaleString()} times` : '';
+    const topMention = d.topMention ? `@${safe(d.topMention.user)}` : '—';
+    const topMentionCount = d.topMention ? `mentioned ${d.topMention.count.toLocaleString()} times` : '';
+    const era = d.era ? `#${safe(d.era.tag)}` : '—';
+    const eraSub = d.era ? `peaked ${monthLabel(d.era.peakMonth)}` : '';
+    const topSrc = d.topSource ? safe(d.topSource.source) : '—';
+    const topTweet = d.topTweet ? `"${safe(d.topTweet.text)}"` : '—';
+    const topTweetSub = d.topTweet ? `♥ ${d.topTweet.fav.toLocaleString()} · ↻ ${d.topTweet.rt.toLocaleString()}` : '';
+    const streakSub = d.longestStreak ? `longest streak ${d.longestStreak.days} days` : '';
+    const ageSub = d.accountAge ? `${d.accountAge.daysSince.toLocaleString()} days since first tweet` : '';
+
+    return `<div class="wrapped-card" id="wrapped-card">
+      <div class="wr-header">
+        <div class="wr-brand">Bakwaas Wrapped</div>
+        <div class="wr-period">${safe(d.label)}</div>
+        <div class="wr-handle">@${safe(accountHandle || '—')}</div>
+      </div>
+      <div class="wr-grid">
+        <div class="wr-tile wide">
+          <div class="wr-label">Tweets posted</div>
+          <div class="wr-value">${totalNice}</div>
+          <div class="wr-sub">${origPct}% originals · ${repPct}% replies · ${rtPct}% retweets</div>
+        </div>
+        <div class="wr-tile">
+          <div class="wr-label">Peak month</div>
+          <div class="wr-value" style="font-size:18px;">${safe(peakStr)}</div>
+        </div>
+        <div class="wr-tile wr-era">
+          <div class="wr-label">Era of the period</div>
+          <div class="wr-value">${era}</div>
+          <div class="wr-sub">${safe(eraSub)}</div>
+        </div>
+        <div class="wr-tile">
+          <div class="wr-label">Top hashtag</div>
+          <div class="wr-value">${topHashtag}</div>
+          <div class="wr-sub">${safe(topHashtagCount)}</div>
+        </div>
+        <div class="wr-tile">
+          <div class="wr-label">Most mentioned</div>
+          <div class="wr-value">${topMention}</div>
+          <div class="wr-sub">${safe(topMentionCount)}</div>
+        </div>
+        <div class="wr-tile">
+          <div class="wr-label">Posting personality</div>
+          <div class="wr-value" style="font-size:16px;">Bakwaas archetype</div>
+          <div class="wr-archetype">${safe(d.archetype)}</div>
+          ${sleepStr ? `<div class="wr-sub">quiet hours ${sleepStr}</div>` : ''}
+          ${streakSub ? `<div class="wr-sub">${streakSub}</div>` : ''}
+        </div>
+        <div class="wr-tile wide wr-quote">
+          <div class="wr-label">Top tweet</div>
+          <div class="wr-value">${topTweet}</div>
+          <div class="wr-sub">${safe(topTweetSub)}</div>
+        </div>
+        ${d.topSource ? `<div class="wr-tile">
+          <div class="wr-label">Source of choice</div>
+          <div class="wr-value" style="font-size:14px;">${topSrc}</div>
+          <div class="wr-sub">${(d.topSource.count || 0).toLocaleString()} tweets via this client</div>
+        </div>` : ''}
+      </div>
+      <div class="wr-footer">
+        <span class="wr-tag">bakwaas.naklitechie.com</span>
+        ${ageSub ? `<span>${safe(ageSub)}</span>` : ''}
+        <span>generated ${new Date().toISOString().slice(0,10)} — entirely on-device</span>
+      </div>
+    </div>`;
+  }
+
+  async function renderWrapped() {
+    if (wrappedRendering) return;
+    wrappedRendering = true;
+    const host = $('wrapped-card-host');
+    const sel = $('wrapped-period');
+    if (!host || !sel) { wrappedRendering = false; return; }
+    try {
+      host.innerHTML = '<div class="stats-loading">Computing Wrapped…</div>';
+      const p = await patterns.aggregate();
+      // Populate period selector if empty
+      if (!sel.options.length) {
+        sel.innerHTML = '<option value="all">All time</option>';
+        const years = (p.perYearStats || []).map(x => x.year).sort((a, b) => b - a);
+        for (const y of years) sel.innerHTML += `<option value="${y}">${y}</option>`;
+        // Default to most recent year
+        if (years.length) sel.value = String(years[0]);
+      }
+      const account = await store.metaGet('account');
+      const period = sel.value || 'all';
+      const data = wrappedScopedData(p, period);
+      host.innerHTML = wrappedCardHTML(data, account?.username);
+    } catch (e) {
+      console.error('wrapped failed:', e);
+      host.innerHTML = '<div class="topics-empty">Couldn’t render Wrapped: ' + safe(e.message || e) + '</div>';
+    } finally {
+      wrappedRendering = false;
+    }
+  }
+
+  function bindWrappedControls() {
+    const sel = $('wrapped-period');
+    sel?.addEventListener('change', renderWrapped);
+    $('wrapped-export-html')?.addEventListener('click', exportWrappedHTML);
+    $('wrapped-export-png')?.addEventListener('click', exportWrappedPNG);
+  }
+
+  function buildWrappedStandaloneHTML(cardHTML, label, accountHandle) {
+    const title = `Bakwaas Wrapped — ${label}` + (accountHandle ? ` — @${accountHandle}` : '');
+    // Pull the wrapped-card CSS only (plus base tokens) to keep the export self-contained.
+    const css = `
+      :root { --bg:#0d1117; --panel:#161b22; --panel-2:#1c232c; --border:#2a323d; --text:#e6e8eb; --muted:#8b95a6; --accent:#7d8aef; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      *,*::before,*::after { box-sizing: border-box; }
+      html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+      body { min-height:100vh; padding: 40px 20px; display:flex; align-items:center; justify-content:center; }
+      .wr-page { max-width: 1100px; width: 100%; }
+      .wr-attribution { text-align:center; margin-top: 16px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+      .wr-attribution a { color: var(--accent); text-decoration: none; }
+      .wrapped-card { background: linear-gradient(160deg, #0d1117 0%, #1a1f3a 60%, #2a2050 100%); border: 1px solid var(--border); border-radius: 18px; padding: 36px 40px; position: relative; overflow: hidden; }
+      .wrapped-card::before { content:''; position:absolute; top:-120px; right:-120px; width:300px; height:300px; border-radius:50%; background: radial-gradient(circle, rgba(125,138,239,0.35), transparent 70%); pointer-events:none; }
+      .wrapped-card::after { content:''; position:absolute; bottom:-100px; left:-100px; width:260px; height:260px; border-radius:50%; background: radial-gradient(circle, rgba(108,123,191,0.22), transparent 70%); pointer-events:none; }
+      .wr-header { display:flex; align-items:baseline; gap:12px; margin-bottom:24px; position:relative; z-index:1; flex-wrap:wrap; }
+      .wr-brand { font-size:22px; font-weight:800; color: var(--accent); letter-spacing: 0.5px; }
+      .wr-period { font-size:36px; font-weight:800; color:#fff; margin-left:auto; font-family: var(--mono); }
+      .wr-handle { font-size:14px; color: var(--muted); font-family: var(--mono); width:100%; margin-top:-8px; }
+      .wr-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px; position:relative; z-index:1; }
+      .wr-tile { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px 18px; }
+      .wr-tile.wide { grid-column: span 2; }
+      .wr-tile .wr-label { font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color: rgba(255,255,255,0.55); margin-bottom:6px; }
+      .wr-tile .wr-value { font-size:24px; font-weight:700; color:#fff; font-family: var(--mono); line-height:1.15; }
+      .wr-tile .wr-sub { font-size:12px; color: rgba(255,255,255,0.7); margin-top:4px; line-height:1.5; }
+      .wr-tile.wr-quote .wr-value { font-size:16px; font-family: var(--sans); line-height:1.5; font-weight:500; overflow:hidden; display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; }
+      .wr-tile.wr-era .wr-value { color: var(--accent); }
+      .wr-archetype { background: rgba(125,138,239,0.18); border: 1px solid rgba(125,138,239,0.3); color:#fff; border-radius:999px; padding:4px 12px; font-size:12px; display:inline-block; margin-top:6px; font-family: var(--mono); }
+      .wr-footer { margin-top:28px; font-size:11px; color: rgba(255,255,255,0.5); display:flex; gap:14px; flex-wrap:wrap; position:relative; z-index:1; }
+      .wr-footer .wr-tag { background: rgba(255,255,255,0.05); padding:2px 8px; border-radius:6px; font-family: var(--mono); }
+    `.trim();
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>${safe(title)}</title><style>${css}</style></head><body><div class="wr-page">${cardHTML}<div class="wr-attribution">Made with <a href="https://bakwaas.naklitechie.com" target="_blank">Bakwaas</a> — a browser-native Twitter archive explorer. Nothing in this page was ever uploaded.</div></div></body></html>`;
+  }
+
+  async function exportWrappedHTML() {
+    const card = document.getElementById('wrapped-card');
+    if (!card) return;
+    const period = ($('wrapped-period')?.value) || 'all';
+    const account = await store.metaGet('account');
+    const html = buildWrappedStandaloneHTML(card.outerHTML, period === 'all' ? 'all-time' : period, account?.username);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const handle = account?.username || 'me';
+    a.href = url;
+    a.download = `bakwaas-wrapped-${handle}-${period}.html`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  // PNG export uses the <foreignObject> SVG trick: wrap the wrapped-card HTML
+  // inside an SVG, serialise, blob → image, draw to canvas, toBlob('png'),
+  // download. All local, no library.
+  async function exportWrappedPNG() {
+    const card = document.getElementById('wrapped-card');
+    if (!card) return;
+    const period = ($('wrapped-period')?.value) || 'all';
+    const account = await store.metaGet('account');
+    const handle = account?.username || 'me';
+    const W = 1200, H = 1500;
+    const inlineCSS = (`:root { --accent:#7d8aef; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; } *,*::before,*::after { box-sizing: border-box; } html,body{margin:0;padding:0;font-family:var(--sans);} .wr-page{padding:24px;background:#0d1117;color:#e6e8eb;width:${W}px;height:${H}px;} ` +
+      `.wrapped-card{background:linear-gradient(160deg,#0d1117 0%,#1a1f3a 60%,#2a2050 100%);border:1px solid #2a323d;border-radius:18px;padding:36px 40px;position:relative;overflow:hidden;height:100%;}` +
+      `.wr-header{display:flex;align-items:baseline;gap:12px;margin-bottom:24px;position:relative;z-index:1;flex-wrap:wrap;}` +
+      `.wr-brand{font-size:28px;font-weight:800;color:#7d8aef;letter-spacing:0.5px;}` +
+      `.wr-period{font-size:56px;font-weight:800;color:#fff;margin-left:auto;font-family:var(--mono);}` +
+      `.wr-handle{font-size:16px;color:#8b95a6;font-family:var(--mono);width:100%;margin-top:-8px;}` +
+      `.wr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}` +
+      `.wr-tile{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;}` +
+      `.wr-tile.wide{grid-column:span 2;}` +
+      `.wr-tile .wr-label{font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.55);margin-bottom:6px;}` +
+      `.wr-tile .wr-value{font-size:28px;font-weight:700;color:#fff;font-family:var(--mono);line-height:1.15;}` +
+      `.wr-tile .wr-sub{font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;line-height:1.5;}` +
+      `.wr-tile.wr-quote .wr-value{font-size:18px;font-family:var(--sans);font-weight:500;}` +
+      `.wr-tile.wr-era .wr-value{color:#7d8aef;}` +
+      `.wr-archetype{background:rgba(125,138,239,0.18);border:1px solid rgba(125,138,239,0.3);color:#fff;border-radius:999px;padding:4px 12px;font-size:13px;display:inline-block;margin-top:6px;font-family:var(--mono);}` +
+      `.wr-footer{margin-top:28px;font-size:12px;color:rgba(255,255,255,0.5);display:flex;gap:14px;flex-wrap:wrap;}` +
+      `.wr-footer .wr-tag{background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:6px;font-family:var(--mono);}`);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${inlineCSS}</style><div class="wr-page">${card.outerHTML}</div></div></foreignObject></svg>`;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = new Image();
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(img, 0, 0);
+      const out = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      if (!out) throw new Error('toBlob returned null');
+      const dl = URL.createObjectURL(out);
+      const a = document.createElement('a');
+      a.href = dl; a.download = `bakwaas-wrapped-${handle}-${period}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(dl), 1500);
+    } catch (e) {
+      console.error('PNG export failed:', e);
+      ui.showError && ui.showError('PNG export failed', String(e.message || e));
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   function bindTopicsControls() {
     const slider = $('topics-threshold');
     const val = $('topics-threshold-val');
@@ -3516,7 +3953,7 @@ const ui = (() => {
   }
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
-           bindHelp };
+           bindHelp, bindWrappedControls };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -3590,6 +4027,7 @@ async function bootstrap() {
   ui.bindTabs();
   ui.bindSearch();
   ui.bindTopicsControls();
+  ui.bindWrappedControls();
   ui.bindResultsActions();
   ui.bindSelectionBar();
   ui.bindTrayControls();
