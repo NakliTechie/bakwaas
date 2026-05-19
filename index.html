@@ -275,6 +275,40 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
 .stats-loading { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; }
 
+/* Topics */
+.topics-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; color: var(--muted); }
+.topics-controls .threshold-wrap { display: flex; gap: 8px; align-items: center; }
+.topics-controls input[type=range] { width: 140px; }
+.topics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.cluster-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.cluster-card .cluster-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.cluster-card .cluster-head .cluster-size { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: auto; }
+.cluster-card .cluster-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.cluster-card .tag-pill {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 2px 10px; font-size: 11px; font-family: var(--mono);
+}
+.cluster-card .tag-pill.is-lead { background: var(--accent); color: #0d1117; border-color: var(--accent); }
+.cluster-card .cluster-samples { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.cluster-card .cluster-sample {
+  font-size: 12px; color: var(--muted); line-height: 1.45;
+  border-left: 2px solid var(--border); padding: 2px 8px;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+  -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
+.cluster-card .cluster-actions { display: flex; gap: 8px; }
+.cluster-card .cluster-actions button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 11px;
+}
+.cluster-card .cluster-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.topics-empty { color: var(--muted); font-size: 13px; padding: 16px; text-align: center; }
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -299,7 +333,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.4 · phase 4</span>
+      <span class="phase" id="phase-tag">v0.5 · phase 5</span>
     </div>
     <div class="tag">explore your Twitter archive · find the noise · delete it</div>
   </header>
@@ -356,7 +390,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <div class="tab-nav">
         <button class="tab active" data-tab="tab-stats" type="button">Stats</button>
         <button class="tab" data-tab="tab-search" type="button">Search</button>
-        <button class="tab" data-tab="tab-topics" type="button" disabled title="Coming in Phase 5">Topics</button>
+        <button class="tab" data-tab="tab-topics" type="button">Topics</button>
         <button class="tab" data-tab="tab-selection" type="button" disabled title="Coming in Phase 6">Selection</button>
       </div>
 
@@ -377,6 +411,20 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <div class="actions" style="margin-top:16px;">
           <button class="btn ghost" id="btn-new">Open another archive</button>
           <button class="btn ghost" id="btn-export">Export state JSON</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-topics">
+        <div class="topics-controls">
+          <span>Topics are clusters of hashtags that co-occur in your tweets.</span>
+          <div class="threshold-wrap">
+            <label for="topics-threshold">Min co-occurrences:</label>
+            <input type="range" id="topics-threshold" min="2" max="20" step="1" value="3" />
+            <span id="topics-threshold-val" style="font-family:var(--mono);">3</span>
+          </div>
+        </div>
+        <div id="topics-host">
+          <div class="stats-loading">Open this tab to compute topics.</div>
         </div>
       </div>
 
@@ -936,6 +984,144 @@ const stats = (() => {
   return { aggregate, invalidate };
 })();
 
+// ── topics (hashtag co-occurrence clustering) ───────────────────────────────
+// Picked co-occurrence over k-means on TF-IDF (decisions.md): cheap (O(N·H²)
+// where H is hashtags per tweet, ≪ N·V for vocab V), no k-tuning, and the
+// resulting groups are interpretable as "themes you tag together".
+const topics = (() => {
+  let cooccCache = null; // raw co-occurrence + tag counts, keyed by SCHEMA_VERSION
+  let inflight = null;
+
+  async function buildCoocc() {
+    if (cooccCache) return cooccCache;
+    if (inflight) return inflight;
+    inflight = (async () => {
+      const cached = await store.metaGet('topics_coocc');
+      if (cached && cached.version === SCHEMA_VERSION) {
+        cooccCache = cached;
+        return cached;
+      }
+      const db = await store.open();
+      const tagCount = new Map();
+      const coocc = new Map();              // tag -> Map<otherTag, count>
+      const tagToTweetIds = new Map();      // tag -> array of tweet ids (capped at 50 for sampling)
+      const CAP = 50;
+      await new Promise((res, rej) => {
+        const tx = db.transaction('tweets', 'readonly');
+        const cur = tx.objectStore('tweets').openCursor();
+        cur.onsuccess = (e) => {
+          const c = e.target.result;
+          if (!c) return res();
+          const t = c.value;
+          const tags = (t.hashtags || []).map(h => h.toLowerCase()).filter(Boolean);
+          if (tags.length) {
+            const uniq = [...new Set(tags)];
+            for (const tag of uniq) {
+              tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+              if (!tagToTweetIds.has(tag)) tagToTweetIds.set(tag, []);
+              const list = tagToTweetIds.get(tag);
+              if (list.length < CAP) list.push(t.id);
+            }
+            for (let i = 0; i < uniq.length; i++) {
+              for (let j = i + 1; j < uniq.length; j++) {
+                const [a, b] = uniq[i] < uniq[j] ? [uniq[i], uniq[j]] : [uniq[j], uniq[i]];
+                if (!coocc.has(a)) coocc.set(a, new Map());
+                const m = coocc.get(a);
+                m.set(b, (m.get(b) || 0) + 1);
+              }
+            }
+          }
+          c.continue();
+        };
+        cur.onerror = () => rej(cur.error);
+      });
+      // Reduce to plain arrays for storage.
+      const tagCountArr = [...tagCount.entries()];
+      const coArr = [];
+      for (const [a, m] of coocc) for (const [b, n] of m) coArr.push([a, b, n]);
+      const sampleArr = [...tagToTweetIds.entries()];
+      const out = { version: SCHEMA_VERSION, tagCount: tagCountArr, coocc: coArr, samples: sampleArr, computed_at: Date.now() };
+      try { await store.metaSet('topics_coocc', out); } catch (e) { console.warn('topics cache write failed:', e); }
+      cooccCache = out;
+      return out;
+    })().finally(() => { inflight = null; });
+    return inflight;
+  }
+
+  // Union-Find for connected-components clustering.
+  function unionFind(tags) {
+    const parent = new Map();
+    for (const t of tags) parent.set(t, t);
+    function find(x) {
+      let r = x;
+      while (parent.get(r) !== r) r = parent.get(r);
+      // path compression
+      while (parent.get(x) !== r) { const next = parent.get(x); parent.set(x, r); x = next; }
+      return r;
+    }
+    function union(a, b) {
+      const ra = find(a), rb = find(b);
+      if (ra !== rb) parent.set(ra, rb);
+    }
+    return { find, union, parent };
+  }
+
+  async function cluster({ threshold = 3, minTagCount = 3 } = {}) {
+    const data = await buildCoocc();
+    const tagCount = new Map(data.tagCount);
+    const samples = new Map(data.samples);
+    // Filter to tags with enough volume to be worth clustering.
+    const eligible = [...tagCount.entries()].filter(([, n]) => n >= minTagCount).map(([t]) => t);
+    const eligibleSet = new Set(eligible);
+    if (!eligible.length) return [];
+    const uf = unionFind(eligible);
+    for (const [a, b, n] of data.coocc) {
+      if (n >= threshold && eligibleSet.has(a) && eligibleSet.has(b)) uf.union(a, b);
+    }
+    // Bucket by root.
+    const groups = new Map();
+    for (const tag of eligible) {
+      const r = uf.find(tag);
+      if (!groups.has(r)) groups.set(r, { tags: [], size: 0, sampleIds: new Set() });
+      const g = groups.get(r);
+      g.tags.push(tag);
+      g.size += tagCount.get(tag) || 0;
+      for (const id of (samples.get(tag) || [])) g.sampleIds.add(id);
+    }
+    // Sort each cluster's tags by freq, sort clusters by total size desc.
+    const clusters = [...groups.values()].map(g => ({
+      tags: g.tags.sort((a, b) => (tagCount.get(b) || 0) - (tagCount.get(a) || 0)),
+      size: g.size,
+      sampleIds: [...g.sampleIds].slice(0, 50)
+    }));
+    clusters.sort((a, b) => b.size - a.size);
+    return clusters;
+  }
+
+  async function samplesFor(ids, n = 5) {
+    if (!ids.length) return [];
+    const db = await store.open();
+    const out = [];
+    const wanted = ids.slice(0, n);
+    return new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const s = tx.objectStore('tweets');
+      let remaining = wanted.length;
+      if (!remaining) return res([]);
+      for (const id of wanted) {
+        const req = s.get(id);
+        req.onsuccess = () => {
+          if (req.result) out.push(req.result);
+          if (--remaining === 0) res(out);
+        };
+        req.onerror = () => { if (--remaining === 0) res(out); };
+      }
+    });
+  }
+
+  return { buildCoocc, cluster, samplesFor };
+})();
+
 // ── search (MiniSearch) ─────────────────────────────────────────────────────
 const search = (() => {
   let MS = null;
@@ -1446,6 +1632,78 @@ const ui = (() => {
       const target = btn.dataset.tab;
       nav.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('#screen-summary .tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
+      if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
+    });
+  }
+
+  let currentTopicsThreshold = 3;
+  let topicsRendering = false;
+
+  async function renderTopics(threshold) {
+    if (topicsRendering) return;
+    topicsRendering = true;
+    const host = $('topics-host');
+    if (!host) { topicsRendering = false; return; }
+    host.innerHTML = '<div class="stats-loading">Computing hashtag co-occurrence…</div>';
+    try {
+      const clusters = await topics.cluster({ threshold });
+      const useful = clusters.filter(c => c.tags.length >= 2);
+      if (!useful.length) {
+        host.innerHTML = '<div class="topics-empty">No hashtag clusters at this threshold. Lower the slider to widen the net.</div>';
+        return;
+      }
+      const rendered = await Promise.all(useful.slice(0, 30).map(async (c) => {
+        const samples = await topics.samplesFor(c.sampleIds, 4);
+        const lead = c.tags[0];
+        const tags = c.tags.slice(0, 12).map((t, i) =>
+          `<span class="tag-pill${i === 0 ? ' is-lead' : ''}">#${safe(t)}</span>`).join('');
+        const sampleHtml = samples.map(s => `<div class="cluster-sample">${safe(s.text)}</div>`).join('') ||
+          '<div class="cluster-sample" style="border-color:transparent;">(no samples available)</div>';
+        return `<div class="cluster-card">
+          <div class="cluster-head">
+            <strong>#${safe(lead)}</strong>
+            <span class="cluster-size">${c.tags.length} tags · ${c.size.toLocaleString()} tweets</span>
+          </div>
+          <div class="cluster-tags">${tags}</div>
+          <div class="cluster-samples">${sampleHtml}</div>
+          <div class="cluster-actions">
+            <button type="button" data-cluster-search="${c.tags.map(t => '#' + t).join(' ')}">Search this cluster</button>
+          </div>
+        </div>`;
+      }));
+      host.innerHTML = `<div class="topics-grid">${rendered.join('')}</div>`;
+      host.querySelectorAll('button[data-cluster-search]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const q = btn.dataset.clusterSearch.split(' ')[0]; // search on the lead hashtag
+          // Activate the search tab and run the query.
+          const navBtn = document.querySelector('#screen-summary .tab[data-tab="tab-search"]');
+          navBtn?.click();
+          const input = $('search-input');
+          if (input) {
+            input.value = q.replace(/^#/, '');
+            input.dispatchEvent(new Event('input'));
+            input.focus();
+          }
+        });
+      });
+    } catch (e) {
+      console.error('topics failed:', e);
+      host.innerHTML = '<div class="topics-empty">Couldn’t compute topics: ' + safe(e.message || e) + '</div>';
+    } finally {
+      topicsRendering = false;
+    }
+  }
+
+  function bindTopicsControls() {
+    const slider = $('topics-threshold');
+    const val = $('topics-threshold-val');
+    if (!slider || !val) return;
+    let debounce = null;
+    slider.addEventListener('input', () => {
+      currentTopicsThreshold = parseInt(slider.value, 10) || 3;
+      val.textContent = currentTopicsThreshold;
+      clearTimeout(debounce);
+      debounce = setTimeout(() => renderTopics(currentTopicsThreshold), 220);
     });
   }
 
@@ -1588,7 +1846,7 @@ const ui = (() => {
       }
     });
   }
-  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindTabs, bindSearch };
+  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindTabs, bindSearch, bindTopicsControls };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -1659,6 +1917,7 @@ async function bootstrap() {
   ui.bindFolderButton(startWithFolder);
   ui.bindTabs();
   ui.bindSearch();
+  ui.bindTopicsControls();
   $('btn-new')?.addEventListener('click', async () => {
     search.invalidateCaches();
     await store.wipe();
@@ -1717,8 +1976,8 @@ window.bakwaas = {
     return search.query({ q, scope, chips, limit });
   },
   async stats() { return stats.aggregate(); },
+  async topics(opts) { return topics.cluster(opts || {}); },
   // deferred to later phases
-  topics: notImpl('topics'),
   select: notImpl('select'),
   getSelection: notImpl('getSelection'),
   clearSelection: notImpl('clearSelection'),
