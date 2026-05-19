@@ -2,9 +2,13 @@
 
 > **बकवास** — Hindi/Urdu, *noun*. Nonsense, drivel, hot air, chitchat. The stuff you say a lot of but rarely re-read.
 
-**A browser-native explorer for your social-media archives.** Started as a click-to-delete tool for Twitter/X — turned out the harder problem isn't deleting, it's *finding* what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end.
+**A browser-native explorer for your social-media archives.** Started as a click-to-delete tool for Twitter/X — turned out the harder problem isn't deleting, it's *finding* what's worth deleting in 200,000 posts. So mostly it's now an explorer that happens to make deletion easy at the end.
 
-Supported archives: **Twitter / X** (full surface) and **Mastodon** (everything except engagement-dependent cards, which Mastodon exports don't include).
+Supported sources:
+- **Twitter / X** — full surface (ZIP or unzipped folder via FSA)
+- **Mastodon** — full surface except engagement-driven cards (their export doesn't include fav/boost totals)
+- **Bluesky** — live API fetch by handle, no auth needed, engagement counts come back, full surface
+- **Reddit** — posts + comments from the GDPR export ZIP, no engagement counts
 
 **[→ Try it live](https://bakwaas.naklitechie.com)**
 
@@ -18,11 +22,13 @@ Drop your archive (Twitter/X ZIP, Twitter/X folder, or Mastodon ZIP), wait for t
   - **Engagement**: top 20 viral tweets, hashtag & source ROI (which themes worked, which client lands), hour × DOW colored by *avg engagement* per cell
   - **Era detection**: burst hashtags (≥50% of uses in one month) — your `#nft` 2022 era, your `#covid` Mar 2020
   - **Activity rhythm**: longest streak & longest silence, monthly tweets line chart, activity change-points (≥2σ from rolling baseline), verbosity drift
-  - **Mood, voice & rhythm**: emoji mood timeline (pos − neg per month), style fingerprint with derived archetype ('Long-form · Asker · Emoji-heavy'), sleep / quiet-hours window per year
-  - **What you talk about**: top phrases (bigrams), top link hosts you share
+  - **Mood, voice & rhythm**: emoji mood timeline + word-list polarity drift (pos − neg per month, both signals), style fingerprint with derived archetype ('Long-form · Asker · Emoji-heavy'), sleep / quiet-hours window per year
+  - **What you talk about**: top phrases (bigrams), recurring themes (bigrams in ≥3 different years), hashtag-lifecycle sparklines (top 30 hashtags as monthly inline sparklines), top link hosts you share
   - **Threads & relationships**: self-reply thread roots, top co-mention pairs, force-directed conversation graph
+  - **Eras compared**: chronological-thirds cohort cards side-by-side (mix, avg eng, era hashtag, top hashtag, top mention, source, top tweet)
   - **First, last, best**: first & last original tweet of each year side-by-side; top tweet per year
-  - **Cleanup candidates**: zero-engagement counts per year + sample list of 50 oldest
+  - **On this day**: today's-date anniversaries across years, plus a "what were you doing then?" date picker with ±N day window
+  - **Cleanup candidates**: zero-engagement counts per year + sample list of 50 oldest + PII audit (regex-flagged email/phone/SSN-shape candidates)
 - **Wrapped** — pick a year or all-time, get a poster-style summary card with top tweet, top hashtag, peak month, era, posting personality. Download as standalone HTML (hostable anywhere) or PNG (postable to social). All composed locally, nothing uploaded
 - **Topics** — hashtag co-occurrence clusters with an adjustable threshold; pick a theme, drill into it via "Search this cluster"
 - **Selection** — confirmation tray for the click-to-delete workflow: everything you've opened or marked deleted lives here

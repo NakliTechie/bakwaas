@@ -863,7 +863,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         Hindi/Urdu, noun — nonsense, drivel, hot air, chitchat. The stuff you say a lot of but rarely re-read.
       </p>
       <p>
-        Bakwaas is a browser-native explorer for your social-media archives. It started as a click-to-delete tool for Twitter/X, but it turns out the harder problem isn't deleting — it's <em>finding</em> what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end. Mastodon archives are supported too (engagement counts aren't in their exports, so engagement-dependent cards quietly degrade).
+        Bakwaas is a browser-native explorer for your social-media archives. It started as a click-to-delete tool for Twitter/X, but it turns out the harder problem isn't deleting — it's <em>finding</em> what's worth deleting in 200,000 posts. So mostly it's now an explorer that happens to make deletion easy at the end.
+      </p>
+      <p>
+        Supported sources: <strong>Twitter/X</strong> (full surface), <strong>Mastodon</strong> (no engagement counts in their export), <strong>Bluesky</strong> (live API, full surface), <strong>Reddit</strong> (posts + comments, no engagement counts).
       </p>
       <p class="muted">
         Everything runs locally. Nothing leaves your tab. No server, no accounts, no API keys to X, no telemetry. Even Wrapped exports are downloads from your browser, not uploads from it.
@@ -873,7 +876,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <ul class="tab-tour">
         <li><b>Stats</b><span>Counts, top hashtags / mentions / sources / languages, temporal heatmap (GitHub-contributions style across your full archive), hour × day-of-week, engagement distributions.</span></li>
         <li><b>Search</b><span>Fast full-text over tweets and likes via MiniSearch. Filter by originals / replies / retweets / media; flip scope between tweets, likes, both.</span></li>
-        <li><b>Patterns</b><span>Algorithmic deep dive: viral tweets, hashtag &amp; source ROI, burst hashtags (era detection), activity change-points, longest streak &amp; longest silence, verbosity drift, emoji mood timeline, top phrases (bigrams), top link hosts, sleep / quiet-hours by year, style fingerprint + archetype, self-reply threads, co-mention pairs (force-directed graph), first &amp; last and top tweet per year, zero-engagement cleanup pile.</span></li>
+        <li><b>Patterns</b><span>Algorithmic deep dive: viral tweets, hashtag &amp; source ROI, burst hashtags (era detection), activity change-points, longest streak &amp; longest silence, verbosity drift, emoji + word-list mood timelines, top phrases (bigrams), recurring themes (≥3 years), hashtag-lifecycle sparklines, top link hosts, sleep / quiet-hours by year, style fingerprint + archetype, self-reply threads, co-mention pairs (force-directed graph), eras compared (chronological thirds, side-by-side), first &amp; last and top tweet per year, on-this-day anniversaries, "what were you doing then?" date picker, zero-engagement cleanup pile + PII audit.</span></li>
         <li><b>Wrapped</b><span>Spotify-Wrapped-style poster card for any year or all-time. Top tweet, top hashtag, peak month, era, posting personality. Download as standalone HTML (hostable anywhere) or PNG (postable to social).</span></li>
         <li><b>Topics</b><span>Hashtag co-occurrence clusters — themes you tag together. Drag the threshold slider to widen or tighten clusters.</span></li>
         <li><b>Selection</b><span>The confirmation tray. Everything you've opened to delete or marked deleted ends up here.</span></li>
@@ -889,7 +892,13 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <strong>Twitter / X:</strong> <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">x.com/settings/download_your_data</a> → wait ~24 hours → drop the ZIP, or use "Open unzipped folder" (Chrome/Edge) for the FSA path with a sidecar state file written alongside the archive.
       </p>
       <p>
-        <strong>Mastodon:</strong> on your instance → Preferences → Import and Export → Request your archive → wait a few minutes → drop the ZIP. Mastodon exports don't include engagement counts on your own posts, so engagement-driven cards (Top viral, hashtag ROI) will be quiet — everything else works.
+        <strong>Mastodon:</strong> Instance settings → Preferences → Import and Export → Request your archive → wait a few minutes → drop the ZIP. Mastodon exports don't include engagement counts, so engagement-driven cards stay quiet — everything else works.
+      </p>
+      <p>
+        <strong>Bluesky:</strong> just type your handle (<code>name.bsky.social</code>) in the "Fetch from Bluesky" box on the drop screen. Bakwaas pages through the public AppView API — no auth, no archive request. Engagement counts come back live, so all surfaces work.
+      </p>
+      <p>
+        <strong>Reddit:</strong> <a href="https://www.reddit.com/settings/data-request" target="_blank" rel="noopener">reddit.com/settings/data-request</a> → wait a few days for the GDPR export → drop the ZIP. Reddit exports cover posts + comments but no engagement counts, so engagement-driven cards stay quiet.
       </p>
 
       <div class="help-foot">
