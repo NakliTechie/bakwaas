@@ -637,6 +637,31 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .ann-year:first-child { margin-top: 0; }
 .ann-year-h { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed var(--border); }
 
+/* Cohort comparison */
+.cohort-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.cohort-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px;
+}
+.cohort-h { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--accent); }
+.cohort-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 14px; }
+.cohort-stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+.cohort-stat {
+  background: var(--panel-2); border-radius: 8px; padding: 8px 10px;
+}
+.cohort-stat.cohort-stat-wide { grid-column: span 2; }
+.cohort-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 2px; }
+.cohort-stat-value { font-size: 16px; font-weight: 600; color: var(--text); font-family: var(--mono); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cohort-stat-sub { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+.cohort-tweet {
+  border-top: 1px solid var(--border); padding-top: 10px;
+  font-size: 12px; line-height: 1.5; color: var(--muted);
+}
+.cohort-q { color: var(--text); display: block;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+}
+.cohort-q-meta { margin-top: 4px; font-family: var(--mono); font-size: 11px; }
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -1858,7 +1883,7 @@ const patterns = (() => {
     if (inflight) return inflight;
     inflight = (async () => {
       const cached = await store.metaGet('patterns_cache');
-      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth) return cached;
+      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth && cached.cohorts) return cached;
 
       const db = await store.open();
       const TOP_VIRAL = 30;
@@ -2368,6 +2393,56 @@ const patterns = (() => {
         ? { firstDate: baseStats.firstDate, daysSince: Math.floor((Date.now() - baseStats.firstDate) / 86400000) }
         : null;
 
+      // Cohorts — split chronologically into thirds of total tweet volume.
+      // Each cohort aggregates its years' top hashtags/mentions/sources (sums of
+      // top-K leaders, approximate but representative).
+      function buildCohorts(yrs) {
+        if (!yrs.length) return [];
+        const sorted = [...yrs].sort((a, b) => a.year - b.year);
+        const tot = sorted.reduce((s, y) => s + y.total, 0);
+        if (!tot) return [];
+        const t1 = tot / 3, t2 = 2 * tot / 3;
+        const buckets = [[], [], []];
+        let cum = 0, idx = 0;
+        for (const y of sorted) {
+          buckets[idx].push(y);
+          cum += y.total;
+          if (idx < 2 && cum >= (idx === 0 ? t1 : t2)) idx++;
+        }
+        return buckets.filter(b => b.length).map(yearsIn => {
+          const hashtagAgg = new Map(), mentionAgg = new Map(), sourceAgg = new Map();
+          let tt = 0, ori = 0, rep = 0, rts = 0;
+          let sLenW = 0, sFavW = 0, sRTW = 0;
+          let topTweet = null;
+          let era = null;
+          for (const y of yearsIn) {
+            tt += y.total; ori += y.originals; rep += y.replies; rts += y.retweets;
+            sLenW += y.avgLen * y.total;
+            sFavW += y.avgFav * y.total;
+            sRTW += y.avgRT * y.total;
+            for (const h of y.topHashtags || []) hashtagAgg.set(h.tag, (hashtagAgg.get(h.tag) || 0) + h.count);
+            for (const m of y.topMentions || []) mentionAgg.set(m.user, (mentionAgg.get(m.user) || 0) + m.count);
+            if (y.topSource) sourceAgg.set(y.topSource.source, (sourceAgg.get(y.topSource.source) || 0) + y.topSource.count);
+            if (y.topTweet && (!topTweet || (y.topTweet.eng || 0) > (topTweet.eng || 0))) topTweet = y.topTweet;
+            if (y.era && !era) era = y.era;
+          }
+          const top1 = (m) => { const e = [...m.entries()].sort((a, b) => b[1] - a[1])[0]; return e ? { name: e[0], count: e[1] } : null; };
+          return {
+            label: yearsIn.length === 1 ? String(yearsIn[0].year) : `${yearsIn[0].year}–${yearsIn[yearsIn.length - 1].year}`,
+            years: yearsIn.length,
+            total: tt, originals: ori, replies: rep, retweets: rts,
+            avgLen: tt ? sLenW / tt : 0,
+            avgFav: tt ? sFavW / tt : 0,
+            avgRT: tt ? sRTW / tt : 0,
+            topHashtag: top1(hashtagAgg),
+            topMention: top1(mentionAgg),
+            topSource: top1(sourceAgg),
+            topTweet, era
+          };
+        });
+      }
+      const cohorts = buildCohorts(perYearStats);
+
       // Polarity timeline (word-list based).
       const polarityArr = [...polarityByMonth.entries()].sort().map(([m, v]) => {
         const total = v.pos + v.neg;
@@ -2483,6 +2558,7 @@ const patterns = (() => {
         hashtagSparklines,
         sparklineMonths: months,
         piiCandidates: piiCandidates.slice(0, PII_CAP),
+        cohorts,
         computed_at: Date.now()
       };
 
@@ -3333,6 +3409,11 @@ const ui = (() => {
         </div>
 
         <div class="patterns-section">
+          <h2>Eras compared — chronological thirds of your archive</h2>
+          ${cohortsHTML(p.cohorts)}
+        </div>
+
+        <div class="patterns-section">
           <h2>First, last, best — by year</h2>
           <div class="charts-grid">
             <div class="chart-card" style="grid-column: 1 / -1;">
@@ -3494,6 +3575,36 @@ const ui = (() => {
         <div class="spark-count">${r.total.toLocaleString()}</div>
       </div>`;
     }).join('') + `</div><div class="heatmap-legend">x-axis: ${monthLabels}</div>`;
+  }
+
+  function cohortsHTML(cohorts) {
+    if (!cohorts || !cohorts.length) return '<div class="top-empty">— not enough years to split into cohorts —</div>';
+    return `<div class="cohort-row">${cohorts.map(c => {
+      const origPct = c.total ? Math.round((c.originals / c.total) * 100) : 0;
+      const repPct = c.total ? Math.round((c.replies / c.total) * 100) : 0;
+      const rtPct = c.total ? Math.round((c.retweets / c.total) * 100) : 0;
+      const era = c.era ? `#${safe(c.era.tag)}` : '—';
+      const topH = c.topHashtag ? `#${safe(c.topHashtag.name)}` : '—';
+      const topM = c.topMention ? `@${safe(c.topMention.name)}` : '—';
+      const topS = c.topSource ? safe(c.topSource.name) : '—';
+      const topT = c.topTweet
+        ? `<div class="cohort-tweet"><span class="cohort-q">"${safe(c.topTweet.text)}"</span><div class="cohort-q-meta">♥ ${(c.topTweet.fav||0).toLocaleString()} · ↻ ${(c.topTweet.rt||0).toLocaleString()}</div></div>`
+        : '<div class="cohort-q-meta" style="color:var(--muted);">— no engagement —</div>';
+      return `<div class="cohort-card">
+        <div class="cohort-h">${safe(c.label)}</div>
+        <div class="cohort-meta">${c.years} year${c.years > 1 ? 's' : ''} · ${c.total.toLocaleString()} tweets</div>
+        <div class="cohort-stat-grid">
+          <div class="cohort-stat"><div class="cohort-stat-label">Mix</div><div class="cohort-stat-value">${origPct}/${repPct}/${rtPct}%</div><div class="cohort-stat-sub">orig · reply · RT</div></div>
+          <div class="cohort-stat"><div class="cohort-stat-label">Avg eng</div><div class="cohort-stat-value">♥ ${c.avgFav.toFixed(1)}</div><div class="cohort-stat-sub">↻ ${c.avgRT.toFixed(1)}</div></div>
+          <div class="cohort-stat"><div class="cohort-stat-label">Avg length</div><div class="cohort-stat-value">${Math.round(c.avgLen)}c</div><div class="cohort-stat-sub">per tweet</div></div>
+          <div class="cohort-stat"><div class="cohort-stat-label">Era</div><div class="cohort-stat-value" style="color:var(--accent);">${era}</div><div class="cohort-stat-sub">${c.era ? 'peak ' + c.era.peakMonth : ''}</div></div>
+          <div class="cohort-stat"><div class="cohort-stat-label">Top hashtag</div><div class="cohort-stat-value">${topH}</div><div class="cohort-stat-sub">${c.topHashtag ? c.topHashtag.count.toLocaleString() + ' uses' : ''}</div></div>
+          <div class="cohort-stat"><div class="cohort-stat-label">Most mentioned</div><div class="cohort-stat-value">${topM}</div><div class="cohort-stat-sub">${c.topMention ? c.topMention.count.toLocaleString() + ' times' : ''}</div></div>
+          <div class="cohort-stat cohort-stat-wide"><div class="cohort-stat-label">Source of choice</div><div class="cohort-stat-value" style="font-size:14px;">${topS}</div></div>
+        </div>
+        ${topT}
+      </div>`;
+    }).join('')}</div>`;
   }
 
   async function renderAnniversary() {
