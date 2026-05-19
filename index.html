@@ -159,6 +159,87 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 #screen-unsupported h2 { margin: 0 0 8px; font-size: 18px; }
 #screen-unsupported p { margin: 0; color: var(--text); line-height: 1.6; }
 
+/* Tab nav inside summary */
+.tab-nav { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 24px; flex-wrap: wrap; }
+.tab-nav .tab {
+  background: transparent; color: var(--muted); border: none;
+  padding: 10px 16px; font-size: 14px; font-weight: 500;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+}
+.tab-nav .tab:hover { color: var(--text); }
+.tab-nav .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-nav .tab:disabled { opacity: .35; cursor: not-allowed; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Search controls */
+.search-row {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+.search-row .scope {
+  display: inline-flex; gap: 2px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 3px;
+}
+.search-row .scope button {
+  background: transparent; color: var(--muted); border: none;
+  padding: 6px 14px; font-size: 12px; border-radius: 999px;
+  transition: background .15s, color .15s;
+}
+.search-row .scope button.active { background: var(--accent); color: #0d1117; font-weight: 600; }
+.search-row input[type=search] {
+  flex: 1; min-width: 240px;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; font-size: 14px; font-family: inherit;
+}
+.search-row input[type=search]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+.chips { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.chips .chip {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 12px; font-size: 12px;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.chips .chip:hover { color: var(--text); border-color: var(--text); }
+.chips .chip.active { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+
+.results-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; font-family: var(--mono); }
+
+.results-list { display: flex; flex-direction: column; gap: 10px; }
+.card-item {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.card-item.is-like { border-left: 3px solid var(--accent-2); }
+.card-item .card-text {
+  font-size: 14px; line-height: 1.55; color: var(--text);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.card-item .card-meta {
+  display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  font-size: 11px; color: var(--muted); font-family: var(--mono);
+}
+.card-item .card-meta .badge {
+  border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
+}
+.card-item .card-meta .badge.is-rt { color: var(--accent); border-color: var(--accent); }
+.card-item .card-meta .badge.is-rep { color: var(--warn); border-color: var(--warn); }
+.card-item .card-meta .badge.is-media { color: var(--ok); border-color: var(--ok); }
+.card-item .card-meta .badge.is-like-marker { color: var(--accent-2); border-color: var(--accent-2); }
+.card-item .card-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.card-item .card-actions a {
+  background: transparent; color: var(--text); text-decoration: none;
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 12px;
+  transition: border-color .15s, color .15s;
+}
+.card-item .card-actions a:hover { border-color: var(--accent); color: var(--accent); }
+.results-empty { padding: 32px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -183,7 +264,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.2 · phase 2</span>
+      <span class="phase" id="phase-tag">v0.3 · phase 3</span>
     </div>
     <div class="tag">explore your Twitter archive · find the noise · delete it</div>
   </header>
@@ -236,22 +317,48 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
     <div class="summary-card">
       <h2 id="summary-name">—</h2>
       <div class="handle" id="summary-handle">@—</div>
-      <div class="stat-grid">
-        <div class="stat"><div class="label">Tweets indexed</div><div class="value" id="stat-total">0</div></div>
-        <div class="stat"><div class="label">First tweet</div><div class="value" id="stat-first">—</div></div>
-        <div class="stat"><div class="label">Last tweet</div><div class="value" id="stat-last">—</div></div>
-        <div class="stat"><div class="label">Originals</div><div class="value" id="stat-orig">0</div></div>
-        <div class="stat"><div class="label">Replies</div><div class="value" id="stat-rep">0</div></div>
-        <div class="stat"><div class="label">Retweets</div><div class="value" id="stat-rt">0</div></div>
-        <div class="stat"><div class="label">Likes</div><div class="value" id="stat-likes">0</div></div>
-        <div class="stat"><div class="label">Likes with text</div><div class="value" id="stat-likes-text">0</div></div>
+
+      <div class="tab-nav">
+        <button class="tab active" data-tab="tab-stats" type="button">Stats</button>
+        <button class="tab" data-tab="tab-search" type="button">Search</button>
+        <button class="tab" data-tab="tab-topics" type="button" disabled title="Coming in Phase 5">Topics</button>
+        <button class="tab" data-tab="tab-selection" type="button" disabled title="Coming in Phase 6">Selection</button>
       </div>
-      <div class="actions">
-        <button class="btn ghost" id="btn-new">Open another archive</button>
-        <button class="btn ghost" id="btn-export">Export state JSON</button>
+
+      <div class="tab-panel active" id="tab-stats">
+        <div class="stat-grid">
+          <div class="stat"><div class="label">Tweets indexed</div><div class="value" id="stat-total">0</div></div>
+          <div class="stat"><div class="label">First tweet</div><div class="value" id="stat-first">—</div></div>
+          <div class="stat"><div class="label">Last tweet</div><div class="value" id="stat-last">—</div></div>
+          <div class="stat"><div class="label">Originals</div><div class="value" id="stat-orig">0</div></div>
+          <div class="stat"><div class="label">Replies</div><div class="value" id="stat-rep">0</div></div>
+          <div class="stat"><div class="label">Retweets</div><div class="value" id="stat-rt">0</div></div>
+          <div class="stat"><div class="label">Likes</div><div class="value" id="stat-likes">0</div></div>
+          <div class="stat"><div class="label">Likes with text</div><div class="value" id="stat-likes-text">0</div></div>
+        </div>
+        <div class="actions" style="margin-top:8px;">
+          <button class="btn ghost" id="btn-new">Open another archive</button>
+          <button class="btn ghost" id="btn-export">Export state JSON</button>
+        </div>
       </div>
-      <div class="next-hint">
-        <strong>Phase 1 complete.</strong> Ingest + index works. Search, stats, topic clustering, and click-to-delete land in later phases — see <code>docs/bakwaas-agent-handoff-v1.0.md</code>.
+
+      <div class="tab-panel" id="tab-search">
+        <div class="search-row">
+          <div class="scope" role="tablist" aria-label="Search scope">
+            <button class="active" data-scope="tweets" type="button">Tweets</button>
+            <button data-scope="likes" type="button">Likes</button>
+            <button data-scope="both" type="button">Both</button>
+          </div>
+          <input type="search" id="search-input" placeholder="Search text… (try 'crypto' or '#tag')" autocomplete="off" />
+        </div>
+        <div class="chips" id="search-chips">
+          <button class="chip" data-chip="originals" type="button" title="Only original tweets (not replies or retweets)">Originals</button>
+          <button class="chip" data-chip="replies" type="button">Replies</button>
+          <button class="chip" data-chip="retweets" type="button">Retweets</button>
+          <button class="chip" data-chip="media" type="button">Media</button>
+        </div>
+        <div class="results-meta" id="search-meta">Type to search across <span id="search-scope-label">tweets</span>.</div>
+        <div class="results-list" id="search-results"></div>
       </div>
     </div>
   </section>
@@ -273,10 +380,11 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
 <script type="module">
 // ─────────────────────────────────────────────────────────────────────────────
-// Bakwaas v0.2 — Phase 1+2: zip/folder → parse → IndexedDB → summary
+// Bakwaas v0.3 — Phase 1+2+3: zip/folder → parse → IndexedDB → tabs + search
 // Architecture: object-namespaces inside this single file (per handoff §1).
-// Shipped: zip + FSA folder ingest, tweet + like parse, resumable, OPFS + sidecar.
-// Deferred: MiniSearch, stats view, topics, click-to-delete, LLM.
+// Shipped: zip + FSA folder ingest, tweet + like parse, MiniSearch lazy build
+//          with IndexedDB cache, tabbed UI (Stats + Search; Topics/Selection stubbed).
+// Deferred: stats charts/heatmaps, topic clustering, click-to-delete, BYOK LLM.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DB_NAME = 'bakwaas-v1';
@@ -695,6 +803,160 @@ const archive = (() => {
   return { openZip, openFolder };
 })();
 
+// ── search (MiniSearch) ─────────────────────────────────────────────────────
+const search = (() => {
+  let MS = null;
+  let tweetIndex = null;
+  let likeIndex = null;
+  let buildPromise = null;
+
+  async function getMS() {
+    if (MS) return MS;
+    const mod = await import('https://cdn.jsdelivr.net/npm/minisearch@7.1.2/+esm');
+    MS = mod.default || mod.MiniSearch || mod;
+    return MS;
+  }
+  const TWEET_FIELDS = ['text', 'hashtags_joined', 'mentions_joined'];
+  const TWEET_STORED = ['id', 'created_at', 'text', 'is_reply', 'is_retweet', 'favorite_count', 'retweet_count', 'has_media', 'hashtags', 'mentions'];
+  const LIKE_FIELDS = ['text'];
+  const LIKE_STORED = ['tweet_id', 'expanded_url', 'text', 'has_text'];
+
+  function makeTweetMS(C) {
+    return new C({ idField: 'id', fields: TWEET_FIELDS, storeFields: TWEET_STORED,
+      searchOptions: { prefix: true, fuzzy: 0.15, boost: { text: 2 } } });
+  }
+  function makeLikeMS(C) {
+    return new C({ idField: 'tweet_id', fields: LIKE_FIELDS, storeFields: LIKE_STORED,
+      searchOptions: { prefix: true, fuzzy: 0.15 } });
+  }
+
+  function tweetForIndex(t) {
+    return {
+      id: t.id, created_at: t.created_at, text: t.text,
+      is_reply: t.is_reply, is_retweet: t.is_retweet,
+      favorite_count: t.favorite_count, retweet_count: t.retweet_count,
+      has_media: t.has_media, hashtags: t.hashtags || [], mentions: t.mentions || [],
+      hashtags_joined: (t.hashtags || []).join(' '),
+      mentions_joined: (t.mentions || []).join(' ')
+    };
+  }
+  function likeForIndex(l) {
+    return { tweet_id: l.tweet_id, expanded_url: l.expanded_url, text: l.text || l.full_text || '', has_text: !!l.has_text };
+  }
+
+  async function cursorAll(storeName) {
+    const db = await store.open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const out = [];
+      const cur = tx.objectStore(storeName).openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res(out);
+        out.push(c.value);
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+  }
+  function yieldToUI() { return new Promise(r => setTimeout(r, 0)); }
+
+  async function buildIndexes(onProgress) {
+    const C = await getMS();
+
+    // Try cached.
+    const sTweets = await store.metaGet('minisearch_tweets');
+    const sLikes = await store.metaGet('minisearch_likes');
+
+    if (sTweets) {
+      try {
+        tweetIndex = C.loadJSON(sTweets, { idField: 'id', fields: TWEET_FIELDS, storeFields: TWEET_STORED });
+      } catch (e) { console.warn('tweet index restore failed, rebuilding', e); }
+    }
+    if (sLikes) {
+      try {
+        likeIndex = C.loadJSON(sLikes, { idField: 'tweet_id', fields: LIKE_FIELDS, storeFields: LIKE_STORED });
+      } catch (e) { console.warn('like index restore failed, rebuilding', e); }
+    }
+    if (tweetIndex && likeIndex) return;
+
+    // Rebuild from IndexedDB.
+    if (!tweetIndex) {
+      onProgress?.({ stage: 'tweets', phase: 'reading' });
+      const tweets = await cursorAll('tweets');
+      tweetIndex = makeTweetMS(C);
+      const total = tweets.length;
+      for (let i = 0; i < total; i += 1000) {
+        const slice = tweets.slice(i, i + 1000).map(tweetForIndex);
+        tweetIndex.addAll(slice);
+        onProgress?.({ stage: 'tweets', phase: 'indexing', done: Math.min(total, i + slice.length), total });
+        await yieldToUI();
+      }
+      try {
+        await store.metaSet('minisearch_tweets', JSON.stringify(tweetIndex.toJSON()));
+      } catch (e) { console.warn('persist tweet index failed', e); }
+    }
+
+    if (!likeIndex) {
+      onProgress?.({ stage: 'likes', phase: 'reading' });
+      const likes = await cursorAll('likes');
+      likeIndex = makeLikeMS(C);
+      const total = likes.length;
+      for (let i = 0; i < total; i += 1000) {
+        const slice = likes.slice(i, i + 1000).map(likeForIndex);
+        likeIndex.addAll(slice);
+        onProgress?.({ stage: 'likes', phase: 'indexing', done: Math.min(total, i + slice.length), total });
+        await yieldToUI();
+      }
+      try {
+        await store.metaSet('minisearch_likes', JSON.stringify(likeIndex.toJSON()));
+      } catch (e) { console.warn('persist like index failed', e); }
+    }
+  }
+
+  async function ensureIndexes(onProgress) {
+    if (tweetIndex && likeIndex) return;
+    if (!buildPromise) buildPromise = buildIndexes(onProgress).finally(() => { buildPromise = null; });
+    return buildPromise;
+  }
+
+  function applyChips(item, chips) {
+    if (item.__scope === 'tweet') {
+      if (chips.originals && (item.is_reply || item.is_retweet)) return false;
+      if (chips.replies && !item.is_reply) return false;
+      if (chips.retweets && !item.is_retweet) return false;
+      if (chips.media && !item.has_media) return false;
+      return true;
+    }
+    // likes pass through filters that don't apply to them
+    if (chips.replies || chips.retweets || chips.media || chips.originals) return false;
+    return true;
+  }
+
+  async function query({ q, scope, chips, limit = 200, onProgress }) {
+    await ensureIndexes(onProgress);
+    if (!q || !q.trim()) return { items: [], totalTweets: tweetIndex.documentCount, totalLikes: likeIndex.documentCount };
+    const items = [];
+    if (scope === 'tweets' || scope === 'both') {
+      for (const hit of tweetIndex.search(q)) items.push({ ...hit, __scope: 'tweet', __score: hit.score });
+    }
+    if (scope === 'likes' || scope === 'both') {
+      for (const hit of likeIndex.search(q)) items.push({ ...hit, __scope: 'like', __score: hit.score });
+    }
+    items.sort((a, b) => b.__score - a.__score);
+    const filtered = items.filter(it => applyChips(it, chips || {}));
+    return { items: filtered.slice(0, limit), total: filtered.length };
+  }
+
+  function invalidateCaches() {
+    tweetIndex = null;
+    likeIndex = null;
+    buildPromise = null;
+  }
+
+  return { ensureIndexes, query, invalidateCaches };
+})();
+
 // ── fingerprint ─────────────────────────────────────────────────────────────
 async function sha256Hex(str) {
   const buf = new TextEncoder().encode(str);
@@ -901,6 +1163,139 @@ const ui = (() => {
       if (f) onFile(f);
     });
   }
+  function bindTabs() {
+    const nav = document.querySelector('#screen-summary .tab-nav');
+    if (!nav) return;
+    nav.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab');
+      if (!btn || btn.disabled) return;
+      const target = btn.dataset.tab;
+      nav.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('#screen-summary .tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
+    });
+  }
+
+  function renderCard(item) {
+    if (item.__scope === 'like') return renderLikeCard(item);
+    return renderTweetCard(item);
+  }
+
+  function safe(s) {
+    return (s ?? '').toString()
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function renderTweetCard(t) {
+    const dt = t.created_at ? new Date(t.created_at).toISOString().slice(0, 10) : '—';
+    const url = `https://twitter.com/i/web/status/${t.id}`;
+    const badges = [];
+    if (t.is_retweet) badges.push('<span class="badge is-rt">RT</span>');
+    else if (t.is_reply) badges.push('<span class="badge is-rep">reply</span>');
+    if (t.has_media) badges.push('<span class="badge is-media">media</span>');
+    const meta = [
+      dt,
+      `♥ ${(t.favorite_count || 0).toLocaleString()}`,
+      `↻ ${(t.retweet_count || 0).toLocaleString()}`,
+      ...badges
+    ].join(' · ');
+    return `<div class="card-item">
+      <div class="card-text">${safe(t.text)}</div>
+      <div class="card-meta">${meta}</div>
+      <div class="card-actions">
+        <a href="${url}" target="_blank" rel="noopener">Open on X →</a>
+      </div>
+    </div>`;
+  }
+
+  function renderLikeCard(l) {
+    const url = l.expanded_url || `https://twitter.com/i/web/status/${l.tweet_id}`;
+    const text = l.has_text && l.text
+      ? safe(l.text)
+      : '<em style="color:var(--muted);">(text unavailable in archive)</em>';
+    return `<div class="card-item is-like">
+      <div class="card-text">${text}</div>
+      <div class="card-meta"><span class="badge is-like-marker">like</span> · <span>${safe(l.tweet_id)}</span></div>
+      <div class="card-actions">
+        <a href="${url}" target="_blank" rel="noopener">Open on X →</a>
+      </div>
+    </div>`;
+  }
+
+  function setSearchMeta(text) {
+    const el = $('search-meta');
+    if (el) el.textContent = text;
+  }
+
+  function renderResults({ items, total }) {
+    const root = $('search-results');
+    if (!root) return;
+    if (!items.length) {
+      root.innerHTML = '<div class="results-empty">No matches — try a different query or relax the filters.</div>';
+      return;
+    }
+    root.innerHTML = items.map(renderCard).join('');
+    setSearchMeta(`Showing ${items.length.toLocaleString()} of ${(total || items.length).toLocaleString()} matches.`);
+  }
+
+  function bindSearch() {
+    const input = $('search-input');
+    const chipsEl = $('search-chips');
+    const scopeEl = document.querySelector('#tab-search .scope');
+    if (!input || !chipsEl || !scopeEl) return;
+
+    const state = { q: '', scope: 'tweets', chips: { originals: false, replies: false, retweets: false, media: false } };
+    let debounce = null;
+
+    function activeChipsLabel() {
+      const on = Object.entries(state.chips).filter(([_, v]) => v).map(([k]) => k);
+      return on.length ? ` · filters: ${on.join(', ')}` : '';
+    }
+
+    async function run() {
+      if (!state.q.trim()) {
+        $('search-results').innerHTML = '';
+        setSearchMeta(`Type to search across ${state.scope}${activeChipsLabel()}.`);
+        return;
+      }
+      setSearchMeta(`Searching ${state.scope}${activeChipsLabel()}…`);
+      try {
+        const result = await search.query({
+          q: state.q, scope: state.scope, chips: state.chips,
+          onProgress: (p) => {
+            if (p.phase === 'reading') setSearchMeta(`Reading ${p.stage} from disk…`);
+            else if (p.phase === 'indexing') setSearchMeta(`Building ${p.stage} index ${p.done.toLocaleString()} / ${p.total.toLocaleString()}…`);
+          }
+        });
+        renderResults(result);
+      } catch (e) {
+        console.error('search failed:', e);
+        setSearchMeta('Search failed: ' + (e.message || e));
+      }
+    }
+
+    input.addEventListener('input', () => {
+      state.q = input.value;
+      clearTimeout(debounce);
+      debounce = setTimeout(run, 180);
+    });
+    scopeEl.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-scope]');
+      if (!b) return;
+      state.scope = b.dataset.scope;
+      scopeEl.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      $('search-scope-label').textContent = state.scope;
+      run();
+    });
+    chipsEl.addEventListener('click', (e) => {
+      const c = e.target.closest('.chip');
+      if (!c) return;
+      const k = c.dataset.chip;
+      state.chips[k] = !state.chips[k];
+      c.classList.toggle('active', state.chips[k]);
+      run();
+    });
+  }
+
   function bindFolderButton(onFolder) {
     const btn = $('btn-pick-folder');
     if (!btn) return;
@@ -919,7 +1314,7 @@ const ui = (() => {
       }
     });
   }
-  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton };
+  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindTabs, bindSearch };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -988,7 +1383,10 @@ async function bootstrap() {
   }
   ui.bindDropZone(startWithFile);
   ui.bindFolderButton(startWithFolder);
+  ui.bindTabs();
+  ui.bindSearch();
   $('btn-new')?.addEventListener('click', async () => {
+    search.invalidateCaches();
     await store.wipe();
     location.reload();
   });
@@ -1040,8 +1438,11 @@ window.bakwaas = {
       exported_at: Date.now()
     };
   },
+  async search(spec) {
+    const { q = '', scope = 'both', chips = {}, limit = 200 } = spec || {};
+    return search.query({ q, scope, chips, limit });
+  },
   // deferred to later phases
-  search: notImpl('search'),
   stats: notImpl('stats'),
   topics: notImpl('topics'),
   select: notImpl('select'),
