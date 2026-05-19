@@ -1,19 +1,22 @@
 # Bakwaas
 
-**Explore your Twitter archive. Find the noise. Delete it.**
+> **बकवास** — Hindi/Urdu, *noun*. Nonsense, drivel, hot air, chitchat. The stuff you say a lot of but rarely re-read.
 
-A browser-native, single-file tool that ingests your Twitter/X archive, indexes every tweet and like locally, and helps you find what's worth deleting. Nothing leaves your device.
+**A browser-native explorer for your Twitter/X archive.** Started as a click-to-delete tool — turned out the harder problem isn't deleting, it's *finding* what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end.
 
-**[→ Try it live](https://bakwaas.naklitechie.com)** *(deploy pending v1.0)*
+**[→ Try it live](https://bakwaas.naklitechie.com)**
 
 ## What it does
 
-Drop your Twitter archive (folder or ZIP) and get:
+Drop your Twitter archive (folder or ZIP), wait for the one-time index pass, and explore:
 
-- **Stats** — temporal heatmap, top hashtags, mention graph, reply / retweet / original split, engagement distribution, source clients, language mix
-- **Search** — fast full-text over 200k+ tweets and likes, with filter chips for originals, replies, retweets, media, and date/engagement bounds
-- **Topics** — local TF-IDF + co-occurrence clustering surfaces themes you've drifted across; bring your own LLM key (Anthropic, OpenAI, or Gemini) for semantic search and cluster labels
-- **Click-to-delete** — every tweet and like links straight back to its `twitter.com` page. You delete it in X's own UI; Bakwaas marks it deleted locally
+- **Stats** — counts, top hashtags / mentions / sources / languages, GitHub-contributions-style temporal heatmap spanning your full archive, hour × day-of-week heatmap, engagement distributions
+- **Search** — MiniSearch full-text over tweets and likes, filter chips for originals / replies / retweets / media, scope toggle between tweets / likes / both
+- **Patterns** — algorithmic deep analysis: viral tweets, hashtag & source ROI (which themes worked, which client lands), burst hashtags (your `#nft` 2022 era, your `#covid` Mar 2020), activity change-points, longest streak & longest silence, verbosity drift over time, self-reply thread roots, co-mention pairs, zero-engagement cleanup pile
+- **Topics** — hashtag co-occurrence clusters with an adjustable threshold; pick a theme, drill into it
+- **Selection** — confirmation tray for the click-to-delete workflow: everything you've opened or marked deleted lives here
+
+**Click-to-delete is honest.** Bakwaas never calls X's API. To delete a tweet you click it open in X's real UI, do it there, come back, confirm. The hard part — knowing *what* to delete — happens here. The actual delete happens in X's own UI.
 
 No X API. No OAuth. No accounts. No server. No telemetry.
 
@@ -42,13 +45,16 @@ No X API. No OAuth. No accounts. No server. No telemetry.
 | Safari 17+ | ZIP mode only — state lives in OPFS |
 | Firefox 125+ | ZIP mode only — state lives in OPFS |
 
-## BYOK LLM (optional)
+## BYOK LLM (coming in Phase 8)
 
-Topic labels, semantic search, and bulk classification work with a key you provide. Keys persist in IndexedDB on this device and are sent only directly to the provider you chose — never to any NakliTechie server, never written to the FSA sidecar.
+The Patterns and Topics views already produce a lot without any model in the loop. A future BYOK layer will optionally add cluster labels, semantic search, and bulk classification — your key, stored locally in IndexedDB, sent only directly to the provider you chose, never to NakliTechie infrastructure, never written to the FSA sidecar.
 
-- **Claude:** [console.anthropic.com](https://console.anthropic.com/) → API keys
-- **OpenAI:** [platform.openai.com](https://platform.openai.com/api-keys) → API keys
-- **Gemini:** [aistudio.google.com](https://aistudio.google.com/app/apikey) → Get API key
+Providers planned:
+- **Claude** via [console.anthropic.com](https://console.anthropic.com/)
+- **OpenAI** via [platform.openai.com](https://platform.openai.com/api-keys)
+- **Gemini** via [aistudio.google.com](https://aistudio.google.com/app/apikey)
+
+The whole CSP is already pinned so this slots in without a policy change.
 
 ## What Bakwaas doesn't do (and why)
 

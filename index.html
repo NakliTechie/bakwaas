@@ -58,6 +58,14 @@ header { margin-bottom: 28px; }
 header .title-row { display: flex; align-items: baseline; gap: 12px; }
 header .brand { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; color: var(--accent); flex-shrink: 0; }
 header .phase { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
+header .help-btn {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 50%;
+  width: 26px; height: 26px; padding: 0; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+header .help-btn:hover { color: var(--accent); border-color: var(--accent); }
 header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.5; }
 
 .screen { display: none; }
@@ -382,6 +390,58 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .modal-card button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
 .modal-card button.primary:hover { filter: brightness(1.08); }
 
+/* Help modal — richer than the confirm modal, holds copy + a tour. */
+.help-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; align-items: flex-start; justify-content: center;
+  z-index: 200; padding: 40px 20px; overflow-y: auto;
+}
+.help-backdrop.is-open { display: flex; }
+.help-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  padding: 28px 32px; max-width: 640px; width: 100%; position: relative;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+.help-card .help-close {
+  position: absolute; top: 14px; right: 16px;
+  background: transparent; color: var(--muted);
+  border: none; font-size: 22px; line-height: 1; cursor: pointer;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.help-card .help-close:hover { background: var(--panel-2); color: var(--text); }
+.help-card h2 { margin: 0 0 6px; font-size: 22px; color: var(--accent); }
+.help-card .help-etym {
+  font-family: var(--mono); font-size: 13px; color: var(--muted);
+  margin: 0 0 18px; line-height: 1.6;
+}
+.help-card .help-etym .devanagari { color: var(--text); font-size: 16px; margin-right: 6px; }
+.help-card h3 {
+  margin: 22px 0 10px; font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;
+}
+.help-card p { margin: 0 0 10px; font-size: 14px; line-height: 1.6; color: var(--text); }
+.help-card p.muted { color: var(--muted); font-size: 13px; }
+.help-card .tab-tour { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.help-card .tab-tour li {
+  display: grid; grid-template-columns: 96px 1fr; gap: 12px;
+  font-size: 13px; line-height: 1.5; padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.help-card .tab-tour li:last-child { border-bottom: none; }
+.help-card .tab-tour b {
+  background: var(--panel-2); color: var(--accent);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 2px 8px; font-size: 11px; font-family: var(--mono);
+  text-align: center; align-self: start; font-weight: 600;
+}
+.help-card .help-foot {
+  margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap;
+}
+.help-card .help-foot a { color: var(--accent); text-decoration: none; }
+.help-card .help-foot a:hover { text-decoration: underline; }
+
 /* Selection tab */
 #tab-selection .empty-sel { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 16px; }
 #tab-selection .sel-header {
@@ -505,10 +565,11 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 <div class="app">
   <header>
     <div class="title-row">
-      <span class="brand">Bakwaas</span>
+      <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
       <span class="phase" id="phase-tag">v0.7 · phase 7</span>
+      <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
-    <div class="tag">explore your Twitter archive · find the noise · delete it</div>
+    <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
   </header>
 
   <section id="screen-unsupported" class="screen">
@@ -646,6 +707,47 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       </div>
     </div>
   </section>
+
+  <div class="help-backdrop" id="help-backdrop" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="help-card">
+      <button class="help-close" id="help-close" type="button" aria-label="Close">×</button>
+      <h2 id="help-title">About Bakwaas</h2>
+      <p class="help-etym">
+        <span class="devanagari">बकवास</span>
+        Hindi/Urdu, noun — nonsense, drivel, hot air, chitchat. The stuff you say a lot of but rarely re-read.
+      </p>
+      <p>
+        Bakwaas is a browser-native explorer for your Twitter/X archive. It started as a click-to-delete tool, but it turns out the harder problem isn't deleting — it's <em>finding</em> what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end.
+      </p>
+      <p class="muted">
+        Everything runs locally. Nothing leaves your tab. No server, no accounts, no API keys to X, no telemetry.
+      </p>
+
+      <h3>What's in each tab</h3>
+      <ul class="tab-tour">
+        <li><b>Stats</b><span>Counts, top hashtags / mentions / sources / languages, temporal heatmap (GitHub-contributions style across your full archive), hour × day-of-week, engagement distributions.</span></li>
+        <li><b>Search</b><span>Fast full-text over tweets and likes via MiniSearch. Filter by originals / replies / retweets / media; flip scope between tweets, likes, both.</span></li>
+        <li><b>Patterns</b><span>Algorithmic insights: viral tweets, hashtag &amp; source ROI, burst hashtags (era detection), activity change-points, longest streak &amp; longest silence, verbosity drift, self-reply threads, co-mention pairs, zero-engagement cleanup pile.</span></li>
+        <li><b>Topics</b><span>Hashtag co-occurrence clusters — themes you tag together. Drag the threshold slider to widen or tighten clusters.</span></li>
+        <li><b>Selection</b><span>The confirmation tray. Everything you've opened to delete or marked deleted ends up here.</span></li>
+      </ul>
+
+      <h3>How deletion works</h3>
+      <p>
+        Bakwaas never calls X's API. To delete a tweet you click it open on X, delete it there in the real UI, then come back and confirm. Manual, on purpose. The hard part — knowing <em>what</em> to delete — happens here. The actual delete happens in X's own UI.
+      </p>
+
+      <h3>Get your archive</h3>
+      <p>
+        Visit <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">x.com/settings/download_your_data</a> → wait ~24 hours → drop the ZIP here, or use "Open unzipped folder" (Chrome/Edge) for the FSA path with a sidecar state file written alongside the archive.
+      </p>
+
+      <div class="help-foot">
+        <a href="https://github.com/NakliTechie/bakwaas" target="_blank" rel="noopener">⌬ Source on GitHub</a>
+        <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">⬅ More NakliTechie projects</a>
+      </div>
+    </div>
+  </div>
 
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal-card">
@@ -2917,6 +3019,19 @@ const ui = (() => {
     });
   }
 
+  function bindHelp() {
+    const back = $('help-backdrop');
+    const btn = $('help-btn');
+    const close = $('help-close');
+    if (!back || !btn) return;
+    function open() { back.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+    function shut() { back.classList.remove('is-open'); document.body.style.overflow = ''; }
+    btn.addEventListener('click', open);
+    close?.addEventListener('click', shut);
+    back.addEventListener('click', (e) => { if (e.target === back) shut(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && back.classList.contains('is-open')) shut(); });
+  }
+
   function bindFolderButton(onFolder) {
     const btn = $('btn-pick-folder');
     if (!btn) return;
@@ -2936,7 +3051,8 @@ const ui = (() => {
     });
   }
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton,
-           bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray };
+           bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
+           bindHelp };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -3003,6 +3119,7 @@ async function bootstrap() {
   } else {
     show('screen-drop');
   }
+  ui.bindHelp();
   ui.bindDropZone(startWithFile);
   ui.bindFolderButton(startWithFolder);
   ui.bindTabs();
