@@ -632,7 +632,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.9 · wrapped</span>
+      <span class="phase" id="phase-tag">v0.10 · multi-archive</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -647,8 +647,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
   <section id="screen-drop" class="screen">
     <label class="drop" id="drop-zone">
-      <h2>Drop your Twitter archive ZIP</h2>
-      <p>The ZIP from <code>x.com/settings/download_your_data</code>. Nothing leaves this tab.</p>
+      <h2>Drop your archive ZIP</h2>
+      <p>From <code>x.com/settings/download_your_data</code> (Twitter/X), or a Mastodon archive export. Nothing leaves this tab.</p>
       <input type="file" id="file-input" accept=".zip,application/zip">
       <span class="file-btn">Choose a file</span>
     </label>
@@ -1303,10 +1303,117 @@ const parser = (() => {
       marked_for_unlike: false,
       opened_for_unlike_at: null,
       confirmed_unliked_at: null,
-      tags: []
+      tags: [],
+      provider: 'twitter'
     };
   }
-  return { parseYTD, parseTweetRecord, parseAccountRecord, parseLikeRecord, decodeEntities };
+
+  // ── Mastodon archive parsers ───────────────────────────────────────────
+  // Mastodon exports use ActivityPub. The outbox is an OrderedCollection of
+  // Create activities; each .object is a Note. Engagement counts aren't in
+  // the export (Mastodon doesn't preserve favourite/boost totals on your own
+  // posts), so they're set to 0 — the engagement-dependent surfaces in
+  // Patterns / Wrapped gracefully degrade.
+  function parseMastodonOutbox(raw) {
+    const obj = JSON.parse(raw);
+    return obj.orderedItems || obj.items || [];
+  }
+  function parseMastodonNoteRecord(item) {
+    if (!item) return null;
+    const o = item.object;
+    if (!o || typeof o !== 'object') return null;
+    if (o.type !== 'Note' && o.type !== 'Question') return null;
+    const id = (o.id || '').split('/').pop();
+    if (!id) return null;
+    const htmlText = o.content || '';
+    const text = htmlText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const tags = Array.isArray(o.tag) ? o.tag : [];
+    const hashtags = tags.filter(t => t && t.type === 'Hashtag')
+      .map(t => (t.name || '').replace(/^#/, '').toLowerCase()).filter(Boolean);
+    const mentions = tags.filter(t => t && t.type === 'Mention')
+      .map(t => (t.name || '').replace(/^@/, '')).filter(Boolean);
+    const createdAt = o.published ? Date.parse(o.published) : NaN;
+    return {
+      id: String(id),
+      created_at: Number.isNaN(createdAt) ? null : createdAt,
+      full_text: text,
+      text,
+      lang: (o.contentMap && Object.keys(o.contentMap)[0]) || o.language || null,
+      source: null,
+      is_reply: !!o.inReplyTo,
+      in_reply_to_user_id: null,
+      in_reply_to_status_id: o.inReplyTo ? String(o.inReplyTo).split('/').pop() : null,
+      is_retweet: false,
+      retweeted_status_id: null,
+      favorite_count: 0,
+      retweet_count: 0,
+      has_media: !!(o.attachment && o.attachment.length),
+      hashtags, mentions,
+      urls: [],
+      marked_for_deletion: false,
+      opened_for_deletion_at: null,
+      confirmed_deleted_at: null,
+      tags: [],
+      provider: 'mastodon'
+    };
+  }
+  function parseMastodonActor(raw) {
+    let a;
+    try { a = JSON.parse(raw); } catch { return null; }
+    if (!a) return null;
+    return {
+      accountId: a.id || null,
+      username: a.preferredUsername || (a.id ? a.id.split('/').pop() : null),
+      accountDisplayName: a.name || null,
+      createdAt: a.published || null
+    };
+  }
+  function parseMastodonLikeRecord(item, archive_order) {
+    if (!item) return null;
+    const ref = item.object;
+    const url = typeof ref === 'string' ? ref : (ref && ref.id) || '';
+    if (!url) return null;
+    const id = url.split('/').pop();
+    return {
+      tweet_id: String(id || url),
+      expanded_url: url,
+      full_text: '',
+      text: '',
+      has_text: false,
+      archive_order,
+      marked_for_unlike: false,
+      opened_for_unlike_at: null,
+      confirmed_unliked_at: null,
+      tags: [],
+      provider: 'mastodon'
+    };
+  }
+
+  // ── Provider-dispatched batch parsers (indexer calls these) ────────────
+  function parseTweetsBatch(provider, raw) {
+    if (provider === 'mastodon') {
+      return parseMastodonOutbox(raw).map(parseMastodonNoteRecord).filter(Boolean);
+    }
+    // twitter default
+    return parseYTD(raw).map(parseTweetRecord).filter(Boolean);
+  }
+  function parseLikesBatch(provider, raw, baseOffset) {
+    const offset = baseOffset || 0;
+    if (provider === 'mastodon') {
+      const items = (() => { try { const o = JSON.parse(raw); return o.orderedItems || o.items || []; } catch { return []; } })();
+      return items.map((it, i) => parseMastodonLikeRecord(it, offset + i)).filter(Boolean);
+    }
+    return parseYTD(raw).map((e, i) => parseLikeRecord(e, offset + i)).filter(Boolean);
+  }
+  function parseAccountFor(provider, raw) {
+    if (provider === 'mastodon') return parseMastodonActor(raw);
+    try { return parseAccountRecord(parseYTD(raw)); } catch { return null; }
+  }
+
+  return { parseYTD, parseTweetRecord, parseAccountRecord, parseLikeRecord,
+           parseMastodonNoteRecord, parseMastodonActor, parseMastodonLikeRecord,
+           parseTweetsBatch, parseLikesBatch, parseAccountFor,
+           decodeEntities };
 })();
 
 // ── archive (zip + FSA folder) ──────────────────────────────────────────────
@@ -1325,6 +1432,10 @@ const archive = (() => {
   const TWEET_RE  = /(^|\/)data\/tweet\.js$/i;
   const ACCOUNT_RE = /(^|\/)data\/account\.js$/i;
   const LIKE_RE = /(^|\/)data\/like(-part\d+)?\.js$/i;
+  // Mastodon (ActivityPub) archive markers — these live at archive root.
+  const MASTODON_OUTBOX_RE = /(^|\/)outbox\.json$/i;
+  const MASTODON_ACTOR_RE = /(^|\/)actor\.json$/i;
+  const MASTODON_LIKES_RE = /(^|\/)likes\.json$/i;
 
   function wrapZipEntry(path, entry) {
     return { path, name: path.split('/').pop(), read: () => entry.async('string') };
@@ -1336,6 +1447,19 @@ const archive = (() => {
   async function openZip(file) {
     const J = await getJSZip();
     const zip = await J.loadAsync(file);
+    // Detect provider from contents.
+    let hasTwitter = false, hasMastodon = false;
+    zip.forEach((path) => {
+      const lower = path.toLowerCase();
+      if (TWEETS_RE.test(lower) || ACCOUNT_RE.test(lower)) hasTwitter = true;
+      if (MASTODON_OUTBOX_RE.test(lower)) hasMastodon = true;
+    });
+    if (hasTwitter) return openTwitterZip(zip);
+    if (hasMastodon) return openMastodonZip(zip);
+    throw new Error('Unrecognised archive. Bakwaas supports Twitter/X and Mastodon archives.');
+  }
+
+  function openTwitterZip(zip) {
     const tweetFiles = [];
     let accountFile = null;
     let likeFile = null;
@@ -1352,7 +1476,28 @@ const archive = (() => {
     });
     tweetFiles.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
     if (!tweetFiles.length) throw new Error('No tweets-part*.js found inside the ZIP. Is this a Twitter/X archive?');
-    return { mode: 'zip', tweetFiles, accountFile, likeFile };
+    return { provider: 'twitter', mode: 'zip', tweetFiles, accountFile, likeFile };
+  }
+
+  function openMastodonZip(zip) {
+    let outboxEntry = null, actorEntry = null, likesEntry = null;
+    zip.forEach((path, entry) => {
+      if (entry.dir) return;
+      const lower = path.toLowerCase();
+      if (MASTODON_OUTBOX_RE.test(lower)) outboxEntry = { path, entry };
+      else if (MASTODON_ACTOR_RE.test(lower)) actorEntry = { path, entry };
+      else if (MASTODON_LIKES_RE.test(lower)) likesEntry = { path, entry };
+    });
+    if (!outboxEntry) throw new Error('No outbox.json in the Mastodon archive.');
+    return {
+      provider: 'mastodon',
+      mode: 'zip',
+      // Single virtual 'tweetFile' carrying the entire outbox. The indexer
+      // batches via .slice() on the parsed records list, so a single file is fine.
+      tweetFiles: [wrapZipEntry(outboxEntry.path, outboxEntry.entry)],
+      accountFile: actorEntry ? wrapZipEntry(actorEntry.path, actorEntry.entry) : null,
+      likeFile: likesEntry ? wrapZipEntry(likesEntry.path, likesEntry.entry) : null
+    };
   }
 
   // Walk a directory handle looking for data/. Accepts either the archive root
@@ -1387,7 +1532,7 @@ const archive = (() => {
     }
     tweetFiles.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
     if (!tweetFiles.length) throw new Error('No tweets-part*.js found in data/. Is this a Twitter/X archive folder?');
-    return { mode: 'folder', dirHandle, tweetFiles, accountFile, likeFile };
+    return { provider: 'twitter', mode: 'folder', dirHandle, tweetFiles, accountFile, likeFile };
   }
 
   return { openZip, openFolder };
@@ -2381,16 +2526,15 @@ const indexer = (() => {
 
   async function run({ source, onProgress, onPhase }) {
     onPhase?.('Reading archive…');
-    const { tweetFiles, accountFile, likeFile, mode, dirHandle } = source;
+    const { tweetFiles, accountFile, likeFile, mode, dirHandle, provider = 'twitter' } = source;
 
     let account = null, accountRaw = '';
     if (accountFile) {
       accountRaw = await accountFile.read();
       try {
-        const arr = parser.parseYTD(accountRaw);
-        account = parser.parseAccountRecord(arr);
+        account = parser.parseAccountFor(provider, accountRaw);
       } catch (e) {
-        console.warn('account.js parse failed:', e);
+        console.warn('account parse failed:', e);
       }
     }
 
@@ -2398,9 +2542,8 @@ const indexer = (() => {
     onPhase?.(`Probing ${tweetFiles[0].path}…`);
     {
       const firstText = await tweetFiles[0].read();
-      const firstArr = parser.parseYTD(firstText);
-      const first = firstArr[0] && parser.parseTweetRecord(firstArr[0]);
-      firstId = first ? first.id : null;
+      const firstRecords = parser.parseTweetsBatch(provider, firstText);
+      firstId = firstRecords.length ? firstRecords[0].id : null;
     }
 
     const priorState = await store.metaGet('index_state');
@@ -2433,6 +2576,7 @@ const indexer = (() => {
     await store.metaSet('resume_key', resumeKey);
     await store.metaSet('account', account);
     await store.metaSet('version', SCHEMA_VERSION);
+    await store.metaSet('provider', provider);
     if (mode === 'folder' && dirHandle) {
       try { await store.metaSet('archive_handle', dirHandle); } catch { /* serialise may fail in some browsers */ }
     }
@@ -2446,18 +2590,17 @@ const indexer = (() => {
         onPhase?.(`Parsing ${path}…`);
         const text = await read();
         let arr;
-        try { arr = parser.parseYTD(text); }
+        try { arr = parser.parseTweetsBatch(provider, text); }
         catch (e) { console.error(`Parse failed for ${path}:`, e); continue; }
         let offset = (i === startFileIdx) ? startOffset : 0;
         while (offset < arr.length) {
-          const slice = arr.slice(offset, offset + BATCH_SIZE);
-          const rows = [];
-          for (const e of slice) { const rec = parser.parseTweetRecord(e); if (rec) rows.push(rec); }
+          const rows = arr.slice(offset, offset + BATCH_SIZE).filter(Boolean);
           if (rows.length) {
             await store.putTweetsBatch(rows);
             lastId = rows[rows.length - 1].id;
           }
-          offset += slice.length;
+          offset += BATCH_SIZE;
+          if (offset > arr.length) offset = arr.length;
           totalIndexed += rows.length;
           const indexState = { phase: 'tweets', fileIndex: i, offset, file: path };
           await store.metaSet('index_state', indexState);
@@ -2473,18 +2616,14 @@ const indexer = (() => {
       onPhase?.(`Parsing ${likeFile.path}…`);
       const text = await likeFile.read();
       let arr = [];
-      try { arr = parser.parseYTD(text); }
-      catch (e) { console.warn('like.js parse failed:', e); arr = []; }
+      try { arr = parser.parseLikesBatch(provider, text, 0); }
+      catch (e) { console.warn('likes parse failed:', e); arr = []; }
       let offset = startLikeOffset;
       while (offset < arr.length) {
-        const slice = arr.slice(offset, offset + BATCH_SIZE);
-        const rows = [];
-        for (let k = 0; k < slice.length; k++) {
-          const rec = parser.parseLikeRecord(slice[k], offset + k);
-          if (rec) rows.push(rec);
-        }
+        const rows = arr.slice(offset, offset + BATCH_SIZE).filter(Boolean);
         if (rows.length) await store.putLikesBatch(rows);
-        offset += slice.length;
+        offset += BATCH_SIZE;
+        if (offset > arr.length) offset = arr.length;
         likesIndexed += rows.length;
         const indexState = { phase: 'likes', offset, file: likeFile.path };
         await store.metaSet('index_state', indexState);
@@ -2492,7 +2631,7 @@ const indexer = (() => {
         onProgress?.({ tweetCount: totalIndexed, likeCount: likesIndexed, fileIdx: 0, fileTotal: 1, path: likeFile.path, scope: 'likes' });
       }
     } else {
-      onPhase?.('No like.js in this archive — skipping likes.');
+      onPhase?.('No likes file in this archive — skipping likes.');
     }
 
     const fingerprint = await buildFingerprint(accountRaw, firstId, lastId, totalIndexed, likesIndexed);
@@ -4059,14 +4198,15 @@ window.bakwaas = {
   async openZip(file) { return startWithFile(file); },
   async openFolder(handle) { return startWithFolder(handle); },
   async getIndexStatus() {
-    const [state, account, fp, tweetCount, likeCount] = await Promise.all([
+    const [state, account, fp, tweetCount, likeCount, provider] = await Promise.all([
       store.metaGet('index_state'),
       store.metaGet('account'),
       store.metaGet('archive_fingerprint'),
       store.tweetCount(),
-      store.likeCount()
+      store.likeCount(),
+      store.metaGet('provider')
     ]);
-    return { state, account, archive_fingerprint: fp, tweetCount, likeCount };
+    return { state, account, archive_fingerprint: fp, tweetCount, likeCount, provider: provider || 'twitter' };
   },
   async exportState() {
     const [state, account, fp, tweetCount, likeCount] = await Promise.all([
