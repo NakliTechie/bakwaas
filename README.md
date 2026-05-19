@@ -19,7 +19,7 @@ No X API. No OAuth. No accounts. No server. No telemetry.
 
 ## How to use
 
-1. Go to [twitter.com/settings/your_archive](https://twitter.com/settings/your_archive) and request your archive
+1. Go to [x.com/settings/download_your_data](https://x.com/settings/download_your_data) and request your archive
 2. Wait ~24 hours for the email with the download link
 3. Open Bakwaas, drop the ZIP (or the unzipped folder) onto the page
 4. Wait for indexing (one-time, resumable; ~5 minutes for 200k tweets)

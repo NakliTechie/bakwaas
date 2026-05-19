@@ -53,11 +53,12 @@ body { min-height: 100vh; min-height: 100dvh; }
 button { font-family: inherit; font-size: inherit; cursor: pointer; }
 a { color: var(--accent); }
 
-.app { max-width: 920px; margin: 0 auto; padding: 24px 20px 80px; }
-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 28px; }
-header .brand { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; color: var(--accent); }
-header .tag { color: var(--muted); font-size: 13px; }
-header .phase { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; }
+.app { max-width: 920px; margin: 0 auto; padding: 24px 20px 90px; }
+header { margin-bottom: 28px; }
+header .title-row { display: flex; align-items: baseline; gap: 12px; }
+header .brand { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; color: var(--accent); flex-shrink: 0; }
+header .phase { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
+header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.5; }
 
 .screen { display: none; }
 .screen.active { display: block; }
@@ -141,16 +142,33 @@ header .phase { margin-left: auto; font-family: var(--mono); font-size: 11px; co
 #screen-unsupported h2 { margin: 0 0 8px; font-size: 18px; }
 #screen-unsupported p { margin: 0; color: var(--text); line-height: 1.6; }
 
-footer { text-align: center; margin-top: 40px; font-size: 12px; color: var(--muted); }
-footer a { color: var(--muted); }
+.footer-nav {
+  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 20px;
+  background: rgba(22, 27, 34, 0.92);
+  border: 1px solid var(--border);
+  padding: 6px 18px; border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  font-size: 12px; white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.footer-nav a { color: var(--muted); text-decoration: none; transition: color .2s; }
+.footer-nav a:hover { color: var(--text); }
+@media (prefers-color-scheme: light) {
+  .footer-nav { background: rgba(255,255,255,0.92); box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <span class="brand">Bakwaas</span>
-    <span class="tag">explore your Twitter archive · find the noise · delete it</span>
-    <span class="phase" id="phase-tag">v0.1 · phase 1</span>
+    <div class="title-row">
+      <span class="brand">Bakwaas</span>
+      <span class="phase" id="phase-tag">v0.1 · phase 1</span>
+    </div>
+    <div class="tag">explore your Twitter archive · find the noise · delete it</div>
   </header>
 
   <section id="screen-unsupported" class="screen">
@@ -163,13 +181,13 @@ footer a { color: var(--muted); }
   <section id="screen-drop" class="screen">
     <label class="drop" id="drop-zone">
       <h2>Drop your Twitter archive ZIP</h2>
-      <p>The ZIP from <code>twitter.com/settings/your_archive</code>. Nothing leaves this tab.</p>
+      <p>The ZIP from <code>x.com/settings/download_your_data</code>. Nothing leaves this tab.</p>
       <input type="file" id="file-input" accept=".zip,application/zip">
       <span class="file-btn">Choose a file</span>
     </label>
     <p class="help">
       Don't have one yet? Request it at
-      <a href="https://twitter.com/settings/your_archive" target="_blank" rel="noopener">twitter.com/settings/your_archive</a>.
+      <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">x.com/settings/download_your_data</a>.
       It arrives by email in about a day.
     </p>
   </section>
@@ -216,10 +234,11 @@ footer a { color: var(--muted); }
     </div>
   </section>
 
-  <footer>
-    Bakwaas · part of the <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">NakliTechie series</a>
-  </footer>
-</div>
+  </div>
+  <div class="footer-nav">
+    <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">⬅ More Projects</a>
+    <a href="https://github.com/NakliTechie/bakwaas" target="_blank" rel="noopener">⌬ Source</a>
+  </div>
 
 <script type="module">
 // ─────────────────────────────────────────────────────────────────────────────
