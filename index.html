@@ -65,12 +65,14 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
 /* Drop zone */
 #screen-drop .drop {
+  display: block;
   border: 2px dashed var(--border);
   border-radius: var(--radius);
   padding: 80px 24px;
   text-align: center;
   background: var(--panel);
   transition: border-color .15s, background .15s;
+  cursor: pointer;
 }
 #screen-drop .drop.is-hover { border-color: var(--accent); background: var(--panel-2); }
 #screen-drop .drop h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
