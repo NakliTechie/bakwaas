@@ -2,23 +2,34 @@
 
 > **बकवास** — Hindi/Urdu, *noun*. Nonsense, drivel, hot air, chitchat. The stuff you say a lot of but rarely re-read.
 
-**A browser-native explorer for your Twitter/X archive.** Started as a click-to-delete tool — turned out the harder problem isn't deleting, it's *finding* what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end.
+**A browser-native explorer for your social-media archives.** Started as a click-to-delete tool for Twitter/X — turned out the harder problem isn't deleting, it's *finding* what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end.
+
+Supported archives: **Twitter / X** (full surface) and **Mastodon** (everything except engagement-dependent cards, which Mastodon exports don't include).
 
 **[→ Try it live](https://bakwaas.naklitechie.com)**
 
 ## What it does
 
-Drop your Twitter archive (folder or ZIP), wait for the one-time index pass, and explore:
+Drop your archive (Twitter/X ZIP, Twitter/X folder, or Mastodon ZIP), wait for the one-time index pass, and explore:
 
 - **Stats** — counts, top hashtags / mentions / sources / languages, GitHub-contributions-style temporal heatmap spanning your full archive, hour × day-of-week heatmap, engagement distributions
 - **Search** — MiniSearch full-text over tweets and likes, filter chips for originals / replies / retweets / media, scope toggle between tweets / likes / both
-- **Patterns** — algorithmic deep analysis: viral tweets, hashtag & source ROI (which themes worked, which client lands), burst hashtags (your `#nft` 2022 era, your `#covid` Mar 2020), activity change-points, longest streak & longest silence, verbosity drift over time, self-reply thread roots, co-mention pairs, zero-engagement cleanup pile
-- **Topics** — hashtag co-occurrence clusters with an adjustable threshold; pick a theme, drill into it
+- **Patterns** — algorithmic deep analysis with no AI in the loop:
+  - **Engagement**: top 20 viral tweets, hashtag & source ROI (which themes worked, which client lands), hour × DOW colored by *avg engagement* per cell
+  - **Era detection**: burst hashtags (≥50% of uses in one month) — your `#nft` 2022 era, your `#covid` Mar 2020
+  - **Activity rhythm**: longest streak & longest silence, monthly tweets line chart, activity change-points (≥2σ from rolling baseline), verbosity drift
+  - **Mood, voice & rhythm**: emoji mood timeline (pos − neg per month), style fingerprint with derived archetype ('Long-form · Asker · Emoji-heavy'), sleep / quiet-hours window per year
+  - **What you talk about**: top phrases (bigrams), top link hosts you share
+  - **Threads & relationships**: self-reply thread roots, top co-mention pairs, force-directed conversation graph
+  - **First, last, best**: first & last original tweet of each year side-by-side; top tweet per year
+  - **Cleanup candidates**: zero-engagement counts per year + sample list of 50 oldest
+- **Wrapped** — pick a year or all-time, get a poster-style summary card with top tweet, top hashtag, peak month, era, posting personality. Download as standalone HTML (hostable anywhere) or PNG (postable to social). All composed locally, nothing uploaded
+- **Topics** — hashtag co-occurrence clusters with an adjustable threshold; pick a theme, drill into it via "Search this cluster"
 - **Selection** — confirmation tray for the click-to-delete workflow: everything you've opened or marked deleted lives here
 
 **Click-to-delete is honest.** Bakwaas never calls X's API. To delete a tweet you click it open in X's real UI, do it there, come back, confirm. The hard part — knowing *what* to delete — happens here. The actual delete happens in X's own UI.
 
-No X API. No OAuth. No accounts. No server. No telemetry.
+No X API. No OAuth. No accounts. No server. No telemetry. Every export is a download from your browser, not an upload from it.
 
 ## How to use
 

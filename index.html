@@ -797,17 +797,18 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         Hindi/Urdu, noun — nonsense, drivel, hot air, chitchat. The stuff you say a lot of but rarely re-read.
       </p>
       <p>
-        Bakwaas is a browser-native explorer for your Twitter/X archive. It started as a click-to-delete tool, but it turns out the harder problem isn't deleting — it's <em>finding</em> what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end.
+        Bakwaas is a browser-native explorer for your social-media archives. It started as a click-to-delete tool for Twitter/X, but it turns out the harder problem isn't deleting — it's <em>finding</em> what's worth deleting in 200,000 tweets. So mostly it's now an explorer that happens to make deletion easy at the end. Mastodon archives are supported too (engagement counts aren't in their exports, so engagement-dependent cards quietly degrade).
       </p>
       <p class="muted">
-        Everything runs locally. Nothing leaves your tab. No server, no accounts, no API keys to X, no telemetry.
+        Everything runs locally. Nothing leaves your tab. No server, no accounts, no API keys to X, no telemetry. Even Wrapped exports are downloads from your browser, not uploads from it.
       </p>
 
       <h3>What's in each tab</h3>
       <ul class="tab-tour">
         <li><b>Stats</b><span>Counts, top hashtags / mentions / sources / languages, temporal heatmap (GitHub-contributions style across your full archive), hour × day-of-week, engagement distributions.</span></li>
         <li><b>Search</b><span>Fast full-text over tweets and likes via MiniSearch. Filter by originals / replies / retweets / media; flip scope between tweets, likes, both.</span></li>
-        <li><b>Patterns</b><span>Algorithmic insights: viral tweets, hashtag &amp; source ROI, burst hashtags (era detection), activity change-points, longest streak &amp; longest silence, verbosity drift, self-reply threads, co-mention pairs, zero-engagement cleanup pile.</span></li>
+        <li><b>Patterns</b><span>Algorithmic deep dive: viral tweets, hashtag &amp; source ROI, burst hashtags (era detection), activity change-points, longest streak &amp; longest silence, verbosity drift, emoji mood timeline, top phrases (bigrams), top link hosts, sleep / quiet-hours by year, style fingerprint + archetype, self-reply threads, co-mention pairs (force-directed graph), first &amp; last and top tweet per year, zero-engagement cleanup pile.</span></li>
+        <li><b>Wrapped</b><span>Spotify-Wrapped-style poster card for any year or all-time. Top tweet, top hashtag, peak month, era, posting personality. Download as standalone HTML (hostable anywhere) or PNG (postable to social).</span></li>
         <li><b>Topics</b><span>Hashtag co-occurrence clusters — themes you tag together. Drag the threshold slider to widen or tighten clusters.</span></li>
         <li><b>Selection</b><span>The confirmation tray. Everything you've opened to delete or marked deleted ends up here.</span></li>
       </ul>
@@ -819,7 +820,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
       <h3>Get your archive</h3>
       <p>
-        Visit <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">x.com/settings/download_your_data</a> → wait ~24 hours → drop the ZIP here, or use "Open unzipped folder" (Chrome/Edge) for the FSA path with a sidecar state file written alongside the archive.
+        <strong>Twitter / X:</strong> <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">x.com/settings/download_your_data</a> → wait ~24 hours → drop the ZIP, or use "Open unzipped folder" (Chrome/Edge) for the FSA path with a sidecar state file written alongside the archive.
+      </p>
+      <p>
+        <strong>Mastodon:</strong> on your instance → Preferences → Import and Export → Request your archive → wait a few minutes → drop the ZIP. Mastodon exports don't include engagement counts on your own posts, so engagement-driven cards (Top viral, hashtag ROI) will be quiet — everything else works.
       </p>
 
       <div class="help-foot">
