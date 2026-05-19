@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="author" content="Chirag Patnaik">
+<meta name="version" content="0.1.0-phase1">
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: blob: https://*.twimg.com;
+  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com;
+  base-uri 'none';
+  form-action 'none';
+  frame-src 'none';
+  frame-ancestors 'none';
+  object-src 'none';
+">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%237d8aef'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='system-ui,sans-serif' font-weight='700' font-size='14' fill='%230d1117'%3EBK%3C/text%3E%3C/svg%3E">
+<title>Bakwaas — explore your Twitter archive</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c232c;
+  --border: #2a323d;
+  --text: #e6e8eb;
+  --muted: #8b95a6;
+  --accent: #7d8aef;
+  --accent-2: #5566d8;
+  --danger: #ef6b6b;
+  --ok: #6bdc8e;
+  --warn: #ffc857;
+  --radius: 12px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f6fa;
+    --panel: #ffffff;
+    --panel-2: #eef0f5;
+    --border: #d6dae3;
+    --text: #14181d;
+    --muted: #5a6473;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+body { min-height: 100vh; min-height: 100dvh; }
+button { font-family: inherit; font-size: inherit; cursor: pointer; }
+a { color: var(--accent); }
+
+.app { max-width: 920px; margin: 0 auto; padding: 24px 20px 80px; }
+header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 28px; }
+header .brand { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; color: var(--accent); }
+header .tag { color: var(--muted); font-size: 13px; }
+header .phase { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; }
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* Drop zone */
+#screen-drop .drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 80px 24px;
+  text-align: center;
+  background: var(--panel);
+  transition: border-color .15s, background .15s;
+}
+#screen-drop .drop.is-hover { border-color: var(--accent); background: var(--panel-2); }
+#screen-drop .drop h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
+#screen-drop .drop p { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+#screen-drop .drop .file-btn {
+  display: inline-block; background: var(--accent); color: #0d1117;
+  border: none; border-radius: 8px; padding: 10px 18px; font-weight: 600;
+}
+#screen-drop .drop .file-btn:hover { filter: brightness(1.08); }
+#screen-drop .drop input[type=file] { display: none; }
+#screen-drop .help {
+  margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center;
+}
+#screen-drop .help a { color: var(--accent); }
+
+/* Indexing */
+#screen-index .card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 32px 28px; text-align: center;
+}
+#screen-index h2 { margin: 0 0 6px; font-size: 20px; }
+#screen-index .phase-label { color: var(--muted); font-size: 14px; margin-bottom: 24px; font-family: var(--mono); }
+#screen-index .bar-wrap { background: var(--panel-2); height: 10px; border-radius: 6px; overflow: hidden; margin: 8px 0 14px; }
+#screen-index .bar { height: 100%; background: var(--accent); width: 0%; transition: width .2s; }
+#screen-index .count { font-size: 28px; font-weight: 700; font-family: var(--mono); }
+#screen-index .count-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+#screen-index .resume-hint {
+  margin-top: 20px; font-size: 12px; color: var(--muted);
+  border-top: 1px solid var(--border); padding-top: 16px;
+}
+
+/* Summary */
+#screen-summary .summary-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 28px;
+}
+#screen-summary h2 { margin: 0 0 4px; font-size: 22px; }
+#screen-summary .handle { color: var(--accent); font-family: var(--mono); font-size: 14px; margin-bottom: 24px; }
+#screen-summary .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
+#screen-summary .stat { background: var(--panel-2); border-radius: 8px; padding: 14px; }
+#screen-summary .stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+#screen-summary .stat .value { font-size: 22px; font-weight: 700; font-family: var(--mono); }
+#screen-summary .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+#screen-summary .actions .btn {
+  background: var(--accent); color: #0d1117; border: none; border-radius: 8px;
+  padding: 10px 18px; font-weight: 600; font-size: 14px;
+}
+#screen-summary .actions .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+#screen-summary .actions .btn:hover { filter: brightness(1.08); }
+#screen-summary .next-hint {
+  margin-top: 24px; padding: 14px 16px; background: var(--panel-2);
+  border-left: 3px solid var(--accent); border-radius: 4px;
+  font-size: 13px; color: var(--muted); line-height: 1.6;
+}
+
+/* Error / unsupported */
+#screen-error .card {
+  background: var(--panel); border: 1px solid var(--danger); border-radius: var(--radius);
+  padding: 24px; color: var(--danger);
+}
+#screen-error h2 { margin: 0 0 8px; font-size: 18px; }
+#screen-error p { margin: 0; color: var(--text); }
+#screen-error pre { background: var(--panel-2); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; color: var(--text); margin-top: 12px; }
+
+#screen-unsupported .card {
+  background: var(--panel); border: 1px solid var(--warn); border-radius: var(--radius);
+  padding: 24px; color: var(--warn);
+}
+#screen-unsupported h2 { margin: 0 0 8px; font-size: 18px; }
+#screen-unsupported p { margin: 0; color: var(--text); line-height: 1.6; }
+
+footer { text-align: center; margin-top: 40px; font-size: 12px; color: var(--muted); }
+footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span class="brand">Bakwaas</span>
+    <span class="tag">explore your Twitter archive · find the noise · delete it</span>
+    <span class="phase" id="phase-tag">v0.1 · phase 1</span>
+  </header>
+
+  <section id="screen-unsupported" class="screen">
+    <div class="card">
+      <h2>This browser can't run Bakwaas</h2>
+      <p>Bakwaas needs <strong>IndexedDB</strong> and the <strong>Origin Private File System</strong> to store its index locally. Try Chrome 120+, Edge 120+, Safari 17+, or Firefox 125+.</p>
+    </div>
+  </section>
+
+  <section id="screen-drop" class="screen">
+    <label class="drop" id="drop-zone">
+      <h2>Drop your Twitter archive ZIP</h2>
+      <p>The ZIP from <code>twitter.com/settings/your_archive</code>. Nothing leaves this tab.</p>
+      <input type="file" id="file-input" accept=".zip,application/zip">
+      <span class="file-btn">Choose a file</span>
+    </label>
+    <p class="help">
+      Don't have one yet? Request it at
+      <a href="https://twitter.com/settings/your_archive" target="_blank" rel="noopener">twitter.com/settings/your_archive</a>.
+      It arrives by email in about a day.
+    </p>
+  </section>
+
+  <section id="screen-index" class="screen">
+    <div class="card">
+      <h2>Indexing archive…</h2>
+      <div class="phase-label" id="phase-label">Reading…</div>
+      <div class="bar-wrap"><div class="bar" id="progress-bar"></div></div>
+      <div class="count" id="count">0</div>
+      <div class="count-label">tweets indexed</div>
+      <div class="resume-hint">You can close this tab — we'll pick up where we left off when you reopen it.</div>
+    </div>
+  </section>
+
+  <section id="screen-summary" class="screen">
+    <div class="summary-card">
+      <h2 id="summary-name">—</h2>
+      <div class="handle" id="summary-handle">@—</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Tweets indexed</div><div class="value" id="stat-total">0</div></div>
+        <div class="stat"><div class="label">First tweet</div><div class="value" id="stat-first">—</div></div>
+        <div class="stat"><div class="label">Last tweet</div><div class="value" id="stat-last">—</div></div>
+        <div class="stat"><div class="label">Originals</div><div class="value" id="stat-orig">0</div></div>
+        <div class="stat"><div class="label">Replies</div><div class="value" id="stat-rep">0</div></div>
+        <div class="stat"><div class="label">Retweets</div><div class="value" id="stat-rt">0</div></div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="btn-new">Open another archive</button>
+        <button class="btn ghost" id="btn-export">Export state JSON</button>
+      </div>
+      <div class="next-hint">
+        <strong>Phase 1 complete.</strong> Ingest + index works. Search, stats, topic clustering, and click-to-delete land in later phases — see <code>docs/bakwaas-agent-handoff-v1.0.md</code>.
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-error" class="screen">
+    <div class="card">
+      <h2>Something broke during indexing</h2>
+      <p id="error-msg">—</p>
+      <pre id="error-detail"></pre>
+      <div style="margin-top:16px;"><button class="btn ghost" id="btn-error-reset" style="background:transparent;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 18px;">Start over</button></div>
+    </div>
+  </section>
+
+  <footer>
+    Bakwaas · part of the <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">NakliTechie series</a>
+  </footer>
+</div>
+
+<script type="module">
+// ─────────────────────────────────────────────────────────────────────────────
+// Bakwaas v0.1 — Phase 1: zip → parse → IndexedDB → summary
+// Architecture: object-namespaces inside this single file (per handoff §1).
+// Phase 1 scope: zip ingest, tweet parse, resumable index, OPFS state mirror.
+// Deferred: FSA folder mode, likes, MiniSearch, stats view, topics, click-to-delete, LLM.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DB_NAME = 'bakwaas-v1';
+const DB_VERSION = 1;
+const SCHEMA_VERSION = 1;
+const BATCH_SIZE = 1000;
+const OPFS_STATE_FILE = 'bakwaas-state.json';
+
+// ── feature detect ──────────────────────────────────────────────────────────
+const supported = (() => {
+  try {
+    return !!(window.indexedDB && navigator.storage && navigator.storage.getDirectory);
+  } catch { return false; }
+})();
+
+// ── tiny dom helper ─────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+function show(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(screenId)?.classList.add('active');
+}
+
+// ── store ───────────────────────────────────────────────────────────────────
+const store = (() => {
+  let dbPromise = null;
+  function open() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('tweets')) {
+          const s = db.createObjectStore('tweets', { keyPath: 'id' });
+          s.createIndex('created_at', 'created_at');
+          s.createIndex('lang', 'lang');
+          s.createIndex('is_reply', 'is_reply');
+          s.createIndex('is_retweet', 'is_retweet');
+          s.createIndex('favorite_count', 'favorite_count');
+          s.createIndex('retweet_count', 'retweet_count');
+          s.createIndex('has_media', 'has_media');
+        }
+        if (!db.objectStoreNames.contains('meta')) {
+          db.createObjectStore('meta');
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+  async function metaGet(key) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('meta', 'readonly');
+      const req = tx.objectStore('meta').get(key);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  }
+  async function metaSet(key, value) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('meta', 'readwrite');
+      tx.objectStore('meta').put(value, key);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function putTweetsBatch(rows) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readwrite');
+      const s = tx.objectStore('tweets');
+      for (const r of rows) s.put(r);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function tweetCount() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const req = tx.objectStore('tweets').count();
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  }
+  async function tweetStats() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const s = tx.objectStore('tweets');
+      let total = 0, replies = 0, retweets = 0;
+      let minDate = Infinity, maxDate = -Infinity;
+      const cursorReq = s.openCursor();
+      cursorReq.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) {
+          res({
+            total,
+            originals: total - replies - retweets,
+            replies,
+            retweets,
+            firstDate: minDate === Infinity ? null : minDate,
+            lastDate: maxDate === -Infinity ? null : maxDate
+          });
+          return;
+        }
+        const t = c.value;
+        total++;
+        if (t.is_reply) replies++;
+        if (t.is_retweet) retweets++;
+        if (typeof t.created_at === 'number' && !Number.isNaN(t.created_at)) {
+          if (t.created_at < minDate) minDate = t.created_at;
+          if (t.created_at > maxDate) maxDate = t.created_at;
+        }
+        c.continue();
+      };
+      cursorReq.onerror = () => rej(cursorReq.error);
+    });
+  }
+  async function wipe() {
+    const db = await open();
+    db.close();
+    dbPromise = null;
+    await new Promise((res, rej) => {
+      const req = indexedDB.deleteDatabase(DB_NAME);
+      req.onsuccess = () => res();
+      req.onerror = () => rej(req.error);
+      req.onblocked = () => res();
+    });
+  }
+  return { open, metaGet, metaSet, putTweetsBatch, tweetCount, tweetStats, wipe };
+})();
+
+// ── persist (OPFS mirror) ───────────────────────────────────────────────────
+const persist = (() => {
+  async function writeState(state) {
+    try {
+      const root = await navigator.storage.getDirectory();
+      const handle = await root.getFileHandle(OPFS_STATE_FILE, { create: true });
+      const w = await handle.createWritable();
+      await w.write(JSON.stringify(state, null, 2));
+      await w.close();
+    } catch (e) {
+      console.warn('OPFS write failed:', e);
+    }
+  }
+  async function readState() {
+    try {
+      const root = await navigator.storage.getDirectory();
+      const handle = await root.getFileHandle(OPFS_STATE_FILE);
+      const file = await handle.getFile();
+      const text = await file.text();
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+  return { writeState, readState };
+})();
+
+// ── parser ──────────────────────────────────────────────────────────────────
+const parser = (() => {
+  function stripYTDPrefix(text) {
+    const eq = text.indexOf('=');
+    if (eq === -1) throw new Error('Not a YTD file (no `=`)');
+    return text.slice(eq + 1).trim();
+  }
+  function parseYTD(text) {
+    const json = stripYTDPrefix(text);
+    return JSON.parse(json);
+  }
+  const ENTITY_RE = /&(amp|lt|gt|quot|#39|apos|nbsp);/g;
+  const ENTITY_MAP = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' };
+  function decodeEntities(s) {
+    if (!s) return '';
+    return s.replace(ENTITY_RE, (_, e) => ENTITY_MAP[e] || _);
+  }
+  function stripSourceHtml(s) {
+    if (!s) return '';
+    const m = s.match(/>([^<]+)</);
+    return m ? m[1] : s;
+  }
+  function parseTweetRecord(entry) {
+    const t = entry.tweet || entry;
+    const id = t.id_str || t.id;
+    if (!id) return null;
+    const fullText = t.full_text || t.text || '';
+    const isRT = !!(t.retweeted_status_id_str || /^RT @/.test(fullText));
+    const isReply = !!(t.in_reply_to_status_id_str || t.in_reply_to_user_id_str);
+    let createdAt = Date.parse(t.created_at);
+    if (Number.isNaN(createdAt)) createdAt = null;
+    return {
+      id: String(id),
+      created_at: createdAt,
+      full_text: fullText,
+      text: decodeEntities(fullText),
+      lang: t.lang || null,
+      source: stripSourceHtml(t.source || ''),
+      is_reply: isReply,
+      in_reply_to_user_id: t.in_reply_to_user_id_str || null,
+      in_reply_to_status_id: t.in_reply_to_status_id_str || null,
+      is_retweet: isRT,
+      retweeted_status_id: t.retweeted_status_id_str || null,
+      favorite_count: parseInt(t.favorite_count || '0', 10) || 0,
+      retweet_count: parseInt(t.retweet_count || '0', 10) || 0,
+      has_media: !!((t.entities && t.entities.media && t.entities.media.length) ||
+                    (t.extended_entities && t.extended_entities.media && t.extended_entities.media.length)),
+      hashtags: ((t.entities && t.entities.hashtags) || []).map(h => h.text).filter(Boolean),
+      mentions: ((t.entities && t.entities.user_mentions) || []).map(m => m.screen_name).filter(Boolean),
+      urls: ((t.entities && t.entities.urls) || []).map(u => u.expanded_url || u.url).filter(Boolean),
+      marked_for_deletion: false,
+      opened_for_deletion_at: null,
+      confirmed_deleted_at: null,
+      tags: []
+    };
+  }
+  function parseAccountRecord(arr) {
+    if (!Array.isArray(arr) || !arr.length) return null;
+    const a = arr[0].account || arr[0];
+    return {
+      accountId: a.accountId || null,
+      username: a.username || null,
+      accountDisplayName: a.accountDisplayName || null,
+      createdAt: a.createdAt || null
+    };
+  }
+  return { parseYTD, parseTweetRecord, parseAccountRecord, decodeEntities };
+})();
+
+// ── archive (zip) ───────────────────────────────────────────────────────────
+const archive = (() => {
+  let JSZip = null;
+  async function getJSZip() {
+    if (JSZip) return JSZip;
+    const mod = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+    JSZip = mod.default || mod;
+    return JSZip;
+  }
+  async function openZip(file) {
+    const J = await getJSZip();
+    const zip = await J.loadAsync(file);
+    // Locate data/tweets-part*.js (sorted) and data/account.js.
+    const tweetFiles = [];
+    let accountFile = null;
+    zip.forEach((path, entry) => {
+      if (entry.dir) return;
+      const lower = path.toLowerCase();
+      if (/(^|\/)data\/tweets(-part\d+)?\.js$/.test(lower) || /(^|\/)data\/tweet\.js$/.test(lower)) {
+        tweetFiles.push({ path, entry });
+      } else if (/(^|\/)data\/account\.js$/.test(lower)) {
+        accountFile = entry;
+      }
+    });
+    tweetFiles.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+    if (!tweetFiles.length) throw new Error('No tweets-part*.js found inside the ZIP. Is this a Twitter/X archive?');
+    return { zip, tweetFiles, accountFile };
+  }
+  return { openZip };
+})();
+
+// ── fingerprint ─────────────────────────────────────────────────────────────
+async function sha256Hex(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── indexer ─────────────────────────────────────────────────────────────────
+const indexer = (() => {
+  async function buildFingerprint(accountRaw, firstId, lastId, tweetCount) {
+    // Phase 1 fingerprint omits like count (decisions.md #4).
+    const input = [accountRaw || '', tweetCount, firstId || '', lastId || ''].join('||');
+    return sha256Hex(input);
+  }
+
+  async function run({ file, onProgress, onPhase }) {
+    onPhase?.('Reading archive…');
+    const { tweetFiles, accountFile } = await archive.openZip(file);
+
+    // Parse account first (for fingerprint + summary).
+    let account = null, accountRaw = '';
+    if (accountFile) {
+      accountRaw = await accountFile.async('string');
+      try {
+        const arr = parser.parseYTD(accountRaw);
+        account = parser.parseAccountRecord(arr);
+      } catch (e) {
+        console.warn('account.js parse failed:', e);
+      }
+    }
+
+    // Probe first file for the first tweet id (for fingerprint stability).
+    let firstId = null;
+    onPhase?.(`Probing ${tweetFiles[0].path}…`);
+    {
+      const firstText = await tweetFiles[0].entry.async('string');
+      const firstArr = parser.parseYTD(firstText);
+      const first = firstArr[0] && parser.parseTweetRecord(firstArr[0]);
+      firstId = first ? first.id : null;
+    }
+
+    // Resume check: same fingerprint inputs + 'done' state = skip.
+    const priorState = await store.metaGet('index_state');
+    const priorFp = await store.metaGet('archive_fingerprint');
+
+    // We need a stable fingerprint *before* knowing total counts — use account+firstId as the cheap key
+    // for resume detection, and store the full fingerprint when complete.
+    const resumeKey = await sha256Hex((accountRaw || '') + '||' + (firstId || ''));
+    const priorResume = await store.metaGet('resume_key');
+
+    if (priorState && priorState.phase === 'done' && priorResume === resumeKey) {
+      onPhase?.('Already indexed — skipping.');
+      return { account, resumed: true };
+    }
+
+    // If interrupted (priorState exists, not done), confirm same archive before resuming.
+    let startFileIdx = 0, startOffset = 0;
+    if (priorState && priorState.phase !== 'done' && priorResume === resumeKey) {
+      startFileIdx = priorState.fileIndex || 0;
+      startOffset = priorState.offset || 0;
+      onPhase?.(`Resuming from ${tweetFiles[startFileIdx].path}+${startOffset}…`);
+    } else if (priorState) {
+      // Different archive — wipe and restart.
+      onPhase?.('Different archive detected — re-indexing…');
+      await store.wipe();
+    }
+
+    await store.metaSet('resume_key', resumeKey);
+    await store.metaSet('account', account);
+    await store.metaSet('version', SCHEMA_VERSION);
+
+    let totalIndexed = 0;
+    let lastId = null;
+    if (startFileIdx > 0 || startOffset > 0) {
+      totalIndexed = await store.tweetCount();
+    }
+
+    for (let i = startFileIdx; i < tweetFiles.length; i++) {
+      const { path, entry } = tweetFiles[i];
+      onPhase?.(`Parsing ${path}…`);
+      const text = await entry.async('string');
+      let arr;
+      try {
+        arr = parser.parseYTD(text);
+      } catch (e) {
+        console.error(`Parse failed for ${path}:`, e);
+        continue;
+      }
+      let offset = (i === startFileIdx) ? startOffset : 0;
+      while (offset < arr.length) {
+        const slice = arr.slice(offset, offset + BATCH_SIZE);
+        const rows = [];
+        for (const entryObj of slice) {
+          const rec = parser.parseTweetRecord(entryObj);
+          if (rec) rows.push(rec);
+        }
+        if (rows.length) {
+          await store.putTweetsBatch(rows);
+          lastId = rows[rows.length - 1].id;
+        }
+        offset += slice.length;
+        totalIndexed += rows.length;
+        await store.metaSet('index_state', {
+          phase: 'tweets',
+          fileIndex: i,
+          offset,
+          file: path
+        });
+        await persist.writeState({
+          schema_version: SCHEMA_VERSION,
+          phase: 'tweets',
+          fileIndex: i,
+          offset,
+          file: path,
+          opened_at: Date.now(),
+          marked_for_deletion: []
+        });
+        onProgress?.(totalIndexed, i, tweetFiles.length, path);
+      }
+    }
+
+    const fingerprint = await buildFingerprint(accountRaw, firstId, lastId, totalIndexed);
+    await store.metaSet('archive_fingerprint', fingerprint);
+    await store.metaSet('index_state', { phase: 'done', tweetCount: totalIndexed, completed_at: Date.now() });
+    await persist.writeState({
+      schema_version: SCHEMA_VERSION,
+      phase: 'done',
+      archive_fingerprint: fingerprint,
+      tweetCount: totalIndexed,
+      completed_at: Date.now(),
+      marked_for_deletion: []
+    });
+    onPhase?.('Done.');
+    return { account, resumed: false, totalIndexed };
+  }
+  return { run };
+})();
+
+// ── ui orchestration ────────────────────────────────────────────────────────
+const ui = (() => {
+  function setProgress(count, fileIdx, fileTotal, path) {
+    $('count').textContent = count.toLocaleString();
+    const pct = fileTotal ? Math.min(100, Math.round(((fileIdx + 1) / fileTotal) * 100)) : 0;
+    $('progress-bar').style.width = pct + '%';
+    $('phase-label').textContent = `Parsing ${path} (file ${fileIdx + 1} of ${fileTotal})`;
+  }
+  function setPhase(label) {
+    $('phase-label').textContent = label;
+  }
+  async function renderSummary(account) {
+    const stats = await store.tweetStats();
+    $('summary-name').textContent = (account && account.accountDisplayName) || 'Unknown account';
+    $('summary-handle').textContent = account && account.username ? '@' + account.username : '@—';
+    $('stat-total').textContent = stats.total.toLocaleString();
+    $('stat-first').textContent = stats.firstDate ? new Date(stats.firstDate).toISOString().slice(0, 10) : '—';
+    $('stat-last').textContent = stats.lastDate ? new Date(stats.lastDate).toISOString().slice(0, 10) : '—';
+    $('stat-orig').textContent = stats.originals.toLocaleString();
+    $('stat-rep').textContent = stats.replies.toLocaleString();
+    $('stat-rt').textContent = stats.retweets.toLocaleString();
+    show('screen-summary');
+  }
+  function showError(msg, detail) {
+    $('error-msg').textContent = msg;
+    $('error-detail').textContent = detail || '';
+    show('screen-error');
+  }
+  function bindDropZone(onFile) {
+    const zone = $('drop-zone');
+    const input = $('file-input');
+    input.addEventListener('change', () => {
+      if (input.files && input.files[0]) onFile(input.files[0]);
+    });
+    ['dragenter', 'dragover'].forEach(ev => {
+      zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add('is-hover'); });
+    });
+    ['dragleave', 'drop'].forEach(ev => {
+      zone.addEventListener(ev, () => zone.classList.remove('is-hover'));
+    });
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) onFile(f);
+    });
+  }
+  return { setProgress, setPhase, renderSummary, showError, bindDropZone };
+})();
+
+// ── controller ──────────────────────────────────────────────────────────────
+async function startWithFile(file) {
+  if (!file) return;
+  show('screen-index');
+  $('count').textContent = '0';
+  $('progress-bar').style.width = '0%';
+  try {
+    const result = await indexer.run({
+      file,
+      onProgress: ui.setProgress,
+      onPhase: ui.setPhase
+    });
+    const account = result.account || (await store.metaGet('account'));
+    await ui.renderSummary(account);
+  } catch (e) {
+    console.error(e);
+    ui.showError(e.message || 'Indexing failed', e.stack || '');
+  }
+}
+
+async function bootstrap() {
+  if (!supported) {
+    show('screen-unsupported');
+    return;
+  }
+  // Check whether we already have a 'done' index for some archive.
+  const state = await store.metaGet('index_state');
+  if (state && state.phase === 'done') {
+    const account = await store.metaGet('account');
+    await ui.renderSummary(account);
+  } else if (state) {
+    // Interrupted index — show drop zone with hint to re-drop the same archive.
+    ui.setPhase('Resumable index found — drop the same archive to continue.');
+    show('screen-drop');
+  } else {
+    show('screen-drop');
+  }
+  ui.bindDropZone(startWithFile);
+  $('btn-new')?.addEventListener('click', async () => {
+    await store.wipe();
+    location.reload();
+  });
+  $('btn-export')?.addEventListener('click', async () => {
+    const exp = await window.bakwaas.exportState();
+    const blob = new Blob([JSON.stringify(exp, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bakwaas-state.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  $('btn-error-reset')?.addEventListener('click', async () => {
+    await store.wipe();
+    location.reload();
+  });
+}
+
+// ── agent face: window.bakwaas ──────────────────────────────────────────────
+const notImpl = (name) => () => { throw new Error(`bakwaas.${name}() not implemented in Phase 1`); };
+
+window.bakwaas = {
+  // working in Phase 1
+  async openZip(file) { return startWithFile(file); },
+  async getIndexStatus() {
+    const state = await store.metaGet('index_state');
+    const account = await store.metaGet('account');
+    const fp = await store.metaGet('archive_fingerprint');
+    const tweetCount = await store.tweetCount();
+    return { state, account, archive_fingerprint: fp, tweetCount };
+  },
+  async exportState() {
+    return {
+      schema_version: SCHEMA_VERSION,
+      index_state: await store.metaGet('index_state'),
+      account: await store.metaGet('account'),
+      archive_fingerprint: await store.metaGet('archive_fingerprint'),
+      tweetCount: await store.tweetCount(),
+      exported_at: Date.now()
+    };
+  },
+  // deferred to later phases
+  openFolder: notImpl('openFolder'),
+  search: notImpl('search'),
+  stats: notImpl('stats'),
+  topics: notImpl('topics'),
+  select: notImpl('select'),
+  getSelection: notImpl('getSelection'),
+  clearSelection: notImpl('clearSelection'),
+  buildDeleteUrl: notImpl('buildDeleteUrl'),
+  markOpened: notImpl('markOpened'),
+  markDeleted: notImpl('markDeleted'),
+  setLLMKey: notImpl('setLLMKey'),
+  clearLLMKey: notImpl('clearLLMKey'),
+  llmLabel: notImpl('llmLabel'),
+  llmClassify: notImpl('llmClassify'),
+  exportDeleteList: notImpl('exportDeleteList')
+};
+
+bootstrap().catch((e) => {
+  console.error(e);
+  ui.showError('Bakwaas failed to start', e.stack || String(e));
+});
+</script>
+</body>
+</html>
