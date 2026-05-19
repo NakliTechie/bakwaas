@@ -309,6 +309,93 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .cluster-card .cluster-actions button:hover { border-color: var(--accent); color: var(--accent); }
 .topics-empty { color: var(--muted); font-size: 13px; padding: 16px; text-align: center; }
 
+/* Selection + click-to-delete */
+.card-item { position: relative; }
+.card-item .card-select {
+  position: absolute; top: 12px; left: -12px;
+  width: 20px; height: 20px; border-radius: 4px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.card-item .card-select input { position: absolute; opacity: 0; cursor: pointer; }
+.card-item .card-select:hover { border-color: var(--accent); }
+.card-item.is-selected .card-select { background: var(--accent); border-color: var(--accent); }
+.card-item.is-selected .card-select::after { content: '✓'; color: #0d1117; font-size: 13px; font-weight: 700; line-height: 1; }
+.card-item.is-opened { border-color: var(--warn); }
+.card-item.is-opened .card-text::after {
+  content: ' · awaiting confirmation';
+  font-family: var(--mono); font-size: 10px; color: var(--warn); margin-left: 4px;
+}
+.card-item.is-deleted { opacity: 0.55; }
+.card-item.is-deleted .card-text { text-decoration: line-through; }
+.card-item .btn-mark, .card-item .btn-undo {
+  background: transparent; color: var(--text); text-decoration: none;
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 12px; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.card-item .btn-mark:hover { border-color: var(--danger); color: var(--danger); }
+.card-item .btn-undo:hover { border-color: var(--accent); color: var(--accent); }
+.card-item.is-deleted .btn-mark { display: none; }
+.card-item:not(.is-deleted) .btn-undo { display: none; }
+
+.selection-bar {
+  position: sticky; bottom: 70px; z-index: 5;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 14px; display: none;
+  align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 14px 0; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.selection-bar.is-active { display: flex; }
+.selection-bar .sel-count { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 600; }
+.selection-bar .sel-spacer { flex: 1; }
+.selection-bar button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 12px; font-size: 12px;
+}
+.selection-bar button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.selection-bar button.primary:hover { filter: brightness(1.08); }
+.selection-bar button.danger:hover { border-color: var(--danger); color: var(--danger); }
+.selection-bar button:hover { border-color: var(--text); }
+
+/* Guard modal */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+.modal-backdrop.is-open { display: flex; }
+.modal-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px 26px; max-width: 440px; width: 100%;
+}
+.modal-card h3 { margin: 0 0 8px; font-size: 17px; }
+.modal-card p { margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.modal-card .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-card button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 16px; font-size: 14px;
+}
+.modal-card button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.modal-card button.primary:hover { filter: brightness(1.08); }
+
+/* Selection tab */
+#tab-selection .empty-sel { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 16px; }
+#tab-selection .sel-header {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+#tab-selection .sel-header h3 { margin: 0; font-size: 15px; }
+#tab-selection .sel-header .sel-h-stats { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+#tab-selection .sel-header button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; margin-left: auto;
+}
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -333,7 +420,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.5 · phase 5</span>
+      <span class="phase" id="phase-tag">v0.6 · phase 6</span>
     </div>
     <div class="tag">explore your Twitter archive · find the noise · delete it</div>
   </header>
@@ -391,7 +478,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <button class="tab active" data-tab="tab-stats" type="button">Stats</button>
         <button class="tab" data-tab="tab-search" type="button">Search</button>
         <button class="tab" data-tab="tab-topics" type="button">Topics</button>
-        <button class="tab" data-tab="tab-selection" type="button" disabled title="Coming in Phase 6">Selection</button>
+        <button class="tab" data-tab="tab-selection" type="button">Selection</button>
       </div>
 
       <div class="tab-panel active" id="tab-stats">
@@ -445,9 +532,38 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         </div>
         <div class="results-meta" id="search-meta">Type to search across <span id="search-scope-label">tweets</span>.</div>
         <div class="results-list" id="search-results"></div>
+        <div class="selection-bar" id="selection-bar">
+          <span class="sel-count"><span id="sel-count-n">0</span> selected</span>
+          <span class="sel-spacer"></span>
+          <button type="button" id="sel-clear">Clear</button>
+          <button type="button" id="sel-open" class="primary">Open all tabs</button>
+          <button type="button" id="sel-mark" class="danger">Mark deleted</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-selection">
+        <div class="sel-header">
+          <h3>Confirmation tray</h3>
+          <span class="sel-h-stats" id="tray-stats">— pending · — deleted</span>
+          <button type="button" id="tray-clear-confirmed">Clear deleted from view</button>
+        </div>
+        <div id="tray-host">
+          <div class="empty-sel">Items you've opened for deletion show up here, plus everything you've marked deleted. Use the Search tab to add things.</div>
+        </div>
       </div>
     </div>
   </section>
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal-card">
+      <h3 id="modal-title">Confirm</h3>
+      <p id="modal-body">…</p>
+      <div class="modal-actions">
+        <button type="button" id="modal-cancel">Cancel</button>
+        <button type="button" id="modal-ok" class="primary">OK</button>
+      </div>
+    </div>
+  </div>
 
   <section id="screen-error" class="screen">
     <div class="card">
@@ -650,6 +766,64 @@ const store = (() => {
       cursorReq.onerror = () => rej(cursorReq.error);
     });
   }
+  async function getById(storeName, id) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).get(id);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror = () => rej(req.error);
+    });
+  }
+  async function getManyByIds(storeName, ids) {
+    if (!ids.length) return [];
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const s = tx.objectStore(storeName);
+      const out = [];
+      let pending = ids.length;
+      for (const id of ids) {
+        const req = s.get(id);
+        req.onsuccess = () => { if (req.result) out.push(req.result); if (--pending === 0) res(out); };
+        req.onerror = () => { if (--pending === 0) res(out); };
+      }
+    });
+  }
+  async function updateMany(storeName, ids, patch) {
+    if (!ids.length) return;
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const s = tx.objectStore(storeName);
+      let pending = ids.length;
+      for (const id of ids) {
+        const getReq = s.get(id);
+        getReq.onsuccess = () => {
+          const cur = getReq.result;
+          if (cur) s.put({ ...cur, ...(typeof patch === 'function' ? patch(cur) : patch) });
+          if (--pending === 0) res();
+        };
+        getReq.onerror = () => { if (--pending === 0) res(); };
+      }
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function listWhere(storeName, predicate, limit = 1000) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const out = [];
+      const cur = tx.objectStore(storeName).openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c || out.length >= limit) return res(out);
+        if (predicate(c.value)) out.push(c.value);
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+  }
   async function wipe() {
     const db = await open();
     db.close();
@@ -662,7 +836,62 @@ const store = (() => {
     });
   }
   return { open, metaGet, metaSet, putTweetsBatch, tweetCount, tweetStats,
-           putLikesBatch, likeCount, likeStats, wipe };
+           putLikesBatch, likeCount, likeStats,
+           getById, getManyByIds, updateMany, listWhere, wipe };
+})();
+
+// ── deletion (click-to-delete + bulk) ───────────────────────────────────────
+const deletion = (() => {
+  function tweetDeleteUrl(t) { return `https://twitter.com/i/web/status/${t.id}`; }
+  function likeDeleteUrl(l) { return l.expanded_url || `https://twitter.com/i/web/status/${l.tweet_id}`; }
+
+  async function markOpened(items) {
+    const now = Date.now();
+    const tweetIds = items.filter(x => x.scope === 'tweet').map(x => x.id);
+    const likeIds = items.filter(x => x.scope === 'like').map(x => x.id);
+    if (tweetIds.length) await store.updateMany('tweets', tweetIds, () => ({ opened_for_deletion_at: now }));
+    if (likeIds.length) await store.updateMany('likes', likeIds, () => ({ opened_for_unlike_at: now }));
+  }
+  async function markDeleted(items) {
+    const now = Date.now();
+    const tweetIds = items.filter(x => x.scope === 'tweet').map(x => x.id);
+    const likeIds = items.filter(x => x.scope === 'like').map(x => x.id);
+    if (tweetIds.length) await store.updateMany('tweets', tweetIds, () => ({ marked_for_deletion: true, confirmed_deleted_at: now }));
+    if (likeIds.length) await store.updateMany('likes', likeIds, () => ({ marked_for_unlike: true, confirmed_unliked_at: now }));
+  }
+  async function undo(items) {
+    const tweetIds = items.filter(x => x.scope === 'tweet').map(x => x.id);
+    const likeIds = items.filter(x => x.scope === 'like').map(x => x.id);
+    if (tweetIds.length) await store.updateMany('tweets', tweetIds, () => ({ marked_for_deletion: false, opened_for_deletion_at: null, confirmed_deleted_at: null }));
+    if (likeIds.length) await store.updateMany('likes', likeIds, () => ({ marked_for_unlike: false, opened_for_unlike_at: null, confirmed_unliked_at: null }));
+  }
+  async function listPending() {
+    const t = await store.listWhere('tweets', (x) => x.opened_for_deletion_at && !x.confirmed_deleted_at, 500);
+    const l = await store.listWhere('likes', (x) => x.opened_for_unlike_at && !x.confirmed_unliked_at, 500);
+    return [...t.map(x => ({ ...x, __scope: 'tweet' })), ...l.map(x => ({ ...x, __scope: 'like' }))];
+  }
+  async function listDeleted() {
+    const t = await store.listWhere('tweets', (x) => x.confirmed_deleted_at, 500);
+    const l = await store.listWhere('likes', (x) => x.confirmed_unliked_at, 500);
+    return [...t.map(x => ({ ...x, __scope: 'tweet' })), ...l.map(x => ({ ...x, __scope: 'like' }))];
+  }
+  async function status(scope, id) {
+    const rec = await store.getById(scope === 'tweet' ? 'tweets' : 'likes', id);
+    if (!rec) return null;
+    if (scope === 'tweet') {
+      return {
+        opened: !!rec.opened_for_deletion_at,
+        deleted: !!rec.confirmed_deleted_at,
+        marked: !!rec.marked_for_deletion
+      };
+    }
+    return {
+      opened: !!rec.opened_for_unlike_at,
+      deleted: !!rec.confirmed_unliked_at,
+      marked: !!rec.marked_for_unlike
+    };
+  }
+  return { tweetDeleteUrl, likeDeleteUrl, markOpened, markDeleted, undo, listPending, listDeleted, status };
 })();
 
 // ── persist (FSA sidecar + OPFS mirror) ─────────────────────────────────────
@@ -1633,6 +1862,7 @@ const ui = (() => {
       nav.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('#screen-summary .tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
       if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
+      if (target === 'tab-selection') renderTray();
     });
   }
 
@@ -1717,6 +1947,21 @@ const ui = (() => {
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  function cardStateClass(item) {
+    const out = [];
+    if (item.__scope === 'like') out.push('is-like');
+    const opened = item.opened_for_deletion_at || item.opened_for_unlike_at;
+    const deleted = item.confirmed_deleted_at || item.confirmed_unliked_at || item.marked_for_deletion || item.marked_for_unlike;
+    if (deleted) out.push('is-deleted');
+    else if (opened) out.push('is-opened');
+    if (selectionSet.has(itemKey(item))) out.push('is-selected');
+    return out.join(' ');
+  }
+  function itemKey(item) {
+    const id = item.__scope === 'tweet' ? item.id : item.tweet_id;
+    return item.__scope + ':' + id;
+  }
+
   function renderTweetCard(t) {
     const dt = t.created_at ? new Date(t.created_at).toISOString().slice(0, 10) : '—';
     const url = `https://twitter.com/i/web/status/${t.id}`;
@@ -1730,11 +1975,15 @@ const ui = (() => {
       `↻ ${(t.retweet_count || 0).toLocaleString()}`,
       ...badges
     ].join(' · ');
-    return `<div class="card-item">
+    const key = 'tweet:' + t.id;
+    return `<div class="card-item ${cardStateClass({ ...t, __scope: 'tweet' })}" data-key="${key}" data-scope="tweet" data-id="${safe(t.id)}">
+      <label class="card-select"><input type="checkbox" data-role="select" /></label>
       <div class="card-text">${safe(t.text)}</div>
       <div class="card-meta">${meta}</div>
       <div class="card-actions">
-        <a href="${url}" target="_blank" rel="noopener">Open on X →</a>
+        <a href="${url}" target="_blank" rel="noopener" data-role="open">Open on X →</a>
+        <button type="button" class="btn-mark" data-role="mark">Mark deleted</button>
+        <button type="button" class="btn-undo" data-role="undo">Undo</button>
       </div>
     </div>`;
   }
@@ -1744,13 +1993,75 @@ const ui = (() => {
     const text = l.has_text && l.text
       ? safe(l.text)
       : '<em style="color:var(--muted);">(text unavailable in archive)</em>';
-    return `<div class="card-item is-like">
+    const key = 'like:' + l.tweet_id;
+    return `<div class="card-item ${cardStateClass({ ...l, __scope: 'like' })}" data-key="${key}" data-scope="like" data-id="${safe(l.tweet_id)}">
+      <label class="card-select"><input type="checkbox" data-role="select" /></label>
       <div class="card-text">${text}</div>
       <div class="card-meta"><span class="badge is-like-marker">like</span> · <span>${safe(l.tweet_id)}</span></div>
       <div class="card-actions">
-        <a href="${url}" target="_blank" rel="noopener">Open on X →</a>
+        <a href="${url}" target="_blank" rel="noopener" data-role="open">Open on X →</a>
+        <button type="button" class="btn-mark" data-role="mark">Mark unliked</button>
+        <button type="button" class="btn-undo" data-role="undo">Undo</button>
       </div>
     </div>`;
+  }
+
+  // In-memory selection set keyed by 'scope:id'.
+  const selectionSet = new Set();
+
+  function syncCheckboxes(container) {
+    container.querySelectorAll('.card-item').forEach(card => {
+      const key = card.dataset.key;
+      const isSel = selectionSet.has(key);
+      card.classList.toggle('is-selected', isSel);
+      const input = card.querySelector('input[data-role="select"]');
+      if (input) input.checked = isSel;
+    });
+  }
+  function refreshSelectionBar() {
+    const bar = $('selection-bar');
+    if (!bar) return;
+    const n = selectionSet.size;
+    bar.classList.toggle('is-active', n > 0);
+    const counter = $('sel-count-n');
+    if (counter) counter.textContent = n.toLocaleString();
+    const openBtn = $('sel-open');
+    if (openBtn) openBtn.textContent = n === 1 ? 'Open 1 tab' : `Open ${n} tabs`;
+    const markBtn = $('sel-mark');
+    if (markBtn) markBtn.textContent = n === 1 ? 'Mark 1 deleted' : `Mark ${n} deleted`;
+  }
+  function selectionFromKeys() {
+    const items = [];
+    for (const k of selectionSet) {
+      const [scope, id] = k.split(':');
+      items.push({ scope, id });
+    }
+    return items;
+  }
+
+  // Modal helper.
+  function showModal({ title, body, okLabel = 'Confirm', cancelLabel = 'Cancel' }) {
+    return new Promise((resolve) => {
+      const back = $('modal-backdrop');
+      if (!back) return resolve(false);
+      $('modal-title').textContent = title;
+      $('modal-body').textContent = body;
+      $('modal-ok').textContent = okLabel;
+      $('modal-cancel').textContent = cancelLabel;
+      back.classList.add('is-open');
+      const onOk = () => { cleanup(); resolve(true); };
+      const onCancel = () => { cleanup(); resolve(false); };
+      const onBack = (e) => { if (e.target === back) onCancel(); };
+      function cleanup() {
+        back.classList.remove('is-open');
+        $('modal-ok').removeEventListener('click', onOk);
+        $('modal-cancel').removeEventListener('click', onCancel);
+        back.removeEventListener('click', onBack);
+      }
+      $('modal-ok').addEventListener('click', onOk);
+      $('modal-cancel').addEventListener('click', onCancel);
+      back.addEventListener('click', onBack);
+    });
   }
 
   function setSearchMeta(text) {
@@ -1758,15 +2069,194 @@ const ui = (() => {
     if (el) el.textContent = text;
   }
 
-  function renderResults({ items, total }) {
+  let lastResultItems = [];
+
+  async function hydrateState(items) {
+    // Look up live deletion-state for each visible item so the cached
+    // MiniSearch storedFields don't lie about already-deleted cards.
+    const tIds = items.filter(i => i.__scope === 'tweet').map(i => i.id);
+    const lIds = items.filter(i => i.__scope === 'like').map(i => i.tweet_id);
+    const [tRecs, lRecs] = await Promise.all([
+      store.getManyByIds('tweets', tIds),
+      store.getManyByIds('likes', lIds)
+    ]);
+    const byKey = new Map();
+    for (const t of tRecs) byKey.set('tweet:' + t.id, t);
+    for (const l of lRecs) byKey.set('like:' + l.tweet_id, l);
+    return items.map(it => {
+      const id = it.__scope === 'tweet' ? it.id : it.tweet_id;
+      const fresh = byKey.get(it.__scope + ':' + id);
+      return fresh ? { ...it, ...fresh, __scope: it.__scope } : it;
+    });
+  }
+
+  async function renderResults({ items, total }) {
     const root = $('search-results');
     if (!root) return;
     if (!items.length) {
+      lastResultItems = [];
       root.innerHTML = '<div class="results-empty">No matches — try a different query or relax the filters.</div>';
       return;
     }
-    root.innerHTML = items.map(renderCard).join('');
+    const hydrated = await hydrateState(items);
+    lastResultItems = hydrated;
+    root.innerHTML = hydrated.map(renderCard).join('');
+    syncCheckboxes(root);
+    refreshSelectionBar();
     setSearchMeta(`Showing ${items.length.toLocaleString()} of ${(total || items.length).toLocaleString()} matches.`);
+  }
+
+  function refreshCardForKey(key) {
+    const card = document.querySelector(`#search-results .card-item[data-key="${CSS.escape(key)}"]`);
+    if (!card) return;
+    const it = lastResultItems.find(x => itemKey({ ...x, __scope: x.__scope }) === key);
+    if (!it) return;
+    // Replace just this card's outerHTML
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = renderCard(it);
+    const fresh = wrapper.firstElementChild;
+    card.replaceWith(fresh);
+    syncCheckboxes($('search-results'));
+  }
+
+  async function refreshCardsAfterUpdate(keys) {
+    if (!keys.length) return;
+    // Re-fetch only those records and re-render in place
+    const tIds = keys.filter(k => k.startsWith('tweet:')).map(k => k.slice(6));
+    const lIds = keys.filter(k => k.startsWith('like:')).map(k => k.slice(5));
+    const [tRecs, lRecs] = await Promise.all([
+      store.getManyByIds('tweets', tIds),
+      store.getManyByIds('likes', lIds)
+    ]);
+    const byKey = new Map();
+    for (const t of tRecs) byKey.set('tweet:' + t.id, { ...t, __scope: 'tweet' });
+    for (const l of lRecs) byKey.set('like:' + l.tweet_id, { ...l, __scope: 'like' });
+    lastResultItems = lastResultItems.map(it => {
+      const k = itemKey(it);
+      return byKey.has(k) ? byKey.get(k) : it;
+    });
+    for (const k of keys) refreshCardForKey(k);
+  }
+
+  function bindResultsActions() {
+    const root = $('search-results');
+    if (!root) return;
+    root.addEventListener('change', async (e) => {
+      const input = e.target.closest('input[data-role="select"]');
+      if (!input) return;
+      const card = input.closest('.card-item');
+      const key = card.dataset.key;
+      if (input.checked) selectionSet.add(key); else selectionSet.delete(key);
+      card.classList.toggle('is-selected', input.checked);
+      refreshSelectionBar();
+    });
+    root.addEventListener('click', async (e) => {
+      const a = e.target.closest('a[data-role="open"]');
+      if (a) {
+        const card = a.closest('.card-item');
+        const scope = card.dataset.scope; const id = card.dataset.id;
+        await deletion.markOpened([{ scope, id }]);
+        // tag visually so the user remembers; don't refresh full row mid-click.
+        card.classList.add('is-opened');
+        return; // let the anchor's default behaviour open the tab
+      }
+      const mark = e.target.closest('button[data-role="mark"]');
+      if (mark) {
+        const card = mark.closest('.card-item');
+        const scope = card.dataset.scope; const id = card.dataset.id;
+        await deletion.markDeleted([{ scope, id }]);
+        await refreshCardsAfterUpdate([card.dataset.key]);
+        return;
+      }
+      const undo = e.target.closest('button[data-role="undo"]');
+      if (undo) {
+        const card = undo.closest('.card-item');
+        const scope = card.dataset.scope; const id = card.dataset.id;
+        await deletion.undo([{ scope, id }]);
+        await refreshCardsAfterUpdate([card.dataset.key]);
+        return;
+      }
+    });
+  }
+
+  function bindSelectionBar() {
+    const bar = $('selection-bar');
+    if (!bar) return;
+    $('sel-clear').addEventListener('click', () => {
+      selectionSet.clear();
+      refreshSelectionBar();
+      syncCheckboxes($('search-results'));
+    });
+    $('sel-open').addEventListener('click', async () => {
+      const n = selectionSet.size;
+      if (!n) return;
+      if (n > 50) {
+        await showModal({ title: 'Too many tabs', body: 'Bakwaas caps batch opens at 50 tabs to avoid browser tab-spam. Trim your selection and try again.', okLabel: 'OK', cancelLabel: '' });
+        return;
+      }
+      if (n > 10) {
+        const ok = await showModal({ title: `Open ${n} tabs?`, body: `Bakwaas is about to open ${n} twitter.com tabs. Your browser may rate-limit you. Continue?`, okLabel: `Open ${n}`, cancelLabel: 'Cancel' });
+        if (!ok) return;
+      }
+      const items = selectionFromKeys();
+      await deletion.markOpened(items);
+      // Open in sequence with a tiny delay so popup blockers behave.
+      for (const it of items) {
+        const url = it.scope === 'tweet'
+          ? `https://twitter.com/i/web/status/${it.id}`
+          : (await store.getById('likes', it.id))?.expanded_url || `https://twitter.com/i/web/status/${it.id}`;
+        window.open(url, '_blank', 'noopener');
+        await new Promise(r => setTimeout(r, 40));
+      }
+      await refreshCardsAfterUpdate([...selectionSet]);
+    });
+    $('sel-mark').addEventListener('click', async () => {
+      const n = selectionSet.size;
+      if (!n) return;
+      const ok = await showModal({
+        title: `Mark ${n} as deleted?`,
+        body: `This only updates Bakwaas — you still need to delete them on X. Use 'Open all tabs' first to delete them there.`,
+        okLabel: 'Mark deleted', cancelLabel: 'Cancel'
+      });
+      if (!ok) return;
+      const items = selectionFromKeys();
+      await deletion.markDeleted(items);
+      const keys = [...selectionSet];
+      selectionSet.clear();
+      refreshSelectionBar();
+      await refreshCardsAfterUpdate(keys);
+    });
+  }
+
+  async function renderTray() {
+    const host = $('tray-host');
+    const stats = $('tray-stats');
+    if (!host || !stats) return;
+    const [pending, deleted] = await Promise.all([deletion.listPending(), deletion.listDeleted()]);
+    stats.textContent = `${pending.length.toLocaleString()} pending · ${deleted.length.toLocaleString()} deleted`;
+    if (!pending.length && !deleted.length) {
+      host.innerHTML = '<div class="empty-sel">Items you’ve opened or marked deleted appear here. Use the Search tab to add things.</div>';
+      return;
+    }
+    const allItems = [
+      ...pending.map(p => ({ ...p })),
+      ...deleted.map(p => ({ ...p }))
+    ];
+    host.innerHTML = '<div class="results-list">' + allItems.map(renderCard).join('') + '</div>';
+  }
+
+  function bindTrayControls() {
+    $('tray-clear-confirmed')?.addEventListener('click', async () => {
+      const ok = await showModal({
+        title: 'Clear deleted from view?',
+        body: 'This hides confirmed-deleted items from the tray but keeps the underlying records. You can always see them again via Export state JSON.',
+        okLabel: 'Hide', cancelLabel: 'Cancel'
+      });
+      if (!ok) return;
+      // We don't actually wipe — just re-render with a filter.
+      const host = $('tray-host');
+      if (host) host.querySelectorAll('.card-item.is-deleted').forEach(c => c.remove());
+    });
   }
 
   function bindSearch() {
@@ -1846,7 +2336,8 @@ const ui = (() => {
       }
     });
   }
-  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindTabs, bindSearch, bindTopicsControls };
+  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton,
+           bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -1918,6 +2409,9 @@ async function bootstrap() {
   ui.bindTabs();
   ui.bindSearch();
   ui.bindTopicsControls();
+  ui.bindResultsActions();
+  ui.bindSelectionBar();
+  ui.bindTrayControls();
   $('btn-new')?.addEventListener('click', async () => {
     search.invalidateCaches();
     await store.wipe();
@@ -1977,18 +2471,35 @@ window.bakwaas = {
   },
   async stats() { return stats.aggregate(); },
   async topics(opts) { return topics.cluster(opts || {}); },
-  // deferred to later phases
+  buildDeleteUrl(id, scope) {
+    return scope === 'like'
+      ? `https://twitter.com/i/web/status/${id}`
+      : `https://twitter.com/i/web/status/${id}`;
+  },
+  async markOpened(ids, scope = 'tweet') {
+    return deletion.markOpened(ids.map(id => ({ scope, id })));
+  },
+  async markDeleted(ids, scope = 'tweet') {
+    return deletion.markDeleted(ids.map(id => ({ scope, id })));
+  },
+  async exportDeleteList() {
+    const deleted = await deletion.listDeleted();
+    return {
+      schema_version: SCHEMA_VERSION,
+      exported_at: Date.now(),
+      tweets: deleted.filter(d => d.__scope === 'tweet').map(t => ({ id: t.id, text: t.text, url: `https://twitter.com/i/web/status/${t.id}`, confirmed_deleted_at: t.confirmed_deleted_at })),
+      likes: deleted.filter(d => d.__scope === 'like').map(l => ({ tweet_id: l.tweet_id, expanded_url: l.expanded_url, confirmed_unliked_at: l.confirmed_unliked_at }))
+    };
+  },
+  // deferred — selections store + named saved selections are a later refinement
   select: notImpl('select'),
   getSelection: notImpl('getSelection'),
   clearSelection: notImpl('clearSelection'),
-  buildDeleteUrl: notImpl('buildDeleteUrl'),
-  markOpened: notImpl('markOpened'),
-  markDeleted: notImpl('markDeleted'),
+  // deferred to Phase 7
   setLLMKey: notImpl('setLLMKey'),
   clearLLMKey: notImpl('clearLLMKey'),
   llmLabel: notImpl('llmLabel'),
-  llmClassify: notImpl('llmClassify'),
-  exportDeleteList: notImpl('exportDeleteList')
+  llmClassify: notImpl('llmClassify')
 };
 
 bootstrap().catch((e) => {
