@@ -396,6 +396,92 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   padding: 6px 12px; font-size: 12px; margin-left: auto;
 }
 
+/* Patterns */
+.patterns-section { margin-top: 22px; }
+.patterns-section:first-child { margin-top: 0; }
+.patterns-section h2 {
+  margin: 0 0 12px; font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;
+  border-bottom: 1px solid var(--border); padding-bottom: 6px;
+}
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.kpi {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px;
+}
+.kpi .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+.kpi .kpi-value { font-size: 20px; font-weight: 700; font-family: var(--mono); margin-top: 4px; }
+.kpi .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+.compact-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; }
+.compact-tweet {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.compact-tweet .ct-text {
+  font-size: 13px; line-height: 1.45; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.compact-tweet .ct-meta { font-size: 10px; color: var(--muted); font-family: var(--mono); display: flex; gap: 10px; flex-wrap: wrap; }
+.compact-tweet .ct-meta a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); }
+.compact-tweet .ct-meta a:hover { color: var(--accent); border-color: var(--accent); }
+.compact-tweet.is-rt { border-left: 3px solid var(--accent-2); }
+.compact-tweet.is-reply { border-left: 3px solid var(--warn); }
+
+.linechart { width: 100%; height: 140px; display: block; }
+.linechart .ln { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.linechart .ln-area { fill: var(--accent); opacity: 0.12; }
+.linechart .ln-baseline { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
+.linechart text { fill: var(--muted); font-size: 9px; font-family: var(--mono); }
+
+.bursts-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+.burst-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 10px; align-items: center;
+  font-size: 12px; padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.burst-row:last-child { border-bottom: none; }
+.burst-row .burst-tag { color: var(--accent); font-family: var(--mono); }
+.burst-row .burst-peak { color: var(--muted); font-size: 10px; font-family: var(--mono); }
+.burst-row .burst-meter {
+  background: var(--panel-2); border-radius: 3px; width: 60px; height: 4px;
+  overflow: hidden; position: relative;
+}
+.burst-row .burst-meter span { background: var(--warn); height: 100%; display: block; }
+
+.cp-list { display: flex; flex-direction: column; gap: 4px; }
+.cp-row { font-size: 12px; font-family: var(--mono); color: var(--muted); padding: 4px 0; border-bottom: 1px solid var(--border); }
+.cp-row:last-child { border-bottom: none; }
+.cp-row.is-up { color: var(--ok); }
+.cp-row.is-down { color: var(--danger); }
+.cp-row .cp-arrow { font-weight: 700; margin-right: 6px; }
+
+.threads-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; }
+.thread-row {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px;
+}
+.thread-row .th-head { display: flex; gap: 10px; align-items: baseline; font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 4px; }
+.thread-row .th-replies { color: var(--accent); font-weight: 700; }
+.thread-row .th-text { font-size: 13px; line-height: 1.45; }
+
+.cm-list { display: flex; flex-direction: column; gap: 4px; }
+.cm-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 12px; font-family: var(--mono); padding: 4px 0; border-bottom: 1px solid var(--border); }
+.cm-row:last-child { border-bottom: none; }
+.cm-row .cm-users { color: var(--text); }
+.cm-row .cm-count { color: var(--muted); }
+
+.zero-by-year { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.zero-by-year .zy {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 8px; font-size: 11px; font-family: var(--mono);
+  display: flex; gap: 6px; align-items: baseline;
+}
+.zero-by-year .zy .zy-year { color: var(--accent); font-weight: 600; }
+.zero-by-year .zy .zy-count { color: var(--muted); }
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -420,7 +506,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.6 · phase 6</span>
+      <span class="phase" id="phase-tag">v0.7 · phase 7</span>
     </div>
     <div class="tag">explore your Twitter archive · find the noise · delete it</div>
   </header>
@@ -477,6 +563,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <div class="tab-nav">
         <button class="tab active" data-tab="tab-stats" type="button">Stats</button>
         <button class="tab" data-tab="tab-search" type="button">Search</button>
+        <button class="tab" data-tab="tab-patterns" type="button">Patterns</button>
         <button class="tab" data-tab="tab-topics" type="button">Topics</button>
         <button class="tab" data-tab="tab-selection" type="button">Selection</button>
       </div>
@@ -498,6 +585,12 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <div class="actions" style="margin-top:16px;">
           <button class="btn ghost" id="btn-new">Open another archive</button>
           <button class="btn ghost" id="btn-export">Export state JSON</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-patterns">
+        <div id="patterns-host">
+          <div class="stats-loading">Open this tab to compute patterns (one-time pass over your archive).</div>
         </div>
       </div>
 
@@ -1351,6 +1444,299 @@ const topics = (() => {
   return { buildCoocc, cluster, samplesFor };
 })();
 
+// ── patterns (algorithmic deep analysis, no AI) ─────────────────────────────
+// Engagement outliers (viral + cleanup-pile), hashtag/source ROI, burst hashtags,
+// activity change-points, streaks + dormancy, threads, co-mention pairs,
+// verbosity drift, hour×DOW colored by engagement. One cursor pass over tweets +
+// post-processing. Result cached in meta.patterns_cache keyed by SCHEMA_VERSION.
+const patterns = (() => {
+  const STOP = new Set(['the','a','an','and','or','but','if','then','else','on','at','in','to','of','for','with','by','from','as','is','was','are','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','must','can','this','that','these','those','it','its','they','them','their','we','us','our','you','your','he','him','his','she','her','i','me','my','not','no','yes','so','just','about','what','when','where','who','why','how','rt']);
+
+  function tokenize(text) {
+    if (!text) return [];
+    return (text.toLowerCase().match(/[a-z][a-z0-9']{2,}/g) || []).filter(t => !STOP.has(t));
+  }
+  function pairKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+  function ymOf(ts) {
+    const d = new Date(ts);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+  }
+  function yOf(ts) { return new Date(ts).getUTCFullYear(); }
+
+  let inflight = null;
+
+  async function aggregate() {
+    if (inflight) return inflight;
+    inflight = (async () => {
+      const cached = await store.metaGet('patterns_cache');
+      if (cached && cached.version === SCHEMA_VERSION) return cached;
+
+      const db = await store.open();
+      const TOP_VIRAL = 30;
+      const BOTTOM_ZERO_SAMPLES = 100;
+
+      const ownIds = new Set();
+      const selfReplies = [];                  // [{ id, replyTo, eng }]
+      const coMentions = new Map();
+      const perMonth = new Map();              // 'YYYY-MM' → { count, sumLen, sumFav, sumRT }
+      const perHashtagEng = new Map();         // tag → { count, sumFav, sumRT, firstDate }
+      const perHashtagMonths = new Map();      // tag → Map<YYYY-MM, count>
+      const perSourceEng = new Map();          // source → { count, sumFav, sumRT }
+      const hourDowEng = new Array(7 * 24).fill(null).map(() => ({ count: 0, sumFav: 0, sumRT: 0 }));
+      const topViral = [];                     // min-heap-ish (simple sorted insert)
+      const bottomZeroByYear = new Map();      // year → count
+      const bottomZeroSamples = [];            // oldest few zero-eng tweets
+
+      await new Promise((res, rej) => {
+        const tx = db.transaction('tweets', 'readonly');
+        const cur = tx.objectStore('tweets').openCursor();
+        cur.onsuccess = (e) => {
+          const c = e.target.result;
+          if (!c) return res();
+          const t = c.value;
+          ownIds.add(t.id);
+
+          // self-replies (will be resolved against ownIds after pass)
+          if (t.in_reply_to_status_id) {
+            selfReplies.push({
+              id: t.id, replyTo: t.in_reply_to_status_id,
+              text: (t.text || '').slice(0, 200),
+              date: t.created_at,
+              eng: (t.favorite_count || 0) + (t.retweet_count || 0)
+            });
+          }
+
+          // co-mention pairs
+          const mentions = (t.mentions || []).filter(Boolean);
+          if (mentions.length > 1) {
+            const uniq = [...new Set(mentions)];
+            for (let i = 0; i < uniq.length; i++) {
+              for (let j = i + 1; j < uniq.length; j++) {
+                const k = pairKey(uniq[i], uniq[j]);
+                coMentions.set(k, (coMentions.get(k) || 0) + 1);
+              }
+            }
+          }
+
+          // per-month, per-hashtag-temporal, hour×DOW engagement
+          if (typeof t.created_at === 'number' && !Number.isNaN(t.created_at)) {
+            const ym = ymOf(t.created_at);
+            const d = new Date(t.created_at);
+            const cell = hourDowEng[d.getUTCDay() * 24 + d.getUTCHours()];
+            cell.count++;
+            cell.sumFav += t.favorite_count || 0;
+            cell.sumRT += t.retweet_count || 0;
+
+            let pm = perMonth.get(ym);
+            if (!pm) { pm = { count: 0, sumLen: 0, sumFav: 0, sumRT: 0 }; perMonth.set(ym, pm); }
+            pm.count++;
+            pm.sumLen += (t.text || '').length;
+            pm.sumFav += t.favorite_count || 0;
+            pm.sumRT += t.retweet_count || 0;
+
+            for (const raw of (t.hashtags || [])) {
+              const tag = (raw || '').toLowerCase();
+              if (!tag) continue;
+              let m = perHashtagMonths.get(tag);
+              if (!m) { m = new Map(); perHashtagMonths.set(tag, m); }
+              m.set(ym, (m.get(ym) || 0) + 1);
+            }
+          }
+
+          // hashtag engagement (+ first-use)
+          for (const raw of (t.hashtags || [])) {
+            const tag = (raw || '').toLowerCase();
+            if (!tag) continue;
+            let s = perHashtagEng.get(tag);
+            if (!s) { s = { count: 0, sumFav: 0, sumRT: 0, firstDate: t.created_at || null }; perHashtagEng.set(tag, s); }
+            s.count++;
+            s.sumFav += t.favorite_count || 0;
+            s.sumRT += t.retweet_count || 0;
+            if (t.created_at && (!s.firstDate || t.created_at < s.firstDate)) s.firstDate = t.created_at;
+          }
+
+          // source engagement
+          if (t.source) {
+            let s = perSourceEng.get(t.source);
+            if (!s) { s = { count: 0, sumFav: 0, sumRT: 0 }; perSourceEng.set(t.source, s); }
+            s.count++;
+            s.sumFav += t.favorite_count || 0;
+            s.sumRT += t.retweet_count || 0;
+          }
+
+          // engagement extremes
+          const eng = (t.favorite_count || 0) + (t.retweet_count || 0);
+          if (eng > 0) {
+            // maintain top-N by eng with a simple sorted slot (small N → linear is fine)
+            if (topViral.length < TOP_VIRAL) {
+              topViral.push({ id: t.id, eng, fav: t.favorite_count || 0, rt: t.retweet_count || 0,
+                              text: (t.text || '').slice(0, 280), date: t.created_at,
+                              is_retweet: !!t.is_retweet, is_reply: !!t.is_reply, has_media: !!t.has_media });
+              topViral.sort((a, b) => a.eng - b.eng); // ascending; index 0 = min
+            } else if (eng > topViral[0].eng) {
+              topViral[0] = { id: t.id, eng, fav: t.favorite_count || 0, rt: t.retweet_count || 0,
+                              text: (t.text || '').slice(0, 280), date: t.created_at,
+                              is_retweet: !!t.is_retweet, is_reply: !!t.is_reply, has_media: !!t.has_media };
+              topViral.sort((a, b) => a.eng - b.eng);
+            }
+          } else if (!t.is_retweet) {
+            // zero-engagement originals/replies — main cleanup signal
+            const y = t.created_at ? yOf(t.created_at) : 0;
+            bottomZeroByYear.set(y, (bottomZeroByYear.get(y) || 0) + 1);
+            if (bottomZeroSamples.length < BOTTOM_ZERO_SAMPLES) {
+              bottomZeroSamples.push({ id: t.id, text: (t.text || '').slice(0, 200), date: t.created_at, is_reply: !!t.is_reply });
+            }
+          }
+
+          c.continue();
+        };
+        cur.onerror = () => rej(cur.error);
+      });
+
+      // Resolve self-reply threads against ownIds.
+      const threadCounts = new Map();           // rootId → reply count
+      for (const sr of selfReplies) {
+        if (ownIds.has(sr.replyTo)) {
+          threadCounts.set(sr.replyTo, (threadCounts.get(sr.replyTo) || 0) + 1);
+        }
+      }
+      const topThreadRoots = [...threadCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+      const rootDocs = await store.getManyByIds('tweets', topThreadRoots.map(([id]) => id));
+      const rootMap = new Map(rootDocs.map(r => [r.id, r]));
+      const topThreads = topThreadRoots
+        .map(([id, replies]) => {
+          const root = rootMap.get(id);
+          if (!root) return null;
+          return {
+            rootId: id, replies,
+            text: (root.text || '').slice(0, 200), date: root.created_at,
+            fav: root.favorite_count || 0, rt: root.retweet_count || 0
+          };
+        })
+        .filter(Boolean);
+
+      // Bursts: hashtags whose use is temporally concentrated.
+      const bursts = [];
+      for (const [tag, monthMap] of perHashtagMonths) {
+        if (monthMap.size === 0) continue;
+        const counts = [...monthMap.values()];
+        const total = counts.reduce((a, b) => a + b, 0);
+        if (total < 5) continue;
+        let max = 0, peakMonth = null;
+        for (const [m, n] of monthMap) if (n > max) { max = n; peakMonth = m; }
+        const concentration = max / total;
+        if (concentration >= 0.5) {
+          bursts.push({ tag, count: total, concentration, peakMonth, monthSpan: monthMap.size });
+        }
+      }
+      bursts.sort((a, b) => b.count - a.count);
+
+      // Hashtags by avg engagement (min count for stability).
+      const hashtagByEng = [...perHashtagEng.entries()]
+        .filter(([, s]) => s.count >= 5)
+        .map(([tag, s]) => ({
+          tag, count: s.count,
+          avgFav: s.sumFav / s.count, avgRT: s.sumRT / s.count,
+          avgEng: (s.sumFav + s.sumRT) / s.count,
+          firstDate: s.firstDate
+        }))
+        .sort((a, b) => b.avgEng - a.avgEng)
+        .slice(0, 20);
+
+      // Source ROI (min count for stability).
+      const sourceByEng = [...perSourceEng.entries()]
+        .filter(([, s]) => s.count >= 20)
+        .map(([source, s]) => ({
+          source, count: s.count,
+          avgFav: s.sumFav / s.count, avgRT: s.sumRT / s.count,
+          avgEng: (s.sumFav + s.sumRT) / s.count
+        }))
+        .sort((a, b) => b.avgEng - a.avgEng);
+
+      // Top co-mention pairs.
+      const topCoMentions = [...coMentions.entries()]
+        .map(([k, n]) => { const [a, b] = k.split('|'); return { a, b, count: n }; })
+        .sort((x, y) => y.count - x.count)
+        .slice(0, 20);
+
+      // Per-month timeline with averages.
+      const perMonthArr = [...perMonth.entries()].sort().map(([month, v]) => ({
+        month, count: v.count,
+        avgLen: v.count ? v.sumLen / v.count : 0,
+        avgFav: v.count ? v.sumFav / v.count : 0,
+        avgRT: v.count ? v.sumRT / v.count : 0
+      }));
+
+      // Change-points: monthly counts >= 2σ from a trailing 12-month mean.
+      const changePoints = [];
+      if (perMonthArr.length >= 12) {
+        for (let i = 12; i < perMonthArr.length; i++) {
+          const window = perMonthArr.slice(i - 12, i).map(p => p.count);
+          const mean = window.reduce((a, b) => a + b, 0) / window.length;
+          const sd = Math.sqrt(window.reduce((s, x) => s + (x - mean) * (x - mean), 0) / window.length);
+          if (sd <= 0) continue;
+          const z = (perMonthArr[i].count - mean) / sd;
+          if (Math.abs(z) >= 2.0) {
+            changePoints.push({
+              month: perMonthArr[i].month, count: perMonthArr[i].count,
+              baseline: Math.round(mean), z: +z.toFixed(2),
+              direction: z > 0 ? 'up' : 'down'
+            });
+          }
+        }
+      }
+
+      // Streaks + dormancy from the full byDay (read from stats cache).
+      const baseStats = await stats.aggregate();
+      const sortedDays = [...baseStats.byDay].map(([d]) => d).sort();
+      let longestStreak = { start: null, end: null, days: 0 };
+      let longestGap = { start: null, end: null, days: 0 };
+      if (sortedDays.length) {
+        let curStart = sortedDays[0], curLen = 1;
+        for (let i = 1; i < sortedDays.length; i++) {
+          const diff = Math.round((Date.parse(sortedDays[i]) - Date.parse(sortedDays[i - 1])) / 86400000);
+          if (diff === 1) {
+            curLen++;
+          } else {
+            if (curLen > longestStreak.days) longestStreak = { start: curStart, end: sortedDays[i - 1], days: curLen };
+            if (diff > longestGap.days) longestGap = { start: sortedDays[i - 1], end: sortedDays[i], days: diff };
+            curStart = sortedDays[i];
+            curLen = 1;
+          }
+        }
+        if (curLen > longestStreak.days) longestStreak = { start: curStart, end: sortedDays[sortedDays.length - 1], days: curLen };
+      }
+
+      // Hour×DOW with cell value = average engagement (sum eng / count).
+      const hodEng = hourDowEng.map(c => c.count ? (c.sumFav + c.sumRT) / c.count : 0);
+
+      const out = {
+        version: SCHEMA_VERSION,
+        topViral: topViral.sort((a, b) => b.eng - a.eng).slice(0, 20),
+        bottomZeroByYear: [...bottomZeroByYear.entries()].sort((a, b) => a[0] - b[0]),
+        bottomZeroSamples: bottomZeroSamples.slice(0, 50),
+        hashtagByEng,
+        sourceByEng,
+        bursts: bursts.slice(0, 30),
+        topThreads,
+        topCoMentions,
+        perMonth: perMonthArr,
+        changePoints,
+        longestStreak,
+        longestGap,
+        hourDowEng: hodEng,
+        computed_at: Date.now()
+      };
+
+      try { await store.metaSet('patterns_cache', out); } catch (e) { console.warn('patterns cache failed:', e); }
+      return out;
+    })().finally(() => { inflight = null; });
+    return inflight;
+  }
+
+  return { aggregate };
+})();
+
 // ── search (MiniSearch) ─────────────────────────────────────────────────────
 const search = (() => {
   let MS = null;
@@ -1861,6 +2247,7 @@ const ui = (() => {
       const target = btn.dataset.tab;
       nav.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('#screen-summary .tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
+      if (target === 'tab-patterns') renderPatterns();
       if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
       if (target === 'tab-selection') renderTray();
     });
@@ -1922,6 +2309,218 @@ const ui = (() => {
     } finally {
       topicsRendering = false;
     }
+  }
+
+  let patternsRendering = false;
+  async function renderPatterns() {
+    if (patternsRendering) return;
+    patternsRendering = true;
+    const host = $('patterns-host');
+    if (!host) { patternsRendering = false; return; }
+    host.innerHTML = '<div class="stats-loading">Computing patterns — one-time pass over your archive…</div>';
+    try {
+      const p = await patterns.aggregate();
+      host.innerHTML = `
+        <div class="patterns-section">
+          <h2>Activity rhythm</h2>
+          <div class="kpi-row">
+            <div class="kpi">
+              <div class="kpi-label">Longest streak</div>
+              <div class="kpi-value">${p.longestStreak.days || 0} days</div>
+              <div class="kpi-sub">${p.longestStreak.start || '—'} → ${p.longestStreak.end || '—'}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Longest silence</div>
+              <div class="kpi-value">${p.longestGap.days || 0} days</div>
+              <div class="kpi-sub">${p.longestGap.start || '—'} → ${p.longestGap.end || '—'}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Months tracked</div>
+              <div class="kpi-value">${p.perMonth.length}</div>
+              <div class="kpi-sub">${p.changePoints.length} change-points</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Distinct co-mention pairs</div>
+              <div class="kpi-value">${p.topCoMentions.length ? '20+' : '0'}</div>
+              <div class="kpi-sub">top pair: ${p.topCoMentions[0] ? safe('@' + p.topCoMentions[0].a + ' × @' + p.topCoMentions[0].b) : '—'}</div>
+            </div>
+          </div>
+          <div class="charts-grid" style="margin-top:14px;">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Tweets per month</h3>
+              <div class="chart-wrap">${linechartHTML(p.perMonth.map(m => ({ x: m.month, y: m.count })), 'count')}</div>
+            </div>
+            <div class="chart-card">
+              <h3>Activity change-points (z ≥ 2)</h3>
+              ${changePointsHTML(p.changePoints)}
+            </div>
+            <div class="chart-card">
+              <h3>Verbosity drift (avg chars / tweet, monthly)</h3>
+              <div class="chart-wrap">${linechartHTML(p.perMonth.map(m => ({ x: m.month, y: m.avgLen })), 'chars')}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Engagement</h2>
+          <div class="charts-grid">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Top 20 viral tweets</h3>
+              <div class="compact-list">${(p.topViral || []).map(viralCardHTML).join('') || '<div class="top-empty">No engagement on any tweet yet.</div>'}</div>
+            </div>
+            <div class="chart-card">
+              <h3>Hashtags by avg engagement (min 5 uses)</h3>
+              ${topListHTML((p.hashtagByEng || []).map(h => [h.tag, Math.round(h.avgEng)]), null, (k) => '#' + safe(k))}
+            </div>
+            <div class="chart-card">
+              <h3>Source clients by avg engagement</h3>
+              ${topListHTML((p.sourceByEng || []).map(s => [s.source, Math.round(s.avgEng)]))}
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Hour × Day-of-week — avg engagement per cell</h3>
+              <div class="chart-wrap">${hourDowEngHTML(p.hourDowEng)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Era detection</h2>
+          <div class="charts-grid">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Burst hashtags (≥50% of uses in one month)</h3>
+              <div class="bursts-list">${burstsHTML(p.bursts)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Cleanup candidates</h2>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Zero-engagement tweets by year</h3>
+              <div class="zero-by-year">${(p.bottomZeroByYear || []).map(([y, n]) => `<span class="zy"><span class="zy-year">${y}</span><span class="zy-count">${n.toLocaleString()}</span></span>`).join('') || '<div class="top-empty">— none —</div>'}</div>
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Sample zero-engagement tweets (oldest 50)</h3>
+              <div class="compact-list">${(p.bottomZeroSamples || []).slice(0, 50).map(zeroSampleHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Threads & relationships</h2>
+          <div class="charts-grid">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Longest self-reply threads</h3>
+              <div class="threads-list">${(p.topThreads || []).map(threadRowHTML).join('') || '<div class="top-empty">— no self-reply chains found —</div>'}</div>
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Top co-mention pairs</h3>
+              <div class="cm-list">${(p.topCoMentions || []).map(c =>
+                `<div class="cm-row"><span class="cm-users">@${safe(c.a)} × @${safe(c.b)}</span><span class="cm-count">${c.count.toLocaleString()}</span></div>`
+              ).join('') || '<div class="top-empty">— no pairs found —</div>'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      console.error('patterns render failed:', e);
+      host.innerHTML = '<div class="topics-empty">Couldn’t compute patterns: ' + safe(e.message || e) + '</div>';
+    } finally {
+      patternsRendering = false;
+    }
+  }
+
+  function viralCardHTML(t) {
+    const cls = t.is_retweet ? 'is-rt' : t.is_reply ? 'is-reply' : '';
+    const dt = t.date ? new Date(t.date).toISOString().slice(0, 10) : '—';
+    const url = `https://twitter.com/i/web/status/${t.id}`;
+    return `<div class="compact-tweet ${cls}">
+      <div class="ct-text">${safe(t.text)}</div>
+      <div class="ct-meta">
+        <span>${dt}</span><span>♥ ${(t.fav || 0).toLocaleString()}</span><span>↻ ${(t.rt || 0).toLocaleString()}</span>
+        <a href="${url}" target="_blank" rel="noopener">open →</a>
+      </div>
+    </div>`;
+  }
+  function zeroSampleHTML(t) {
+    const cls = t.is_reply ? 'is-reply' : '';
+    const dt = t.date ? new Date(t.date).toISOString().slice(0, 10) : '—';
+    const url = `https://twitter.com/i/web/status/${t.id}`;
+    return `<div class="compact-tweet ${cls}">
+      <div class="ct-text">${safe(t.text)}</div>
+      <div class="ct-meta">
+        <span>${dt}</span><span>0 engagement</span>
+        <a href="${url}" target="_blank" rel="noopener">open →</a>
+      </div>
+    </div>`;
+  }
+  function threadRowHTML(t) {
+    const dt = t.date ? new Date(t.date).toISOString().slice(0, 10) : '—';
+    const url = `https://twitter.com/i/web/status/${t.rootId}`;
+    return `<div class="thread-row">
+      <div class="th-head">
+        <span class="th-replies">${t.replies} replies</span>
+        <span>${dt}</span>
+        <span>♥ ${t.fav} · ↻ ${t.rt}</span>
+        <a href="${url}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a>
+      </div>
+      <div class="th-text">${safe(t.text)}</div>
+    </div>`;
+  }
+  function changePointsHTML(cps) {
+    if (!cps.length) return '<div class="top-empty">No months are statistically significant outliers.</div>';
+    return '<div class="cp-list">' + cps.map(c =>
+      `<div class="cp-row is-${c.direction}"><span class="cp-arrow">${c.direction === 'up' ? '↑' : '↓'}</span>${c.month} — ${c.count.toLocaleString()} tweets (z=${c.z}, baseline ${c.baseline})</div>`
+    ).join('') + '</div>';
+  }
+  function burstsHTML(bursts) {
+    if (!bursts.length) return '<div class="top-empty">— no bursts —</div>';
+    return bursts.map(b => {
+      const pct = Math.round(b.concentration * 100);
+      const meter = Math.min(60, Math.round(b.concentration * 60));
+      return `<div class="burst-row">
+        <span class="burst-tag">#${safe(b.tag)}</span>
+        <span class="burst-peak">peak ${b.peakMonth} · ${pct}% in 1 month · ${b.count.toLocaleString()} uses</span>
+        <span class="burst-meter"><span style="width:${meter}px"></span></span>
+      </div>`;
+    }).join('');
+  }
+  function linechartHTML(series, _kind) {
+    if (!series.length) return '<div class="top-empty">— no data —</div>';
+    const W = 720, H = 140, PAD_L = 32, PAD_R = 8, PAD_T = 8, PAD_B = 18;
+    const ys = series.map(s => s.y);
+    const max = Math.max(1, ...ys), min = 0;
+    const xs = (i) => PAD_L + (i * (W - PAD_L - PAD_R)) / Math.max(1, series.length - 1);
+    const ysC = (v) => PAD_T + (H - PAD_T - PAD_B) * (1 - (v - min) / (max - min || 1));
+    const pts = series.map((s, i) => `${xs(i).toFixed(1)},${ysC(s.y).toFixed(1)}`).join(' ');
+    const area = `${PAD_L},${ysC(min).toFixed(1)} ` + pts + ` ${xs(series.length - 1).toFixed(1)},${ysC(min).toFixed(1)}`;
+    const ticks = [max, Math.round(max / 2), 0].map(v => `<text x="0" y="${ysC(v).toFixed(1) + 3}">${v.toLocaleString()}</text>`).join('');
+    const xLabels = (series.length > 1 ? [0, Math.floor(series.length / 2), series.length - 1] : [0])
+      .map(i => `<text x="${xs(i).toFixed(1)}" y="${H - 4}" text-anchor="middle">${series[i].x}</text>`).join('');
+    return `<svg class="linechart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet">
+      ${ticks}${xLabels}
+      <polygon class="ln-area" points="${area}"/>
+      <polyline class="ln" points="${pts}"/>
+    </svg>`;
+  }
+  function hourDowEngHTML(hodEng) {
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const max = Math.max(1, ...hodEng);
+    let rows = '';
+    for (let d = 0; d < 7; d++) {
+      rows += `<div class="hod-grid"><div class="hod-row-label">${DAYS[d]}</div>`;
+      for (let h = 0; h < 24; h++) {
+        const v = hodEng[d * 24 + h];
+        const cls = hodClass(v, max);
+        rows += `<div class="hod-cell ${cls}" title="${DAYS[d]} ${String(h).padStart(2,'0')}:00 — avg eng ${v.toFixed(2)}"></div>`;
+      }
+      rows += `</div>`;
+    }
+    let cols = '<div class="hod-col-labels"><span></span>';
+    for (let h = 0; h < 24; h++) cols += `<span>${h % 6 === 0 ? h : ''}</span>`;
+    cols += '</div>';
+    return rows + cols;
   }
 
   function bindTopicsControls() {
@@ -2470,6 +3069,7 @@ window.bakwaas = {
     return search.query({ q, scope, chips, limit });
   },
   async stats() { return stats.aggregate(); },
+  async patterns() { return patterns.aggregate(); },
   async topics(opts) { return topics.cluster(opts || {}); },
   buildDeleteUrl(id, scope) {
     return scope === 'like'
