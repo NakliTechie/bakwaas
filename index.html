@@ -83,10 +83,25 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 #screen-drop .drop .file-btn:hover { filter: brightness(1.08); }
 #screen-drop .drop input[type=file] { display: none; }
+#screen-drop .alt-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 14px; color: var(--muted); font-size: 13px;
+  justify-content: center; flex-wrap: wrap;
+}
+#screen-drop .alt-row .alt-or { font-family: var(--mono); font-size: 11px; opacity: .7; }
+#screen-drop .alt-row button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 14px; font-size: 13px;
+}
+#screen-drop .alt-row button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+#screen-drop .alt-row button:disabled { opacity: .5; cursor: not-allowed; }
 #screen-drop .help {
   margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center;
 }
 #screen-drop .help a { color: var(--accent); }
+#screen-index .count-row { display: flex; justify-content: center; gap: 32px; }
+#screen-index .count-cell { text-align: center; }
 
 /* Indexing */
 #screen-index .card {
@@ -187,6 +202,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <input type="file" id="file-input" accept=".zip,application/zip">
       <span class="file-btn">Choose a file</span>
     </label>
+    <div class="alt-row">
+      <span class="alt-or">— or —</span>
+      <button id="btn-pick-folder" type="button">Open unzipped folder (Chrome/Edge)</button>
+    </div>
     <p class="help">
       Don't have one yet? Request it at
       <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">x.com/settings/download_your_data</a>.
@@ -199,8 +218,16 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <h2>Indexing archive…</h2>
       <div class="phase-label" id="phase-label">Reading…</div>
       <div class="bar-wrap"><div class="bar" id="progress-bar"></div></div>
-      <div class="count" id="count">0</div>
-      <div class="count-label">tweets indexed</div>
+      <div class="count-row">
+        <div class="count-cell">
+          <div class="count" id="count">0</div>
+          <div class="count-label">tweets</div>
+        </div>
+        <div class="count-cell">
+          <div class="count" id="count-likes">0</div>
+          <div class="count-label">likes</div>
+        </div>
+      </div>
       <div class="resume-hint">You can close this tab — we'll pick up where we left off when you reopen it.</div>
     </div>
   </section>
@@ -216,6 +243,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <div class="stat"><div class="label">Originals</div><div class="value" id="stat-orig">0</div></div>
         <div class="stat"><div class="label">Replies</div><div class="value" id="stat-rep">0</div></div>
         <div class="stat"><div class="label">Retweets</div><div class="value" id="stat-rt">0</div></div>
+        <div class="stat"><div class="label">Likes</div><div class="value" id="stat-likes">0</div></div>
+        <div class="stat"><div class="label">Likes with text</div><div class="value" id="stat-likes-text">0</div></div>
       </div>
       <div class="actions">
         <button class="btn ghost" id="btn-new">Open another archive</button>
@@ -244,17 +273,18 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
 <script type="module">
 // ─────────────────────────────────────────────────────────────────────────────
-// Bakwaas v0.1 — Phase 1: zip → parse → IndexedDB → summary
+// Bakwaas v0.2 — Phase 1+2: zip/folder → parse → IndexedDB → summary
 // Architecture: object-namespaces inside this single file (per handoff §1).
-// Phase 1 scope: zip ingest, tweet parse, resumable index, OPFS state mirror.
-// Deferred: FSA folder mode, likes, MiniSearch, stats view, topics, click-to-delete, LLM.
+// Shipped: zip + FSA folder ingest, tweet + like parse, resumable, OPFS + sidecar.
+// Deferred: MiniSearch, stats view, topics, click-to-delete, LLM.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DB_NAME = 'bakwaas-v1';
-const DB_VERSION = 1;
-const SCHEMA_VERSION = 1;
+const DB_VERSION = 2;
+const SCHEMA_VERSION = 2;
 const BATCH_SIZE = 1000;
 const OPFS_STATE_FILE = 'bakwaas-state.json';
+const SIDECAR_FILE = 'bakwaas-state.json';
 
 // ── feature detect ──────────────────────────────────────────────────────────
 const supported = (() => {
@@ -277,7 +307,7 @@ const store = (() => {
     if (dbPromise) return dbPromise;
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = (e) => {
+      req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains('tweets')) {
           const s = db.createObjectStore('tweets', { keyPath: 'id' });
@@ -288,6 +318,11 @@ const store = (() => {
           s.createIndex('favorite_count', 'favorite_count');
           s.createIndex('retweet_count', 'retweet_count');
           s.createIndex('has_media', 'has_media');
+        }
+        if (!db.objectStoreNames.contains('likes')) {
+          const s = db.createObjectStore('likes', { keyPath: 'tweet_id' });
+          s.createIndex('archive_order', 'archive_order');
+          s.createIndex('has_text', 'has_text');
         }
         if (!db.objectStoreNames.contains('meta')) {
           db.createObjectStore('meta');
@@ -369,6 +404,45 @@ const store = (() => {
       cursorReq.onerror = () => rej(cursorReq.error);
     });
   }
+  async function putLikesBatch(rows) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('likes', 'readwrite');
+      const s = tx.objectStore('likes');
+      for (const r of rows) s.put(r);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function likeCount() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('likes', 'readonly');
+      const req = tx.objectStore('likes').count();
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  }
+  async function likeStats() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('likes', 'readonly');
+      const s = tx.objectStore('likes');
+      let total = 0, withText = 0;
+      const cursorReq = s.openCursor();
+      cursorReq.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) {
+          res({ total, withText, withoutText: total - withText });
+          return;
+        }
+        total++;
+        if (c.value.has_text) withText++;
+        c.continue();
+      };
+      cursorReq.onerror = () => rej(cursorReq.error);
+    });
+  }
   async function wipe() {
     const db = await open();
     db.close();
@@ -380,12 +454,14 @@ const store = (() => {
       req.onblocked = () => res();
     });
   }
-  return { open, metaGet, metaSet, putTweetsBatch, tweetCount, tweetStats, wipe };
+  return { open, metaGet, metaSet, putTweetsBatch, tweetCount, tweetStats,
+           putLikesBatch, likeCount, likeStats, wipe };
 })();
 
-// ── persist (OPFS mirror) ───────────────────────────────────────────────────
+// ── persist (FSA sidecar + OPFS mirror) ─────────────────────────────────────
 const persist = (() => {
-  async function writeState(state) {
+  let _lastSidecarWrite = 0;
+  async function writeOPFS(state) {
     try {
       const root = await navigator.storage.getDirectory();
       const handle = await root.getFileHandle(OPFS_STATE_FILE, { create: true });
@@ -394,6 +470,31 @@ const persist = (() => {
       await w.close();
     } catch (e) {
       console.warn('OPFS write failed:', e);
+    }
+  }
+  async function writeSidecar(state, dirHandle) {
+    if (!dirHandle) return;
+    try {
+      const perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') return; // skip silently if no write permission
+      const handle = await dirHandle.getFileHandle(SIDECAR_FILE, { create: true });
+      const w = await handle.createWritable();
+      await w.write(JSON.stringify(state, null, 2));
+      await w.close();
+    } catch (e) {
+      console.warn('Sidecar write failed:', e);
+    }
+  }
+  // writeState(state, source) — writes OPFS always, sidecar when source is folder.
+  async function writeState(state, source) {
+    await writeOPFS(state);
+    if (source && source.mode === 'folder' && source.dirHandle) {
+      // Debounce sidecar writes to every ~500ms to avoid hammering the disk during batched indexing.
+      const now = Date.now();
+      if (now - _lastSidecarWrite > 500 || state.phase === 'done') {
+        _lastSidecarWrite = now;
+        await writeSidecar(state, source.dirHandle);
+      }
     }
   }
   async function readState() {
@@ -407,7 +508,7 @@ const persist = (() => {
       return null;
     }
   }
-  return { writeState, readState };
+  return { writeState, readState, writeSidecar };
 })();
 
 // ── parser ──────────────────────────────────────────────────────────────────
@@ -476,10 +577,31 @@ const parser = (() => {
       createdAt: a.createdAt || null
     };
   }
-  return { parseYTD, parseTweetRecord, parseAccountRecord, decodeEntities };
+  function parseLikeRecord(entry, archive_order) {
+    const l = entry.like || entry;
+    const id = l.tweetId || l.tweet_id;
+    if (!id) return null;
+    const fullText = l.fullText || l.full_text || '';
+    return {
+      tweet_id: String(id),
+      expanded_url: l.expandedUrl || l.expanded_url || `https://twitter.com/i/web/status/${id}`,
+      full_text: fullText,
+      text: decodeEntities(fullText),
+      has_text: !!fullText,
+      archive_order: archive_order,
+      marked_for_unlike: false,
+      opened_for_unlike_at: null,
+      confirmed_unliked_at: null,
+      tags: []
+    };
+  }
+  return { parseYTD, parseTweetRecord, parseAccountRecord, parseLikeRecord, decodeEntities };
 })();
 
-// ── archive (zip) ───────────────────────────────────────────────────────────
+// ── archive (zip + FSA folder) ──────────────────────────────────────────────
+// Both modes resolve to the same shape:
+//   { mode: 'zip' | 'folder', dirHandle?, tweetFiles: [{path, read()}], accountFile, likeFile }
+// where read() returns the file contents as a string.
 const archive = (() => {
   let JSZip = null;
   async function getJSZip() {
@@ -488,26 +610,76 @@ const archive = (() => {
     JSZip = mod.default || mod;
     return JSZip;
   }
+  const TWEETS_RE = /(^|\/)data\/tweets(-part\d+)?\.js$/i;
+  const TWEET_RE  = /(^|\/)data\/tweet\.js$/i;
+  const ACCOUNT_RE = /(^|\/)data\/account\.js$/i;
+  const LIKE_RE = /(^|\/)data\/like(-part\d+)?\.js$/i;
+
+  function wrapZipEntry(path, entry) {
+    return { path, name: path.split('/').pop(), read: () => entry.async('string') };
+  }
+  function wrapFSAHandle(path, handle) {
+    return { path, name: handle.name, read: async () => { const f = await handle.getFile(); return f.text(); } };
+  }
+
   async function openZip(file) {
     const J = await getJSZip();
     const zip = await J.loadAsync(file);
-    // Locate data/tweets-part*.js (sorted) and data/account.js.
     const tweetFiles = [];
     let accountFile = null;
+    let likeFile = null;
     zip.forEach((path, entry) => {
       if (entry.dir) return;
       const lower = path.toLowerCase();
-      if (/(^|\/)data\/tweets(-part\d+)?\.js$/.test(lower) || /(^|\/)data\/tweet\.js$/.test(lower)) {
-        tweetFiles.push({ path, entry });
-      } else if (/(^|\/)data\/account\.js$/.test(lower)) {
-        accountFile = entry;
+      if (TWEETS_RE.test(lower) || TWEET_RE.test(lower)) {
+        tweetFiles.push(wrapZipEntry(path, entry));
+      } else if (ACCOUNT_RE.test(lower)) {
+        accountFile = wrapZipEntry(path, entry);
+      } else if (LIKE_RE.test(lower)) {
+        likeFile = wrapZipEntry(path, entry);
       }
     });
     tweetFiles.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
     if (!tweetFiles.length) throw new Error('No tweets-part*.js found inside the ZIP. Is this a Twitter/X archive?');
-    return { zip, tweetFiles, accountFile };
+    return { mode: 'zip', tweetFiles, accountFile, likeFile };
   }
-  return { openZip };
+
+  // Walk a directory handle looking for data/. Accepts either the archive root
+  // (containing data/) or the data/ folder itself.
+  async function findDataDir(dirHandle) {
+    // Direct child?
+    for await (const [name, child] of dirHandle.entries()) {
+      if (child.kind === 'directory' && name.toLowerCase() === 'data') return child;
+    }
+    // Already inside data/?
+    for await (const [name] of dirHandle.entries()) {
+      if (/^(tweets|tweet|account|like)(-part\d+)?\.js$/i.test(name)) return dirHandle;
+    }
+    return null;
+  }
+
+  async function openFolder(dirHandle) {
+    const dataDir = await findDataDir(dirHandle);
+    if (!dataDir) throw new Error('Could not find a data/ folder. Drop the unzipped archive root.');
+    const tweetFiles = [];
+    let accountFile = null;
+    let likeFile = null;
+    for await (const [name, handle] of dataDir.entries()) {
+      if (handle.kind !== 'file') continue;
+      if (TWEETS_RE.test('data/' + name) || TWEET_RE.test('data/' + name)) {
+        tweetFiles.push(wrapFSAHandle('data/' + name, handle));
+      } else if (ACCOUNT_RE.test('data/' + name)) {
+        accountFile = wrapFSAHandle('data/' + name, handle);
+      } else if (LIKE_RE.test('data/' + name)) {
+        likeFile = wrapFSAHandle('data/' + name, handle);
+      }
+    }
+    tweetFiles.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+    if (!tweetFiles.length) throw new Error('No tweets-part*.js found in data/. Is this a Twitter/X archive folder?');
+    return { mode: 'folder', dirHandle, tweetFiles, accountFile, likeFile };
+  }
+
+  return { openZip, openFolder };
 })();
 
 // ── fingerprint ─────────────────────────────────────────────────────────────
@@ -519,20 +691,18 @@ async function sha256Hex(str) {
 
 // ── indexer ─────────────────────────────────────────────────────────────────
 const indexer = (() => {
-  async function buildFingerprint(accountRaw, firstId, lastId, tweetCount) {
-    // Phase 1 fingerprint omits like count (decisions.md #4).
-    const input = [accountRaw || '', tweetCount, firstId || '', lastId || ''].join('||');
+  async function buildFingerprint(accountRaw, firstId, lastId, tweetCount, likeCount) {
+    const input = [accountRaw || '', tweetCount, likeCount, firstId || '', lastId || ''].join('||');
     return sha256Hex(input);
   }
 
-  async function run({ file, onProgress, onPhase }) {
+  async function run({ source, onProgress, onPhase }) {
     onPhase?.('Reading archive…');
-    const { tweetFiles, accountFile } = await archive.openZip(file);
+    const { tweetFiles, accountFile, likeFile, mode, dirHandle } = source;
 
-    // Parse account first (for fingerprint + summary).
     let account = null, accountRaw = '';
     if (accountFile) {
-      accountRaw = await accountFile.async('string');
+      accountRaw = await accountFile.read();
       try {
         const arr = parser.parseYTD(accountRaw);
         account = parser.parseAccountRecord(arr);
@@ -541,22 +711,16 @@ const indexer = (() => {
       }
     }
 
-    // Probe first file for the first tweet id (for fingerprint stability).
     let firstId = null;
     onPhase?.(`Probing ${tweetFiles[0].path}…`);
     {
-      const firstText = await tweetFiles[0].entry.async('string');
+      const firstText = await tweetFiles[0].read();
       const firstArr = parser.parseYTD(firstText);
       const first = firstArr[0] && parser.parseTweetRecord(firstArr[0]);
       firstId = first ? first.id : null;
     }
 
-    // Resume check: same fingerprint inputs + 'done' state = skip.
     const priorState = await store.metaGet('index_state');
-    const priorFp = await store.metaGet('archive_fingerprint');
-
-    // We need a stable fingerprint *before* knowing total counts — use account+firstId as the cheap key
-    // for resume detection, and store the full fingerprint when complete.
     const resumeKey = await sha256Hex((accountRaw || '') + '||' + (firstId || ''));
     const priorResume = await store.metaGet('resume_key');
 
@@ -565,14 +729,20 @@ const indexer = (() => {
       return { account, resumed: true };
     }
 
-    // If interrupted (priorState exists, not done), confirm same archive before resuming.
     let startFileIdx = 0, startOffset = 0;
+    let startLikeOffset = 0;
+    let resumingPhase = 'tweets';
     if (priorState && priorState.phase !== 'done' && priorResume === resumeKey) {
-      startFileIdx = priorState.fileIndex || 0;
-      startOffset = priorState.offset || 0;
-      onPhase?.(`Resuming from ${tweetFiles[startFileIdx].path}+${startOffset}…`);
+      resumingPhase = priorState.phase || 'tweets';
+      if (resumingPhase === 'tweets') {
+        startFileIdx = priorState.fileIndex || 0;
+        startOffset = priorState.offset || 0;
+        onPhase?.(`Resuming tweets from ${tweetFiles[startFileIdx].path}+${startOffset}…`);
+      } else if (resumingPhase === 'likes') {
+        startLikeOffset = priorState.offset || 0;
+        onPhase?.(`Resuming likes at +${startLikeOffset}…`);
+      }
     } else if (priorState) {
-      // Different archive — wipe and restart.
       onPhase?.('Different archive detected — re-indexing…');
       await store.wipe();
     }
@@ -580,95 +750,119 @@ const indexer = (() => {
     await store.metaSet('resume_key', resumeKey);
     await store.metaSet('account', account);
     await store.metaSet('version', SCHEMA_VERSION);
-
-    let totalIndexed = 0;
-    let lastId = null;
-    if (startFileIdx > 0 || startOffset > 0) {
-      totalIndexed = await store.tweetCount();
+    if (mode === 'folder' && dirHandle) {
+      try { await store.metaSet('archive_handle', dirHandle); } catch { /* serialise may fail in some browsers */ }
     }
 
-    for (let i = startFileIdx; i < tweetFiles.length; i++) {
-      const { path, entry } = tweetFiles[i];
-      onPhase?.(`Parsing ${path}…`);
-      const text = await entry.async('string');
-      let arr;
-      try {
-        arr = parser.parseYTD(text);
-      } catch (e) {
-        console.error(`Parse failed for ${path}:`, e);
-        continue;
+    let totalIndexed = (startFileIdx > 0 || startOffset > 0) ? await store.tweetCount() : 0;
+    let lastId = null;
+
+    if (resumingPhase === 'tweets') {
+      for (let i = startFileIdx; i < tweetFiles.length; i++) {
+        const { path, read } = tweetFiles[i];
+        onPhase?.(`Parsing ${path}…`);
+        const text = await read();
+        let arr;
+        try { arr = parser.parseYTD(text); }
+        catch (e) { console.error(`Parse failed for ${path}:`, e); continue; }
+        let offset = (i === startFileIdx) ? startOffset : 0;
+        while (offset < arr.length) {
+          const slice = arr.slice(offset, offset + BATCH_SIZE);
+          const rows = [];
+          for (const e of slice) { const rec = parser.parseTweetRecord(e); if (rec) rows.push(rec); }
+          if (rows.length) {
+            await store.putTweetsBatch(rows);
+            lastId = rows[rows.length - 1].id;
+          }
+          offset += slice.length;
+          totalIndexed += rows.length;
+          const indexState = { phase: 'tweets', fileIndex: i, offset, file: path };
+          await store.metaSet('index_state', indexState);
+          await persist.writeState({ schema_version: SCHEMA_VERSION, ...indexState, opened_at: Date.now(), marked_for_deletion: [], marked_for_unlike: [] }, source);
+          onProgress?.({ tweetCount: totalIndexed, likeCount: 0, fileIdx: i, fileTotal: tweetFiles.length, path, scope: 'tweets' });
+        }
       }
-      let offset = (i === startFileIdx) ? startOffset : 0;
+    }
+
+    // ── likes phase ─────────────────────────────────────────────────────────
+    let likesIndexed = startLikeOffset || 0;
+    if (likeFile) {
+      onPhase?.(`Parsing ${likeFile.path}…`);
+      const text = await likeFile.read();
+      let arr = [];
+      try { arr = parser.parseYTD(text); }
+      catch (e) { console.warn('like.js parse failed:', e); arr = []; }
+      let offset = startLikeOffset;
       while (offset < arr.length) {
         const slice = arr.slice(offset, offset + BATCH_SIZE);
         const rows = [];
-        for (const entryObj of slice) {
-          const rec = parser.parseTweetRecord(entryObj);
+        for (let k = 0; k < slice.length; k++) {
+          const rec = parser.parseLikeRecord(slice[k], offset + k);
           if (rec) rows.push(rec);
         }
-        if (rows.length) {
-          await store.putTweetsBatch(rows);
-          lastId = rows[rows.length - 1].id;
-        }
+        if (rows.length) await store.putLikesBatch(rows);
         offset += slice.length;
-        totalIndexed += rows.length;
-        await store.metaSet('index_state', {
-          phase: 'tweets',
-          fileIndex: i,
-          offset,
-          file: path
-        });
-        await persist.writeState({
-          schema_version: SCHEMA_VERSION,
-          phase: 'tweets',
-          fileIndex: i,
-          offset,
-          file: path,
-          opened_at: Date.now(),
-          marked_for_deletion: []
-        });
-        onProgress?.(totalIndexed, i, tweetFiles.length, path);
+        likesIndexed += rows.length;
+        const indexState = { phase: 'likes', offset, file: likeFile.path };
+        await store.metaSet('index_state', indexState);
+        await persist.writeState({ schema_version: SCHEMA_VERSION, ...indexState, opened_at: Date.now(), marked_for_deletion: [], marked_for_unlike: [] }, source);
+        onProgress?.({ tweetCount: totalIndexed, likeCount: likesIndexed, fileIdx: 0, fileTotal: 1, path: likeFile.path, scope: 'likes' });
       }
+    } else {
+      onPhase?.('No like.js in this archive — skipping likes.');
     }
 
-    const fingerprint = await buildFingerprint(accountRaw, firstId, lastId, totalIndexed);
+    const fingerprint = await buildFingerprint(accountRaw, firstId, lastId, totalIndexed, likesIndexed);
     await store.metaSet('archive_fingerprint', fingerprint);
-    await store.metaSet('index_state', { phase: 'done', tweetCount: totalIndexed, completed_at: Date.now() });
+    await store.metaSet('index_state', { phase: 'done', tweetCount: totalIndexed, likeCount: likesIndexed, completed_at: Date.now() });
     await persist.writeState({
       schema_version: SCHEMA_VERSION,
       phase: 'done',
       archive_fingerprint: fingerprint,
       tweetCount: totalIndexed,
+      likeCount: likesIndexed,
       completed_at: Date.now(),
-      marked_for_deletion: []
-    });
+      marked_for_deletion: [],
+      marked_for_unlike: []
+    }, source);
     onPhase?.('Done.');
-    return { account, resumed: false, totalIndexed };
+    return { account, resumed: false, tweetCount: totalIndexed, likeCount: likesIndexed };
   }
   return { run };
 })();
 
 // ── ui orchestration ────────────────────────────────────────────────────────
 const ui = (() => {
-  function setProgress(count, fileIdx, fileTotal, path) {
-    $('count').textContent = count.toLocaleString();
-    const pct = fileTotal ? Math.min(100, Math.round(((fileIdx + 1) / fileTotal) * 100)) : 0;
-    $('progress-bar').style.width = pct + '%';
-    $('phase-label').textContent = `Parsing ${path} (file ${fileIdx + 1} of ${fileTotal})`;
+  function setProgress(info) {
+    const { tweetCount, likeCount, fileIdx, fileTotal, path, scope } = info;
+    if (scope === 'tweets') {
+      $('count').textContent = tweetCount.toLocaleString();
+      $('count-likes').textContent = likeCount.toLocaleString();
+      const pct = fileTotal ? Math.min(100, Math.round(((fileIdx + 1) / fileTotal) * 100)) : 0;
+      $('progress-bar').style.width = pct + '%';
+      $('phase-label').textContent = `Parsing ${path} (tweets file ${fileIdx + 1} of ${fileTotal})`;
+    } else if (scope === 'likes') {
+      $('count').textContent = tweetCount.toLocaleString();
+      $('count-likes').textContent = likeCount.toLocaleString();
+      $('progress-bar').style.width = '100%';
+      $('phase-label').textContent = `Parsing ${path} (likes)`;
+    }
   }
   function setPhase(label) {
     $('phase-label').textContent = label;
   }
   async function renderSummary(account) {
-    const stats = await store.tweetStats();
+    const [tStats, lStats] = await Promise.all([store.tweetStats(), store.likeStats()]);
     $('summary-name').textContent = (account && account.accountDisplayName) || 'Unknown account';
     $('summary-handle').textContent = account && account.username ? '@' + account.username : '@—';
-    $('stat-total').textContent = stats.total.toLocaleString();
-    $('stat-first').textContent = stats.firstDate ? new Date(stats.firstDate).toISOString().slice(0, 10) : '—';
-    $('stat-last').textContent = stats.lastDate ? new Date(stats.lastDate).toISOString().slice(0, 10) : '—';
-    $('stat-orig').textContent = stats.originals.toLocaleString();
-    $('stat-rep').textContent = stats.replies.toLocaleString();
-    $('stat-rt').textContent = stats.retweets.toLocaleString();
+    $('stat-total').textContent = tStats.total.toLocaleString();
+    $('stat-first').textContent = tStats.firstDate ? new Date(tStats.firstDate).toISOString().slice(0, 10) : '—';
+    $('stat-last').textContent = tStats.lastDate ? new Date(tStats.lastDate).toISOString().slice(0, 10) : '—';
+    $('stat-orig').textContent = tStats.originals.toLocaleString();
+    $('stat-rep').textContent = tStats.replies.toLocaleString();
+    $('stat-rt').textContent = tStats.retweets.toLocaleString();
+    $('stat-likes').textContent = lStats.total.toLocaleString();
+    $('stat-likes-text').textContent = lStats.withText.toLocaleString();
     show('screen-summary');
   }
   function showError(msg, detail) {
@@ -694,18 +888,36 @@ const ui = (() => {
       if (f) onFile(f);
     });
   }
-  return { setProgress, setPhase, renderSummary, showError, bindDropZone };
+  function bindFolderButton(onFolder) {
+    const btn = $('btn-pick-folder');
+    if (!btn) return;
+    if (typeof window.showDirectoryPicker !== 'function') {
+      btn.disabled = true;
+      btn.title = 'Folder mode needs Chrome 120+ or Edge 120+';
+      btn.textContent = 'Folder mode (Chrome/Edge only)';
+      return;
+    }
+    btn.addEventListener('click', async () => {
+      try {
+        const handle = await window.showDirectoryPicker({ id: 'bakwaas-archive', mode: 'readwrite' });
+        onFolder(handle);
+      } catch (e) {
+        if (e.name !== 'AbortError') console.warn('Folder picker failed:', e);
+      }
+    });
+  }
+  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
-async function startWithFile(file) {
-  if (!file) return;
+async function startWithSource(source) {
   show('screen-index');
   $('count').textContent = '0';
+  $('count-likes').textContent = '0';
   $('progress-bar').style.width = '0%';
   try {
     const result = await indexer.run({
-      file,
+      source,
       onProgress: ui.setProgress,
       onPhase: ui.setPhase
     });
@@ -717,24 +929,52 @@ async function startWithFile(file) {
   }
 }
 
+async function startWithFile(file) {
+  if (!file) return;
+  try {
+    const source = await archive.openZip(file);
+    await startWithSource(source);
+  } catch (e) {
+    console.error(e);
+    ui.showError(e.message || 'Failed to open ZIP', e.stack || '');
+  }
+}
+
+async function startWithFolder(dirHandle) {
+  if (!dirHandle) return;
+  try {
+    if (dirHandle.requestPermission) {
+      const perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        ui.showError('Permission to read/write the folder was denied. Bakwaas needs read+write so it can save the sidecar state file.', '');
+        return;
+      }
+    }
+    const source = await archive.openFolder(dirHandle);
+    await startWithSource(source);
+  } catch (e) {
+    console.error(e);
+    ui.showError(e.message || 'Failed to open folder', e.stack || '');
+  }
+}
+
 async function bootstrap() {
   if (!supported) {
     show('screen-unsupported');
     return;
   }
-  // Check whether we already have a 'done' index for some archive.
   const state = await store.metaGet('index_state');
   if (state && state.phase === 'done') {
     const account = await store.metaGet('account');
     await ui.renderSummary(account);
   } else if (state) {
-    // Interrupted index — show drop zone with hint to re-drop the same archive.
     ui.setPhase('Resumable index found — drop the same archive to continue.');
     show('screen-drop');
   } else {
     show('screen-drop');
   }
   ui.bindDropZone(startWithFile);
+  ui.bindFolderButton(startWithFolder);
   $('btn-new')?.addEventListener('click', async () => {
     await store.wipe();
     location.reload();
@@ -756,30 +996,38 @@ async function bootstrap() {
 }
 
 // ── agent face: window.bakwaas ──────────────────────────────────────────────
-const notImpl = (name) => () => { throw new Error(`bakwaas.${name}() not implemented in Phase 1`); };
+const notImpl = (name) => () => { throw new Error(`bakwaas.${name}() not implemented yet`); };
 
 window.bakwaas = {
-  // working in Phase 1
   async openZip(file) { return startWithFile(file); },
+  async openFolder(handle) { return startWithFolder(handle); },
   async getIndexStatus() {
-    const state = await store.metaGet('index_state');
-    const account = await store.metaGet('account');
-    const fp = await store.metaGet('archive_fingerprint');
-    const tweetCount = await store.tweetCount();
-    return { state, account, archive_fingerprint: fp, tweetCount };
+    const [state, account, fp, tweetCount, likeCount] = await Promise.all([
+      store.metaGet('index_state'),
+      store.metaGet('account'),
+      store.metaGet('archive_fingerprint'),
+      store.tweetCount(),
+      store.likeCount()
+    ]);
+    return { state, account, archive_fingerprint: fp, tweetCount, likeCount };
   },
   async exportState() {
+    const [state, account, fp, tweetCount, likeCount] = await Promise.all([
+      store.metaGet('index_state'),
+      store.metaGet('account'),
+      store.metaGet('archive_fingerprint'),
+      store.tweetCount(),
+      store.likeCount()
+    ]);
     return {
       schema_version: SCHEMA_VERSION,
-      index_state: await store.metaGet('index_state'),
-      account: await store.metaGet('account'),
-      archive_fingerprint: await store.metaGet('archive_fingerprint'),
-      tweetCount: await store.tweetCount(),
+      index_state: state,
+      account, archive_fingerprint: fp,
+      tweetCount, likeCount,
       exported_at: Date.now()
     };
   },
   // deferred to later phases
-  openFolder: notImpl('openFolder'),
   search: notImpl('search'),
   stats: notImpl('stats'),
   topics: notImpl('topics'),
