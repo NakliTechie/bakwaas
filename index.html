@@ -566,7 +566,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.7 · phase 7</span>
+      <span class="phase" id="phase-tag">v0.8 · phase 8</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1552,11 +1552,27 @@ const topics = (() => {
 // verbosity drift, hour×DOW colored by engagement. One cursor pass over tweets +
 // post-processing. Result cached in meta.patterns_cache keyed by SCHEMA_VERSION.
 const patterns = (() => {
-  const STOP = new Set(['the','a','an','and','or','but','if','then','else','on','at','in','to','of','for','with','by','from','as','is','was','are','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','must','can','this','that','these','those','it','its','they','them','their','we','us','our','you','your','he','him','his','she','her','i','me','my','not','no','yes','so','just','about','what','when','where','who','why','how','rt']);
+  const STOP = new Set(['the','a','an','and','or','but','if','then','else','on','at','in','to','of','for','with','by','from','as','is','was','are','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','must','can','this','that','these','those','it','its','they','them','their','we','us','our','you','your','he','him','his','she','her','i','me','my','not','no','yes','so','just','about','what','when','where','who','why','how','rt','am','pm','via','also','still','really','very','like','one','two','some','any','more','most','many','much','few','only','even','than','too','out','up','down','here','there','now','then','again','off','over','back','into','onto','upon','because','through','while','during','before','after','since','though','although','until']);
 
+  // Positive / negative emoji classifier — terse, intentionally not exhaustive.
+  // The intent is to surface mood drift on long arcs, not to do precise sentiment.
+  const EMOJI_RE = /[\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}]/gu;
+  const POS_EMOJI = new Set(['😀','😃','😄','😁','😆','😅','😂','🤣','☺️','☺','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','😎','🥳','🥹','🤩','🤗','❤️','❤','💖','💕','💗','💝','💟','💯','✨','🌟','⭐','⭐️','🎉','🎊','🙌','👏','👍','💪','🚀','🔥','😺','😸','😹','😻','😽']);
+  const NEG_EMOJI = new Set(['😞','😟','😔','😕','☹️','☹','🙁','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😱','😨','😰','😥','😓','🤢','🤮','🤧','😪','🤒','🤕','💔','😿','😾','😒','🙄','😬','😑','😐','🤥','🤐']);
+
+  function classifyEmoji(e) {
+    if (POS_EMOJI.has(e)) return 'pos';
+    if (NEG_EMOJI.has(e)) return 'neg';
+    return 'neutral';
+  }
   function tokenize(text) {
     if (!text) return [];
-    return (text.toLowerCase().match(/[a-z][a-z0-9']{2,}/g) || []).filter(t => !STOP.has(t));
+    // strip URLs, mentions, hashtags before tokenising
+    const cleaned = text.toLowerCase()
+      .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/@\w+/g, ' ')
+      .replace(/#\w+/g, ' ');
+    return (cleaned.match(/[a-z][a-z0-9']{2,}/g) || []).filter(t => !STOP.has(t));
   }
   function pairKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
   function ymOf(ts) {
@@ -1588,6 +1604,31 @@ const patterns = (() => {
       const topViral = [];                     // min-heap-ish (simple sorted insert)
       const bottomZeroByYear = new Map();      // year → count
       const bottomZeroSamples = [];            // oldest few zero-eng tweets
+
+      // Phase 8 trackers
+      const emojiByMonth = new Map();          // 'YYYY-MM' → { pos, neg, neutral, total, tweetsWithEmoji }
+      const urlHosts = new Map();              // host → count
+      const bigrams = new Map();               // 'word1 word2' → count
+      const perYearHour = new Map();           // year → Array(24)
+      const firstByYear = new Map();           // year → tweet (oldest in year)
+      const lastByYear = new Map();            // year → tweet (newest in year)
+      const topPerYear = new Map();            // year → array of top tweets by eng (cap 5)
+      // Style fingerprint — accumulated only over ORIGINALS (your own words).
+      const style = {
+        countOriginals: 0,
+        sumLen: 0,
+        sumEmoji: 0,
+        sumHashtags: 0,
+        sumMentions: 0,
+        sumUrls: 0,
+        sumExclamations: 0,
+        sumQuestions: 0,
+        sumAllCapsWords: 0,
+        sumWords: 0,
+        tweetsWithMedia: 0
+      };
+      let bigramsTweetsSeen = 0;
+      const BIGRAM_PRUNE_INTERVAL = 50000;
 
       await new Promise((res, rej) => {
         const tx = db.transaction('tweets', 'readonly');
@@ -1688,6 +1729,99 @@ const patterns = (() => {
             if (bottomZeroSamples.length < BOTTOM_ZERO_SAMPLES) {
               bottomZeroSamples.push({ id: t.id, text: (t.text || '').slice(0, 200), date: t.created_at, is_reply: !!t.is_reply });
             }
+          }
+
+          // ── Phase 8 trackers ─────────────────────────────────────────────
+          const txt = t.text || '';
+
+          // Emoji mood per month
+          if (typeof t.created_at === 'number' && !Number.isNaN(t.created_at)) {
+            const ym = ymOf(t.created_at);
+            const m = txt.match(EMOJI_RE) || [];
+            if (m.length) {
+              let em = emojiByMonth.get(ym);
+              if (!em) { em = { pos: 0, neg: 0, neutral: 0, total: 0, tweetsWithEmoji: 0 }; emojiByMonth.set(ym, em); }
+              em.tweetsWithEmoji++;
+              for (const ch of m) {
+                em.total++;
+                em[classifyEmoji(ch)]++;
+              }
+            }
+          }
+
+          // URL hosts
+          for (const u of (t.urls || [])) {
+            if (!u) continue;
+            try {
+              const host = new URL(u).host.replace(/^www\./, '').toLowerCase();
+              if (host) urlHosts.set(host, (urlHosts.get(host) || 0) + 1);
+            } catch { /* malformed URL */ }
+          }
+
+          // Bigrams — only over originals (your own words), skip RTs.
+          if (!t.is_retweet) {
+            const toks = tokenize(txt);
+            for (let i = 0; i < toks.length - 1; i++) {
+              const k = toks[i] + ' ' + toks[i + 1];
+              bigrams.set(k, (bigrams.get(k) || 0) + 1);
+            }
+            bigramsTweetsSeen++;
+            if (bigramsTweetsSeen % BIGRAM_PRUNE_INTERVAL === 0) {
+              // Periodic singleton-prune to keep memory bounded on large archives.
+              for (const [k, v] of bigrams) if (v < 2) bigrams.delete(k);
+            }
+          }
+
+          // Per-year hour distribution (for sleep schedule + posting rhythm)
+          if (typeof t.created_at === 'number') {
+            const yr = yOf(t.created_at);
+            let hrs = perYearHour.get(yr);
+            if (!hrs) { hrs = new Array(24).fill(0); perYearHour.set(yr, hrs); }
+            hrs[new Date(t.created_at).getUTCHours()]++;
+
+            // First / last tweet of each year (skip RTs — they're not yours)
+            if (!t.is_retweet) {
+              const fy = firstByYear.get(yr);
+              if (!fy || t.created_at < fy.created_at) {
+                firstByYear.set(yr, { id: t.id, text: txt.slice(0, 200), created_at: t.created_at });
+              }
+              const ly = lastByYear.get(yr);
+              if (!ly || t.created_at > ly.created_at) {
+                lastByYear.set(yr, { id: t.id, text: txt.slice(0, 200), created_at: t.created_at });
+              }
+
+              // Top per year by engagement (cap 5)
+              const tpyEng = (t.favorite_count || 0) + (t.retweet_count || 0);
+              if (tpyEng > 0) {
+                let tpy = topPerYear.get(yr);
+                if (!tpy) { tpy = []; topPerYear.set(yr, tpy); }
+                if (tpy.length < 5) {
+                  tpy.push({ id: t.id, eng: tpyEng, fav: t.favorite_count || 0, rt: t.retweet_count || 0,
+                            text: txt.slice(0, 280), date: t.created_at });
+                  tpy.sort((a, b) => a.eng - b.eng);
+                } else if (tpyEng > tpy[0].eng) {
+                  tpy[0] = { id: t.id, eng: tpyEng, fav: t.favorite_count || 0, rt: t.retweet_count || 0,
+                             text: txt.slice(0, 280), date: t.created_at };
+                  tpy.sort((a, b) => a.eng - b.eng);
+                }
+              }
+            }
+          }
+
+          // Style fingerprint (originals only)
+          if (!t.is_retweet && !t.is_reply) {
+            style.countOriginals++;
+            style.sumLen += txt.length;
+            style.sumEmoji += (txt.match(EMOJI_RE) || []).length;
+            style.sumHashtags += (t.hashtags || []).length;
+            style.sumMentions += (t.mentions || []).length;
+            style.sumUrls += (t.urls || []).length;
+            style.sumExclamations += (txt.match(/!/g) || []).length;
+            style.sumQuestions += (txt.match(/\?/g) || []).length;
+            const words = txt.split(/\s+/).filter(Boolean);
+            style.sumWords += words.length;
+            style.sumAllCapsWords += words.filter(w => w.length >= 3 && /^[A-Z]{3,}$/.test(w)).length;
+            if (t.has_media) style.tweetsWithMedia++;
           }
 
           c.continue();
@@ -1812,6 +1946,79 @@ const patterns = (() => {
       // Hour×DOW with cell value = average engagement (sum eng / count).
       const hodEng = hourDowEng.map(c => c.count ? (c.sumFav + c.sumRT) / c.count : 0);
 
+      // ── Phase 8 post-processing ──────────────────────────────────────────
+
+      // Top bigrams (final prune singletons + sort).
+      for (const [k, v] of bigrams) if (v < 2) bigrams.delete(k);
+      const topBigrams = [...bigrams.entries()].sort((a, b) => b[1] - a[1]).slice(0, 100);
+
+      // Top URL hosts.
+      const topUrlHosts = [...urlHosts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+
+      // Emoji mood per month — sorted timeline.
+      const emojiByMonthArr = [...emojiByMonth.entries()].sort().map(([m, v]) => ({
+        month: m, pos: v.pos, neg: v.neg, neutral: v.neutral, total: v.total,
+        tweetsWithEmoji: v.tweetsWithEmoji,
+        score: v.total ? (v.pos - v.neg) / v.total : 0
+      }));
+
+      // Per-year hour buckets + inferred sleep window (longest low-activity stretch).
+      function findSleepWindow(hours) {
+        // 6-hour rolling window with min total volume.
+        let minSum = Infinity, minStart = 0;
+        for (let s = 0; s < 24; s++) {
+          let sum = 0;
+          for (let h = 0; h < 6; h++) sum += hours[(s + h) % 24];
+          if (sum < minSum) { minSum = sum; minStart = s; }
+        }
+        return { start: minStart, end: (minStart + 6) % 24 };
+      }
+      const yearHours = [...perYearHour.entries()].sort((a, b) => a[0] - b[0]).map(([year, hours]) => ({
+        year, hours, sleep: findSleepWindow(hours), total: hours.reduce((s, n) => s + n, 0)
+      }));
+
+      // First / last / top per year — convert to sorted arrays.
+      const firstByYearArr = [...firstByYear.entries()].sort((a, b) => a[0] - b[0]).map(([y, t]) => ({ year: y, ...t }));
+      const lastByYearArr = [...lastByYear.entries()].sort((a, b) => a[0] - b[0]).map(([y, t]) => ({ year: y, ...t }));
+      const topPerYearArr = [...topPerYear.entries()].sort((a, b) => a[0] - b[0]).map(([y, list]) => ({
+        year: y,
+        top: list.sort((a, b) => b.eng - a.eng).slice(0, 5)
+      }));
+
+      // Style fingerprint averages + a derived archetype.
+      const styleAvg = {
+        countOriginals: style.countOriginals,
+        avgLen: style.countOriginals ? style.sumLen / style.countOriginals : 0,
+        emojiRate: style.countOriginals ? style.sumEmoji / style.countOriginals : 0,
+        hashtagRate: style.countOriginals ? style.sumHashtags / style.countOriginals : 0,
+        mentionRate: style.countOriginals ? style.sumMentions / style.countOriginals : 0,
+        urlRate: style.countOriginals ? style.sumUrls / style.countOriginals : 0,
+        exclamationRate: style.countOriginals ? style.sumExclamations / style.countOriginals : 0,
+        questionRate: style.countOriginals ? style.sumQuestions / style.countOriginals : 0,
+        allCapsRate: style.sumWords ? style.sumAllCapsWords / style.sumWords : 0,
+        mediaRate: style.countOriginals ? style.tweetsWithMedia / style.countOriginals : 0
+      };
+      function deriveArchetype(s) {
+        const tags = [];
+        if (s.avgLen > 200) tags.push('Long-form');
+        else if (s.avgLen < 60) tags.push('Terse');
+        if (s.emojiRate > 0.5) tags.push('Emoji-heavy');
+        if (s.hashtagRate > 0.5) tags.push('Hashtagger');
+        if (s.urlRate > 0.4) tags.push('Link-sharer');
+        if (s.exclamationRate > 0.5) tags.push('Exclaimer');
+        if (s.questionRate > 0.5) tags.push('Asker');
+        if (s.allCapsRate > 0.05) tags.push('Shouter');
+        if (s.mediaRate > 0.3) tags.push('Media-poster');
+        if (!tags.length) tags.push('Plain-speech');
+        return tags.join(' · ');
+      }
+      styleAvg.archetype = deriveArchetype(styleAvg);
+
+      // Account-age: first-date is in fullStats.firstDate (already used for streaks above).
+      const accountAge = baseStats.firstDate
+        ? { firstDate: baseStats.firstDate, daysSince: Math.floor((Date.now() - baseStats.firstDate) / 86400000) }
+        : null;
+
       const out = {
         version: SCHEMA_VERSION,
         topViral: topViral.sort((a, b) => b.eng - a.eng).slice(0, 20),
@@ -1827,6 +2034,16 @@ const patterns = (() => {
         longestStreak,
         longestGap,
         hourDowEng: hodEng,
+        // Phase 8 additions
+        emojiByMonth: emojiByMonthArr,
+        topUrlHosts,
+        topBigrams,
+        yearHours,
+        firstByYear: firstByYearArr,
+        lastByYear: lastByYearArr,
+        topPerYear: topPerYearArr,
+        style: styleAvg,
+        accountAge,
         computed_at: Date.now()
       };
 
@@ -2522,6 +2739,78 @@ const ui = (() => {
                 `<div class="cm-row"><span class="cm-users">@${safe(c.a)} × @${safe(c.b)}</span><span class="cm-count">${c.count.toLocaleString()}</span></div>`
               ).join('') || '<div class="top-empty">— no pairs found —</div>'}</div>
             </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Conversation graph — top co-mentioned users</h3>
+              <div class="chart-wrap">${conversationGraphHTML(p.topCoMentions || [])}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Mood, voice & rhythm</h2>
+          <div class="kpi-row">
+            <div class="kpi">
+              <div class="kpi-label">Account age</div>
+              <div class="kpi-value">${p.accountAge ? p.accountAge.daysSince.toLocaleString() : '—'} days</div>
+              <div class="kpi-sub">since ${p.accountAge ? new Date(p.accountAge.firstDate).toISOString().slice(0,10) : '—'}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Avg tweet length</div>
+              <div class="kpi-value">${Math.round(p.style?.avgLen || 0)} chars</div>
+              <div class="kpi-sub">over ${(p.style?.countOriginals || 0).toLocaleString()} originals</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Emoji rate</div>
+              <div class="kpi-value">${((p.style?.emojiRate || 0) * 100).toFixed(0)}%</div>
+              <div class="kpi-sub">of tweets carry an emoji-ish</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Archetype</div>
+              <div class="kpi-value" style="font-size:14px;line-height:1.4;">${safe(p.style?.archetype || '—')}</div>
+              <div class="kpi-sub">derived from style fingerprint</div>
+            </div>
+          </div>
+          <div class="charts-grid" style="margin-top:14px;">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Emoji mood timeline — (pos − neg) / total per month</h3>
+              <div class="chart-wrap">${emojiMoodHTML(p.emojiByMonth)}</div>
+            </div>
+            <div class="chart-card">
+              <h3>Style fingerprint</h3>
+              ${styleFingerprintHTML(p.style)}
+            </div>
+            <div class="chart-card">
+              <h3>Sleep / quiet-hours by year (UTC)</h3>
+              <div class="chart-wrap">${sleepByYearHTML(p.yearHours)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>What you talk about</h2>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Top phrases (bigrams)</h3>
+              ${topListHTML(p.topBigrams || [], null, (k) => safe(k))}
+            </div>
+            <div class="chart-card">
+              <h3>Top link hosts you share</h3>
+              ${topListHTML(p.topUrlHosts || [], null, (k) => safe(k))}
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>First, last, best — by year</h2>
+          <div class="charts-grid">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>First &amp; last tweet of each year</h3>
+              <div class="threads-list">${firstLastByYearHTML(p.firstByYear, p.lastByYear)}</div>
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Top tweet per year (by engagement)</h3>
+              <div class="compact-list">${topPerYearHTML(p.topPerYear)}</div>
+            </div>
           </div>
         </div>
       `;
@@ -2606,6 +2895,181 @@ const ui = (() => {
       <polyline class="ln" points="${pts}"/>
     </svg>`;
   }
+  function emojiMoodHTML(arr) {
+    if (!arr || !arr.length) return '<div class="top-empty">— no emoji usage —</div>';
+    // Score line: (pos - neg) / total per month, range [-1, 1].
+    const series = arr.map(m => ({ x: m.month, y: m.score }));
+    return signedLineChartHTML(series);
+  }
+
+  function signedLineChartHTML(series) {
+    if (!series.length) return '<div class="top-empty">— no data —</div>';
+    const W = 720, H = 160, PAD_L = 32, PAD_R = 8, PAD_T = 10, PAD_B = 20;
+    const xs = (i) => PAD_L + (i * (W - PAD_L - PAD_R)) / Math.max(1, series.length - 1);
+    const ysC = (v) => PAD_T + (H - PAD_T - PAD_B) * (1 - ((v + 1) / 2));
+    const pts = series.map((s, i) => `${xs(i).toFixed(1)},${ysC(s.y).toFixed(1)}`).join(' ');
+    const zeroY = ysC(0).toFixed(1);
+    const xLabels = (series.length > 1 ? [0, Math.floor(series.length / 2), series.length - 1] : [0])
+      .map(i => `<text x="${xs(i).toFixed(1)}" y="${H - 4}" text-anchor="middle">${series[i].x}</text>`).join('');
+    return `<svg class="linechart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet">
+      <text x="0" y="${ysC(1).toFixed(1) + 3}">+1</text>
+      <text x="0" y="${(parseFloat(zeroY) + 3).toFixed(1)}">0</text>
+      <text x="0" y="${ysC(-1).toFixed(1) + 3}">−1</text>
+      <line x1="${PAD_L}" y1="${zeroY}" x2="${W - PAD_R}" y2="${zeroY}" class="ln-baseline"/>
+      ${xLabels}
+      <polyline class="ln" points="${pts}"/>
+    </svg>`;
+  }
+
+  function styleFingerprintHTML(s) {
+    if (!s || !s.countOriginals) return '<div class="top-empty">— no originals to fingerprint —</div>';
+    const rows = [
+      ['Hashtags / tweet', s.hashtagRate, 2],
+      ['Mentions / tweet', s.mentionRate, 3],
+      ['URLs / tweet', s.urlRate, 1],
+      ['Emoji / tweet', s.emojiRate, 3],
+      ['Exclamations / tweet', s.exclamationRate, 2],
+      ['Questions / tweet', s.questionRate, 1],
+      ['Media-attached', s.mediaRate, 1],
+      ['ALL-CAPS words', s.allCapsRate, 0.1]
+    ];
+    return '<div class="top-list">' + rows.map(([label, v, scale]) => {
+      const pct = Math.min(120, Math.round((v / scale) * 120));
+      return `<div class="top-row">
+        <span class="top-label">${label}</span>
+        <div class="top-bar-wrap">
+          <div class="top-bar" style="width:${Math.max(2, pct)}px"></div>
+          <span class="top-count">${v.toFixed(2)}</span>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  function sleepByYearHTML(arr) {
+    if (!arr || !arr.length) return '<div class="top-empty">— no data —</div>';
+    // For each year, a 24-bin bar + sleep window highlighted.
+    const CELL = 8, GAP = 2, ROW_H = 16, LABEL_W = 38;
+    const W = LABEL_W + 24 * (CELL + GAP);
+    return arr.map(({ year, hours, sleep, total }) => {
+      const max = Math.max(...hours, 1);
+      let bars = `<text x="0" y="${ROW_H - 4}" style="fill:var(--muted);font-size:10px;font-family:var(--mono);">${year}</text>`;
+      for (let h = 0; h < 24; h++) {
+        const v = hours[h];
+        const heightFrac = v / max;
+        const heightPx = Math.max(1, Math.round(heightFrac * 12));
+        const x = LABEL_W + h * (CELL + GAP);
+        const isSleep = (sleep.start <= sleep.end)
+          ? (h >= sleep.start && h < sleep.end)
+          : (h >= sleep.start || h < sleep.end);
+        const fill = isSleep ? 'var(--panel-2)' : 'var(--accent)';
+        bars += `<rect x="${x}" y="${ROW_H - heightPx - 2}" width="${CELL}" height="${heightPx}" rx="1" fill="${fill}"><title>${year} ${String(h).padStart(2,'0')}:00 UTC — ${v.toLocaleString()}</title></rect>`;
+      }
+      return `<svg viewBox="0 0 ${W} ${ROW_H}" width="${W}" height="${ROW_H}" style="display:block;margin-bottom:2px;" preserveAspectRatio="xMinYMid meet">${bars}</svg>`;
+    }).join('') +
+      `<div class="heatmap-legend">
+        <span class="swatch" style="background:var(--accent)"></span> activity
+        <span class="swatch" style="background:var(--panel-2)"></span> inferred sleep window (rolling 6-h min)
+      </div>`;
+  }
+
+  function firstLastByYearHTML(first, last) {
+    const fb = new Map((first || []).map(x => [x.year, x]));
+    const lb = new Map((last || []).map(x => [x.year, x]));
+    const years = [...new Set([...fb.keys(), ...lb.keys()])].sort();
+    if (!years.length) return '<div class="top-empty">— no dated tweets —</div>';
+    return years.map(y => {
+      const f = fb.get(y), l = lb.get(y);
+      const fUrl = f ? `https://twitter.com/i/web/status/${f.id}` : null;
+      const lUrl = l ? `https://twitter.com/i/web/status/${l.id}` : null;
+      return `<div class="thread-row">
+        <div class="th-head"><strong style="color:var(--accent);font-size:12px;">${y}</strong></div>
+        ${f ? `<div class="th-text" style="margin-bottom:6px;"><span style="font-family:var(--mono);font-size:10px;color:var(--muted);">first · ${new Date(f.created_at).toISOString().slice(0,10)}</span><br>${safe(f.text)} <a href="${fUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a></div>` : ''}
+        ${l ? `<div class="th-text"><span style="font-family:var(--mono);font-size:10px;color:var(--muted);">last · ${new Date(l.created_at).toISOString().slice(0,10)}</span><br>${safe(l.text)} <a href="${lUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function topPerYearHTML(arr) {
+    if (!arr || !arr.length) return '<div class="top-empty">— no engagement yet —</div>';
+    return arr.map(yr => {
+      const t = yr.top[0];
+      if (!t) return '';
+      const url = `https://twitter.com/i/web/status/${t.id}`;
+      const dt = new Date(t.date).toISOString().slice(0, 10);
+      return `<div class="compact-tweet">
+        <div class="ct-text"><strong style="color:var(--accent);font-family:var(--mono);font-size:11px;margin-right:6px;">${yr.year}</strong>${safe(t.text)}</div>
+        <div class="ct-meta">
+          <span>${dt}</span><span>♥ ${t.fav.toLocaleString()}</span><span>↻ ${t.rt.toLocaleString()}</span>
+          <a href="${url}" target="_blank" rel="noopener">open →</a>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Force-directed graph: top co-mention pairs become nodes + weighted edges.
+  // ~30 nodes max — runs ~120 iterations for a stable layout. Inline SVG only.
+  function conversationGraphHTML(pairs) {
+    if (!pairs || !pairs.length) return '<div class="top-empty">— no co-mention pairs —</div>';
+    const W = 720, H = 380;
+    const nodeMap = new Map(); // user → { id, x, y, deg }
+    for (const p of pairs) {
+      if (!nodeMap.has(p.a)) nodeMap.set(p.a, { id: p.a, x: Math.random() * W, y: Math.random() * H, vx: 0, vy: 0, deg: 0 });
+      if (!nodeMap.has(p.b)) nodeMap.set(p.b, { id: p.b, x: Math.random() * W, y: Math.random() * H, vx: 0, vy: 0, deg: 0 });
+      nodeMap.get(p.a).deg += p.count;
+      nodeMap.get(p.b).deg += p.count;
+    }
+    const nodes = [...nodeMap.values()];
+    const edges = pairs.map(p => ({ a: nodeMap.get(p.a), b: nodeMap.get(p.b), w: p.count }));
+
+    // Simple force-directed simulation
+    const ITER = 150, k = 80;
+    for (let it = 0; it < ITER; it++) {
+      // Repulsion
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d2 = dx * dx + dy * dy + 0.01;
+          const f = (k * k) / d2;
+          const fx = f * dx, fy = f * dy;
+          a.vx += fx; a.vy += fy;
+          b.vx -= fx; b.vy -= fy;
+        }
+      }
+      // Attraction along edges
+      for (const e of edges) {
+        const dx = e.a.x - e.b.x, dy = e.a.y - e.b.y;
+        const d = Math.sqrt(dx * dx + dy * dy) + 0.01;
+        const f = (d * d) / (k * 4);
+        const fx = (f * dx) / d, fy = (f * dy) / d;
+        e.a.vx -= fx; e.a.vy -= fy;
+        e.b.vx += fx; e.b.vy += fy;
+      }
+      // Centering + cool
+      const cool = 0.85;
+      for (const n of nodes) {
+        n.x += Math.max(-12, Math.min(12, n.vx));
+        n.y += Math.max(-12, Math.min(12, n.vy));
+        n.x = Math.max(20, Math.min(W - 20, n.x));
+        n.y = Math.max(16, Math.min(H - 16, n.y));
+        n.vx *= cool; n.vy *= cool;
+      }
+    }
+    const maxDeg = Math.max(...nodes.map(n => n.deg), 1);
+    const maxW = Math.max(...edges.map(e => e.w), 1);
+    const edgeSvg = edges.map(e => {
+      const sw = 0.5 + (e.w / maxW) * 2.5;
+      return `<line x1="${e.a.x.toFixed(1)}" y1="${e.a.y.toFixed(1)}" x2="${e.b.x.toFixed(1)}" y2="${e.b.y.toFixed(1)}" stroke="var(--border)" stroke-width="${sw.toFixed(2)}" opacity="0.7"/>`;
+    }).join('');
+    const nodeSvg = nodes.map(n => {
+      const r = 4 + (n.deg / maxDeg) * 8;
+      const labelOffset = r + 4;
+      return `<g><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r.toFixed(1)}" fill="var(--accent)" opacity="0.85"><title>@${n.id} — ${n.deg} co-mentions</title></circle>
+        <text x="${n.x.toFixed(1)}" y="${(n.y + labelOffset + 8).toFixed(1)}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="var(--mono)">@${n.id}</text></g>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;background:var(--panel-2);border-radius:8px;" preserveAspectRatio="xMidYMid meet">${edgeSvg}${nodeSvg}</svg>`;
+  }
+
   function hourDowEngHTML(hodEng) {
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const max = Math.max(1, ...hodEng);
