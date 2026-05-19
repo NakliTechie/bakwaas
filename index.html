@@ -183,7 +183,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.1 · phase 1</span>
+      <span class="phase" id="phase-tag">v0.2 · phase 2</span>
     </div>
     <div class="tag">explore your Twitter archive · find the noise · delete it</div>
   </header>
@@ -307,6 +307,7 @@ const store = (() => {
     if (dbPromise) return dbPromise;
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
+      let blockedTimer = null;
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains('tweets')) {
@@ -328,8 +329,20 @@ const store = (() => {
           db.createObjectStore('meta');
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        clearTimeout(blockedTimer);
+        const db = req.result;
+        // If another tab requests an upgrade later, get out of the way.
+        db.onversionchange = () => { db.close(); dbPromise = null; };
+        resolve(db);
+      };
+      req.onerror = () => { clearTimeout(blockedTimer); reject(req.error); };
+      req.onblocked = () => {
+        clearTimeout(blockedTimer);
+        reject(new Error('IndexedDB upgrade blocked. Close other Bakwaas tabs and reload.'));
+      };
+      // Hard timeout — don't hang forever if Chrome silently stalls.
+      blockedTimer = setTimeout(() => reject(new Error('IndexedDB open timed out after 10s.')), 10000);
     });
     return dbPromise;
   }
@@ -1045,9 +1058,18 @@ window.bakwaas = {
 };
 
 bootstrap().catch((e) => {
-  console.error(e);
-  ui.showError('Bakwaas failed to start', e.stack || String(e));
+  console.error('bootstrap failed:', e);
+  try { ui.showError('Bakwaas failed to start', (e && e.stack) || String(e)); }
+  catch (e2) { console.error('error screen also failed:', e2); show('screen-drop'); }
 });
+
+// Safety: if no screen activates within 4s (e.g. silent stall), fall back to the drop zone.
+setTimeout(() => {
+  if (!document.querySelector('.screen.active')) {
+    console.warn('No screen active after 4s — falling back to drop zone.');
+    show('screen-drop');
+  }
+}, 4000);
 </script>
 </body>
 </html>
