@@ -3105,6 +3105,8 @@ async function startWithFolder(dirHandle) {
 }
 
 async function bootstrap() {
+  // Wire help first — it must work even if the DB hangs or the browser is unsupported.
+  ui.bindHelp();
   if (!supported) {
     show('screen-unsupported');
     return;
@@ -3119,7 +3121,6 @@ async function bootstrap() {
   } else {
     show('screen-drop');
   }
-  ui.bindHelp();
   ui.bindDropZone(startWithFile);
   ui.bindFolderButton(startWithFolder);
   ui.bindTabs();
