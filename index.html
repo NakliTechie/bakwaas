@@ -608,6 +608,35 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .zero-by-year .zy .zy-year { color: var(--accent); font-weight: 600; }
 .zero-by-year .zy .zy-count { color: var(--muted); }
 
+/* Sparklines for top-hashtag lifecycle */
+.spark-list { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; }
+.spark-row {
+  display: grid; grid-template-columns: 110px 1fr 60px;
+  gap: 10px; align-items: center; font-size: 12px;
+}
+.spark-row .spark-label { color: var(--accent); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spark-row .spark-count { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; }
+.spark { display: block; width: 100%; height: 24px; }
+.spark .spark-line { stroke: var(--accent); stroke-width: 1; fill: none; }
+.spark .spark-area { fill: var(--accent); opacity: 0.18; }
+
+/* On-this-day controls */
+.when-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
+.when-row input[type=date], .when-row select {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; font-size: 13px; font-family: inherit;
+}
+.when-row button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 14px; font-size: 13px;
+}
+.when-row button:hover { border-color: var(--accent); color: var(--accent); }
+.when-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 13px; }
+.ann-year { margin-top: 12px; }
+.ann-year:first-child { margin-top: 0; }
+.ann-year-h { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed var(--border); }
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -632,7 +661,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.10 · multi-archive</span>
+      <span class="phase" id="phase-tag">v0.11 · on this day</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1789,6 +1818,19 @@ const patterns = (() => {
   const POS_EMOJI = new Set(['😀','😃','😄','😁','😆','😅','😂','🤣','☺️','☺','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','😎','🥳','🥹','🤩','🤗','❤️','❤','💖','💕','💗','💝','💟','💯','✨','🌟','⭐','⭐️','🎉','🎊','🙌','👏','👍','💪','🚀','🔥','😺','😸','😹','😻','😽']);
   const NEG_EMOJI = new Set(['😞','😟','😔','😕','☹️','☹','🙁','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😱','😨','😰','😥','😓','🤢','🤮','🤧','😪','🤒','🤕','💔','😿','😾','😒','🙄','😬','😑','😐','🤥','🤐']);
 
+  // Word-list polarity. Small AFINN-flavoured lists. Aimed at long-arc drift,
+  // not precision sentiment. Tokens already pass through tokenize() so they
+  // are lowercase, no punctuation, no stopwords.
+  const POS_WORDS = new Set(['love','loved','loving','great','amazing','awesome','excellent','fantastic','wonderful','brilliant','beautiful','happy','excited','thrilled','grateful','blessed','joy','laugh','laughing','hilarious','funny','smile','smiling','cheer','celebrate','celebrating','success','win','winning','won','victorious','yay','woohoo','congrats','congratulations','thanks','thank','perfect','best','favorite','favourite','top','yes','definitely','absolutely','wow','incredible','fabulous','nice','good','kind','cute','adorable','lovely','sweet','inspiring','motivating','hopeful','optimistic','proud','delighted','enjoy','enjoyed','enjoying','fun','playful','glad','wonderful','superb','impressive','outstanding','dream','dreamy','genius','lit','dope']);
+  const NEG_WORDS = new Set(['hate','hated','hating','awful','terrible','horrible','bad','worst','disgusting','ugly','stupid','dumb','idiot','fool','foolish','angry','mad','furious','upset','sad','sorry','sucks','sucked','suck','pain','painful','hurt','hurting','cry','crying','tears','depressed','depressing','miserable','broken','alone','lonely','tired','exhausted','disappointed','disappointing','frustrated','annoyed','annoying','bored','anxious','worried','scared','afraid','frightened','fail','failed','failing','failure','pathetic','worthless','shame','ashamed','embarrassed','regret','regrets','dread','dreading','wretched','dismal','grim','toxic','rage','outraged','outrage']);
+
+  // Privacy / PII patterns (regex-only; v0 quality, used to flag — not to bulk-purge).
+  const EMAIL_RE = /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/;
+  // Phone-number-shaped: at least 9 digits, separators allowed. Mildly false-positive
+  // on long integers; that's acceptable here — the audit is a flag, not a fact.
+  const PHONE_RE = /\b\+?\d[\d\s().\-]{8,}\d\b/;
+  const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/;
+
   function classifyEmoji(e) {
     if (POS_EMOJI.has(e)) return 'pos';
     if (NEG_EMOJI.has(e)) return 'neg';
@@ -1816,7 +1858,7 @@ const patterns = (() => {
     if (inflight) return inflight;
     inflight = (async () => {
       const cached = await store.metaGet('patterns_cache');
-      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats) return cached;
+      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth) return cached;
 
       const db = await store.open();
       const TOP_VIRAL = 30;
@@ -1865,6 +1907,12 @@ const patterns = (() => {
       const perYearSources = new Map();        // year → Map<source, count>
       const perYearCounts = new Map();         // year → { total, originals, replies, retweets, sumFav, sumRT, sumLen }
       const perYearMonth = new Map();          // year → Map<YYYY-MM, count>  (for peak-month per year)
+
+      // Phase 11 trackers
+      const polarityByMonth = new Map();       // 'YYYY-MM' → { pos, neg, tweetsWithWords }
+      const bigramsByYear = new Map();         // bigram → Set<year> (for recurring-themes pruning)
+      const piiCandidates = [];                // [{ id, text, types, date }] — capped
+      const PII_CAP = 50;
 
       await new Promise((res, rej) => {
         const tx = db.transaction('tweets', 'readonly');
@@ -1997,14 +2045,46 @@ const patterns = (() => {
           // Bigrams — only over originals (your own words), skip RTs.
           if (!t.is_retweet) {
             const toks = tokenize(txt);
+            const yr = t.created_at ? yOf(t.created_at) : null;
             for (let i = 0; i < toks.length - 1; i++) {
               const k = toks[i] + ' ' + toks[i + 1];
               bigrams.set(k, (bigrams.get(k) || 0) + 1);
+              if (yr) {
+                let s = bigramsByYear.get(k);
+                if (!s) { s = new Set(); bigramsByYear.set(k, s); }
+                s.add(yr);
+              }
             }
             bigramsTweetsSeen++;
             if (bigramsTweetsSeen % BIGRAM_PRUNE_INTERVAL === 0) {
               // Periodic singleton-prune to keep memory bounded on large archives.
-              for (const [k, v] of bigrams) if (v < 2) bigrams.delete(k);
+              for (const [k, v] of bigrams) if (v < 2) { bigrams.delete(k); bigramsByYear.delete(k); }
+            }
+
+            // Word-list polarity per month (originals only)
+            if (typeof t.created_at === 'number' && !Number.isNaN(t.created_at)) {
+              const ymKey2 = ymOf(t.created_at);
+              let pos = 0, neg = 0;
+              for (const w of toks) {
+                if (POS_WORDS.has(w)) pos++;
+                else if (NEG_WORDS.has(w)) neg++;
+              }
+              if (pos || neg) {
+                let pp = polarityByMonth.get(ymKey2);
+                if (!pp) { pp = { pos: 0, neg: 0, tweetsWithWords: 0 }; polarityByMonth.set(ymKey2, pp); }
+                pp.pos += pos; pp.neg += neg; pp.tweetsWithWords++;
+              }
+            }
+
+            // PII audit — light regex scan on originals only.
+            if (piiCandidates.length < PII_CAP) {
+              const types = [];
+              if (EMAIL_RE.test(txt)) types.push('email');
+              if (PHONE_RE.test(txt)) types.push('phone');
+              if (SSN_RE.test(txt)) types.push('ssn-shape');
+              if (types.length) {
+                piiCandidates.push({ id: t.id, text: txt.slice(0, 280), date: t.created_at, types });
+              }
             }
           }
 
@@ -2288,6 +2368,56 @@ const patterns = (() => {
         ? { firstDate: baseStats.firstDate, daysSince: Math.floor((Date.now() - baseStats.firstDate) / 86400000) }
         : null;
 
+      // Polarity timeline (word-list based).
+      const polarityArr = [...polarityByMonth.entries()].sort().map(([m, v]) => {
+        const total = v.pos + v.neg;
+        return {
+          month: m, pos: v.pos, neg: v.neg,
+          tweetsWithWords: v.tweetsWithWords,
+          score: total ? (v.pos - v.neg) / total : 0
+        };
+      });
+
+      // Recurring themes: bigrams that appear in >= 3 distinct years.
+      const recurringThemes = [];
+      for (const [bg, yrs] of bigramsByYear) {
+        if (yrs.size >= 3) {
+          recurringThemes.push({ bigram: bg, years: yrs.size, total: bigrams.get(bg) || 0 });
+        }
+      }
+      recurringThemes.sort((a, b) => b.years - a.years || b.total - a.total);
+
+      // Hashtag-month sparkline data — pre-compute monthly series for top-30 hashtags.
+      const hashtagSparklines = [];
+      // Use a span derived from baseStats to fix the x-axis across sparklines.
+      const months = baseStats.firstDate
+        ? (() => {
+            const list = [];
+            const start = new Date(baseStats.firstDate);
+            const end = baseStats.lastDate ? new Date(baseStats.lastDate) : start;
+            let y = start.getUTCFullYear(), m = start.getUTCMonth();
+            const eY = end.getUTCFullYear(), eM = end.getUTCMonth();
+            while (y < eY || (y === eY && m <= eM)) {
+              list.push(`${y}-${String(m + 1).padStart(2, '0')}`);
+              m++; if (m === 12) { m = 0; y++; }
+            }
+            return list;
+          })()
+        : [];
+      // Pick top-30 hashtags by global count for sparklines.
+      const topTagsForSparkline = [...perHashtagEng.entries()]
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 30)
+        .map(([tag]) => tag);
+      for (const tag of topTagsForSparkline) {
+        const mm = perHashtagMonths.get(tag);
+        if (!mm) continue;
+        const series = months.map(m => mm.get(m) || 0);
+        if (series.some(n => n > 0)) {
+          hashtagSparklines.push({ tag, total: perHashtagEng.get(tag).count, series });
+        }
+      }
+
       // Per-year stats summary (Wrapped feed)
       function topNFromMap(map, n) {
         return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
@@ -2348,6 +2478,11 @@ const patterns = (() => {
         style: styleAvg,
         accountAge,
         perYearStats,
+        polarityByMonth: polarityArr,
+        recurringThemes: recurringThemes.slice(0, 30),
+        hashtagSparklines,
+        sparklineMonths: months,
+        piiCandidates: piiCandidates.slice(0, PII_CAP),
         computed_at: Date.now()
       };
 
@@ -2357,7 +2492,60 @@ const patterns = (() => {
     return inflight;
   }
 
-  return { aggregate };
+  // ── Lazy helpers (compute on demand, not cached) ──────────────────────
+  // anniversary(monthDay) — month-day = 'MM-DD'. Returns tweets posted on
+  // that calendar day across all years, oldest first within each year.
+  async function anniversary(monthDay) {
+    if (!/^\d{2}-\d{2}$/.test(monthDay)) throw new Error('monthDay must be MM-DD');
+    const [mm, dd] = monthDay.split('-').map(n => parseInt(n, 10));
+    const db = await store.open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const out = [];
+      const cur = tx.objectStore('tweets').openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res(out.sort((a, b) => a.created_at - b.created_at));
+        const t = c.value;
+        if (t.created_at) {
+          const d = new Date(t.created_at);
+          if (d.getUTCMonth() + 1 === mm && d.getUTCDate() === dd) {
+            out.push({ id: t.id, text: t.text, date: t.created_at, fav: t.favorite_count, rt: t.retweet_count, is_reply: t.is_reply, is_retweet: t.is_retweet, has_media: t.has_media });
+          }
+        }
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+  }
+
+  // byDate(targetDate, windowDays) — uses the created_at IndexedDB index for
+  // efficient range scan. window is the half-width in days (default 3 ⇒ ±3d).
+  async function byDate(targetDateISO, windowDays = 3) {
+    const t0 = Date.parse(targetDateISO + 'T00:00:00Z');
+    if (Number.isNaN(t0)) throw new Error('targetDateISO must be YYYY-MM-DD');
+    const WIN = (windowDays || 0) * 86400000;
+    const lo = t0 - WIN;
+    const hi = t0 + WIN + 86400000;  // include the upper day
+    const db = await store.open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const idx = tx.objectStore('tweets').index('created_at');
+      const range = IDBKeyRange.bound(lo, hi);
+      const out = [];
+      const cur = idx.openCursor(range);
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res(out.sort((a, b) => a.created_at - b.created_at));
+        const t = c.value;
+        out.push({ id: t.id, text: t.text, date: t.created_at, fav: t.favorite_count, rt: t.retweet_count, is_reply: t.is_reply, is_retweet: t.is_retweet, has_media: t.has_media });
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+  }
+
+  return { aggregate, anniversary, byDate };
 })();
 
 // ── search (MiniSearch) ─────────────────────────────────────────────────────
@@ -3022,6 +3210,13 @@ const ui = (() => {
               <h3>Sample zero-engagement tweets (oldest 50)</h3>
               <div class="compact-list">${(p.bottomZeroSamples || []).slice(0, 50).map(zeroSampleHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
             </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Privacy audit — tweets that look like they leak PII (regex-flagged)</h3>
+              <div class="compact-list">${piiAuditHTML(p.piiCandidates)}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">
+                Flagged by simple regex patterns — false positives are normal. Eyeball before acting.
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3074,6 +3269,10 @@ const ui = (() => {
               <h3>Emoji mood timeline — (pos − neg) / total per month</h3>
               <div class="chart-wrap">${emojiMoodHTML(p.emojiByMonth)}</div>
             </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Word-list polarity drift — (pos − neg) / (pos + neg) per month</h3>
+              <div class="chart-wrap">${polarityTimelineHTML(p.polarityByMonth)}</div>
+            </div>
             <div class="chart-card">
               <h3>Style fingerprint</h3>
               ${styleFingerprintHTML(p.style)}
@@ -3093,8 +3292,42 @@ const ui = (() => {
               ${topListHTML(p.topBigrams || [], null, (k) => safe(k))}
             </div>
             <div class="chart-card">
+              <h3>Recurring themes (≥ 3 different years)</h3>
+              ${recurringThemesHTML(p.recurringThemes)}
+            </div>
+            <div class="chart-card">
               <h3>Top link hosts you share</h3>
               ${topListHTML(p.topUrlHosts || [], null, (k) => safe(k))}
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Hashtag lifecycle — top 30, monthly use over your whole archive</h3>
+              ${hashtagSparklinesHTML(p.hashtagSparklines, p.sparklineMonths)}
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>On this day</h2>
+          <div class="charts-grid">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Anniversaries — what you posted on this calendar day, across years</h3>
+              <div id="anniversary-host"><div class="stats-loading">Loading anniversaries…</div></div>
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>What were you doing then?</h3>
+              <div class="when-row">
+                <label for="when-date">Pick a date:</label>
+                <input type="date" id="when-date" />
+                <label for="when-window">Window:</label>
+                <select id="when-window">
+                  <option value="0">Exact day</option>
+                  <option value="1">± 1 day</option>
+                  <option value="3" selected>± 3 days</option>
+                  <option value="7">± 7 days</option>
+                </select>
+                <button type="button" id="when-go">Show tweets</button>
+              </div>
+              <div id="when-host"><div class="when-empty">Pick a date and a window to see what you were posting around then.</div></div>
             </div>
           </div>
         </div>
@@ -3113,6 +3346,9 @@ const ui = (() => {
           </div>
         </div>
       `;
+      // Late wiring for the lazy-loaded sub-sections.
+      bindWhenControls();
+      renderAnniversary();
     } catch (e) {
       console.error('patterns render failed:', e);
       host.innerHTML = '<div class="topics-empty">Couldn’t compute patterns: ' + safe(e.message || e) + '</div>';
@@ -3199,6 +3435,118 @@ const ui = (() => {
     // Score line: (pos - neg) / total per month, range [-1, 1].
     const series = arr.map(m => ({ x: m.month, y: m.score }));
     return signedLineChartHTML(series);
+  }
+
+  function polarityTimelineHTML(arr) {
+    if (!arr || !arr.length) return '<div class="top-empty">— no polarity-bearing words —</div>';
+    const series = arr.map(m => ({ x: m.month, y: m.score }));
+    return signedLineChartHTML(series);
+  }
+
+  function recurringThemesHTML(arr) {
+    if (!arr || !arr.length) return '<div class="top-empty">— no themes recur across years —</div>';
+    return '<div class="top-list">' + arr.map(t => {
+      const widthPx = Math.max(2, Math.min(120, t.years * 8));
+      return `<div class="top-row">
+        <span class="top-label">${safe(t.bigram)}</span>
+        <div class="top-bar-wrap">
+          <div class="top-bar" style="width:${widthPx}px"></div>
+          <span class="top-count">${t.years}y · ${t.total}</span>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  function piiAuditHTML(items) {
+    if (!items || !items.length) return '<div class="top-empty">— no PII-shaped tweets flagged —</div>';
+    return items.map(it => {
+      const url = `https://twitter.com/i/web/status/${it.id}`;
+      const dt = it.date ? new Date(it.date).toISOString().slice(0, 10) : '—';
+      const badges = it.types.map(t => `<span class="badge" style="border-color:var(--warn);color:var(--warn);">${safe(t)}</span>`).join(' ');
+      return `<div class="compact-tweet">
+        <div class="ct-text">${safe(it.text)}</div>
+        <div class="ct-meta">
+          <span>${dt}</span>${badges}
+          <a href="${url}" target="_blank" rel="noopener">open →</a>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function hashtagSparklinesHTML(rows, months) {
+    if (!rows || !rows.length || !months || !months.length) return '<div class="top-empty">— no top hashtags to chart —</div>';
+    const W = 220, H = 24;
+    const monthLabels = months.length > 1
+      ? `${months[0]} → ${months[months.length - 1]}`
+      : (months[0] || '—');
+    return '<div class="spark-list">' + rows.map(r => {
+      const max = Math.max(1, ...r.series);
+      const xs = (i) => (i * W) / Math.max(1, r.series.length - 1);
+      const ys = (v) => H - 1 - (v / max) * (H - 2);
+      const pts = r.series.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(' ');
+      const area = `0,${H - 1} ` + pts + ` ${W},${H - 1}`;
+      return `<div class="spark-row">
+        <div class="spark-label">#${safe(r.tag)}</div>
+        <svg class="spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="none">
+          <polygon class="spark-area" points="${area}"/>
+          <polyline class="spark-line" points="${pts}"/>
+        </svg>
+        <div class="spark-count">${r.total.toLocaleString()}</div>
+      </div>`;
+    }).join('') + `</div><div class="heatmap-legend">x-axis: ${monthLabels}</div>`;
+  }
+
+  async function renderAnniversary() {
+    const host = $('anniversary-host');
+    if (!host) return;
+    const today = new Date();
+    const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(today.getUTCDate()).padStart(2, '0');
+    host.innerHTML = '<div class="stats-loading">Looking for anniversaries…</div>';
+    try {
+      const items = await patterns.anniversary(`${mm}-${dd}`);
+      if (!items.length) { host.innerHTML = '<div class="when-empty">No tweets on this calendar day in your archive.</div>'; return; }
+      const byYear = new Map();
+      for (const it of items) {
+        const y = new Date(it.date).getUTCFullYear();
+        if (!byYear.has(y)) byYear.set(y, []);
+        byYear.get(y).push(it);
+      }
+      const yrs = [...byYear.keys()].sort((a, b) => b - a);
+      host.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:var(--mono);">${mm}-${dd} · ${items.length} tweet(s) across ${yrs.length} year(s)</div>` +
+        yrs.map(y => `<div class="ann-year">
+          <div class="ann-year-h">${y}</div>
+          <div class="compact-list">${byYear.get(y).map(t => zeroSampleHTML({ id: t.id, text: t.text, date: t.date, is_reply: t.is_reply })).join('')}</div>
+        </div>`).join('');
+    } catch (e) {
+      console.error('anniversary failed', e);
+      host.innerHTML = '<div class="when-empty">Couldn’t load anniversaries.</div>';
+    }
+  }
+
+  function bindWhenControls() {
+    const btn = $('when-go');
+    const dateInput = $('when-date');
+    const winSel = $('when-window');
+    const host = $('when-host');
+    if (!btn || !dateInput || !winSel || !host) return;
+    // Default to a random sample date for delight: pick midpoint of archive.
+    // (Set on first render if empty.)
+    btn.addEventListener('click', async () => {
+      const v = dateInput.value;
+      const w = parseInt(winSel.value, 10) || 0;
+      if (!v) { host.innerHTML = '<div class="when-empty">Pick a date first.</div>'; return; }
+      host.innerHTML = '<div class="stats-loading">Looking…</div>';
+      try {
+        const items = await patterns.byDate(v, w);
+        if (!items.length) { host.innerHTML = '<div class="when-empty">No tweets in that window.</div>'; return; }
+        host.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:var(--mono);">${items.length} tweet(s) within ±${w} day(s) of ${v}</div>` +
+          `<div class="compact-list">${items.map(t => zeroSampleHTML({ id: t.id, text: t.text, date: t.date, is_reply: t.is_reply })).join('')}</div>`;
+      } catch (e) {
+        console.error('byDate failed', e);
+        host.innerHTML = '<div class="when-empty">Couldn’t fetch tweets.</div>';
+      }
+    });
   }
 
   function signedLineChartHTML(series) {
@@ -4234,6 +4582,14 @@ window.bakwaas = {
   },
   async stats() { return stats.aggregate(); },
   async patterns() { return patterns.aggregate(); },
+  async anniversary(monthDay) {
+    if (!monthDay) {
+      const d = new Date();
+      monthDay = `${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    }
+    return patterns.anniversary(monthDay);
+  },
+  async byDate(targetDateISO, windowDays = 3) { return patterns.byDate(targetDateISO, windowDays); },
   async topics(opts) { return topics.cluster(opts || {}); },
   buildDeleteUrl(id, scope) {
     return scope === 'like'
