@@ -11,7 +11,7 @@
   script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://*.twimg.com;
-  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com;
+  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://public.api.bsky.app;
   base-uri 'none';
   form-action 'none';
   frame-src 'none';
@@ -104,6 +104,13 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 #screen-drop .alt-row button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 #screen-drop .alt-row button:disabled { opacity: .5; cursor: not-allowed; }
+#screen-drop .alt-row input[type=text] {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; font-family: var(--mono);
+  min-width: 220px;
+}
+#screen-drop .alt-row input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 #screen-drop .help {
   margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center;
 }
@@ -686,7 +693,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.11 · on this day</span>
+      <span class="phase" id="phase-tag">v0.12 · 4 providers</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -709,6 +716,11 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
     <div class="alt-row">
       <span class="alt-or">— or —</span>
       <button id="btn-pick-folder" type="button">Open unzipped folder (Chrome/Edge)</button>
+    </div>
+    <div class="alt-row">
+      <span class="alt-or">— or fetch from Bluesky (live API) —</span>
+      <input type="text" id="bsky-handle" placeholder="yourname.bsky.social" autocomplete="off" />
+      <button id="btn-bsky" type="button">Fetch posts</button>
     </div>
     <p class="help">
       Don't have one yet? Request it at
@@ -1447,10 +1459,148 @@ const parser = (() => {
     };
   }
 
+  // ── Reddit GDPR-export CSV parsers ─────────────────────────────────────
+  function parseCSV(text) {
+    // Tolerant CSV parser: handles quoted fields, embedded commas, embedded
+    // newlines, and doubled-quote escapes. Reddit's exports use this format.
+    const rows = [];
+    let row = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { cur += '"'; i++; }
+          else inQuotes = false;
+        } else cur += ch;
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === ',') { row.push(cur); cur = ''; }
+        else if (ch === '\n' || ch === '\r') {
+          if (ch === '\r' && text[i + 1] === '\n') i++;
+          row.push(cur); cur = '';
+          rows.push(row); row = [];
+        } else cur += ch;
+      }
+    }
+    if (cur.length || row.length) { row.push(cur); rows.push(row); }
+    return rows;
+  }
+  function redditRowsToRecords(rows, kind) {
+    if (!rows || rows.length < 2) return [];
+    const header = rows[0].map(h => h.trim().toLowerCase());
+    const col = (h) => header.indexOf(h);
+    const idC = col('id'), permC = col('permalink'), dateC = col('date'),
+          subC = col('subreddit'), bodyC = col('body'),
+          titleC = col('title'), parentC = col('parent'), linkC = col('link'),
+          urlC = col('url');
+    const out = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const id = idC >= 0 ? r[idC] : '';
+      if (!id) continue;
+      const date = dateC >= 0 ? Date.parse(r[dateC]) : NaN;
+      const sub = subC >= 0 ? r[subC] : '';
+      const body = bodyC >= 0 ? r[bodyC] : '';
+      const title = (titleC >= 0 ? r[titleC] : '') || '';
+      const permalink = permC >= 0 ? r[permC] : '';
+      const text = (title ? title + '\n\n' : '') + body;
+      // For comments, parent points to another comment/post id; treat as reply.
+      const parent = parentC >= 0 ? r[parentC] : '';
+      out.push({
+        id: String(id),
+        created_at: Number.isNaN(date) ? null : date,
+        full_text: text,
+        text,
+        lang: null,
+        source: sub ? `r/${sub}` : (kind || null),
+        is_reply: kind === 'comment',
+        in_reply_to_user_id: null,
+        in_reply_to_status_id: parent && parent.startsWith('t1_') ? parent.slice(3) : null,
+        is_retweet: false,
+        retweeted_status_id: null,
+        favorite_count: 0,
+        retweet_count: 0,
+        has_media: false,
+        hashtags: [],
+        mentions: [],
+        urls: (urlC >= 0 && r[urlC]) ? [r[urlC]] : [],
+        permalink, // Reddit-specific; used for deep links via getDeepLink override
+        marked_for_deletion: false,
+        opened_for_deletion_at: null,
+        confirmed_deleted_at: null,
+        tags: [],
+        provider: 'reddit'
+      });
+    }
+    return out;
+  }
+
+  // ── Bluesky parsers ────────────────────────────────────────────────────
+  // Bluesky's public API returns post records with engagement counts, unlike
+  // Mastodon's archive. Top-viral surfaces work meaningfully for Bluesky.
+  function parseBlueskyPost(post) {
+    if (!post || !post.uri) return null;
+    const r = post.record || {};
+    const id = post.uri.split('/').pop();
+    if (!id) return null;
+    const text = r.text || '';
+    const createdAt = r.createdAt ? Date.parse(r.createdAt) : NaN;
+    const facets = Array.isArray(r.facets) ? r.facets : [];
+    const hashtags = [];
+    const mentions = [];
+    const urls = [];
+    for (const f of facets) {
+      for (const feat of (f.features || [])) {
+        const ty = feat.$type || '';
+        if (ty.endsWith('#tag') && feat.tag) hashtags.push(String(feat.tag).toLowerCase());
+        else if (ty.endsWith('#mention') && feat.did) mentions.push(String(feat.did));
+        else if (ty.endsWith('#link') && feat.uri) urls.push(String(feat.uri));
+      }
+    }
+    return {
+      id: String(id),
+      created_at: Number.isNaN(createdAt) ? null : createdAt,
+      full_text: text, text,
+      lang: (r.langs && r.langs[0]) || null,
+      source: 'bluesky',
+      is_reply: !!r.reply,
+      in_reply_to_user_id: null,
+      in_reply_to_status_id: (r.reply && r.reply.parent && r.reply.parent.uri) ? r.reply.parent.uri.split('/').pop() : null,
+      is_retweet: false,
+      retweeted_status_id: null,
+      favorite_count: post.likeCount || 0,
+      retweet_count: post.repostCount || 0,
+      has_media: !!post.embed,
+      hashtags, mentions, urls,
+      marked_for_deletion: false,
+      opened_for_deletion_at: null,
+      confirmed_deleted_at: null,
+      tags: [],
+      provider: 'bluesky',
+      bsky_uri: post.uri,
+      bsky_author_handle: post.author && post.author.handle
+    };
+  }
+
   // ── Provider-dispatched batch parsers (indexer calls these) ────────────
   function parseTweetsBatch(provider, raw) {
     if (provider === 'mastodon') {
       return parseMastodonOutbox(raw).map(parseMastodonNoteRecord).filter(Boolean);
+    }
+    if (provider === 'bluesky') {
+      // raw is JSON.stringify(post[]) — produced by archive.openBluesky.
+      try {
+        const arr = JSON.parse(raw);
+        return arr.map(parseBlueskyPost).filter(Boolean);
+      } catch { return []; }
+    }
+    if (provider === 'reddit-posts') {
+      return redditRowsToRecords(parseCSV(raw), 'post');
+    }
+    if (provider === 'reddit-comments') {
+      return redditRowsToRecords(parseCSV(raw), 'comment');
     }
     // twitter default
     return parseYTD(raw).map(parseTweetRecord).filter(Boolean);
@@ -1461,15 +1611,25 @@ const parser = (() => {
       const items = (() => { try { const o = JSON.parse(raw); return o.orderedItems || o.items || []; } catch { return []; } })();
       return items.map((it, i) => parseMastodonLikeRecord(it, offset + i)).filter(Boolean);
     }
+    if (provider === 'bluesky' || provider === 'reddit-posts' || provider === 'reddit-comments') return [];
     return parseYTD(raw).map((e, i) => parseLikeRecord(e, offset + i)).filter(Boolean);
   }
   function parseAccountFor(provider, raw) {
     if (provider === 'mastodon') return parseMastodonActor(raw);
+    if (provider === 'bluesky') {
+      try { const a = JSON.parse(raw); return { accountId: a.did || null, username: a.handle || null, accountDisplayName: a.displayName || null, createdAt: a.createdAt || null }; }
+      catch { return null; }
+    }
+    if (provider === 'reddit-posts' || provider === 'reddit-comments') {
+      // Reddit GDPR exports don't ship a clean account profile; we synthesize one.
+      try { const a = JSON.parse(raw); return a; } catch { return null; }
+    }
     try { return parseAccountRecord(parseYTD(raw)); } catch { return null; }
   }
 
   return { parseYTD, parseTweetRecord, parseAccountRecord, parseLikeRecord,
            parseMastodonNoteRecord, parseMastodonActor, parseMastodonLikeRecord,
+           parseBlueskyPost, parseCSV, redditRowsToRecords,
            parseTweetsBatch, parseLikesBatch, parseAccountFor,
            decodeEntities };
 })();
@@ -1502,19 +1662,56 @@ const archive = (() => {
     return { path, name: handle.name, read: async () => { const f = await handle.getFile(); return f.text(); } };
   }
 
+  const REDDIT_COMMENTS_RE = /(^|\/)comments\.csv$/i;
+  const REDDIT_POSTS_RE = /(^|\/)posts\.csv$/i;
+
   async function openZip(file) {
     const J = await getJSZip();
     const zip = await J.loadAsync(file);
     // Detect provider from contents.
-    let hasTwitter = false, hasMastodon = false;
+    let hasTwitter = false, hasMastodon = false, hasReddit = false;
     zip.forEach((path) => {
       const lower = path.toLowerCase();
       if (TWEETS_RE.test(lower) || ACCOUNT_RE.test(lower)) hasTwitter = true;
       if (MASTODON_OUTBOX_RE.test(lower)) hasMastodon = true;
+      if (REDDIT_COMMENTS_RE.test(lower) || REDDIT_POSTS_RE.test(lower)) hasReddit = true;
     });
     if (hasTwitter) return openTwitterZip(zip);
     if (hasMastodon) return openMastodonZip(zip);
-    throw new Error('Unrecognised archive. Bakwaas supports Twitter/X and Mastodon archives.');
+    if (hasReddit) return openRedditZip(zip);
+    throw new Error('Unrecognised archive. Bakwaas supports Twitter/X, Mastodon, and Reddit archives.');
+  }
+
+  function openRedditZip(zip) {
+    // Reddit GDPR exports ship multiple CSVs (comments.csv, posts.csv, etc.).
+    // We surface both posts and comments as separate 'tweetFiles' that carry
+    // their own kind through the indexer via a per-file provider override.
+    const tweetFiles = [];
+    let postsEntry = null, commentsEntry = null;
+    zip.forEach((path, entry) => {
+      if (entry.dir) return;
+      const lower = path.toLowerCase();
+      if (REDDIT_POSTS_RE.test(lower)) postsEntry = { path, entry };
+      else if (REDDIT_COMMENTS_RE.test(lower)) commentsEntry = { path, entry };
+    });
+    if (commentsEntry) tweetFiles.push({
+      path: commentsEntry.path, name: commentsEntry.path.split('/').pop(),
+      read: () => commentsEntry.entry.async('string'),
+      providerOverride: 'reddit-comments'
+    });
+    if (postsEntry) tweetFiles.push({
+      path: postsEntry.path, name: postsEntry.path.split('/').pop(),
+      read: () => postsEntry.entry.async('string'),
+      providerOverride: 'reddit-posts'
+    });
+    if (!tweetFiles.length) throw new Error('No posts.csv or comments.csv in this Reddit archive.');
+    return {
+      provider: 'reddit',
+      mode: 'zip',
+      tweetFiles,
+      accountFile: null,
+      likeFile: null
+    };
   }
 
   function openTwitterZip(zip) {
@@ -1593,7 +1790,62 @@ const archive = (() => {
     return { provider: 'twitter', mode: 'folder', dirHandle, tweetFiles, accountFile, likeFile };
   }
 
-  return { openZip, openFolder };
+  // ── Bluesky (live API, no archive file) ───────────────────────────────
+  // Uses the public AppView endpoint; no auth needed for public timelines.
+  async function fetchBlueskyProfile(handle) {
+    const url = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(handle)}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Bluesky profile lookup ${r.status}`);
+    return r.json();
+  }
+  async function fetchBlueskyAuthorFeed(handle, onProgress) {
+    const posts = [];
+    let cursor;
+    let safety = 0;
+    while (safety++ < 2000) {
+      const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+      const r = await fetch(url);
+      if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        throw new Error(`Bluesky feed ${r.status}: ${body.slice(0, 200)}`);
+      }
+      const data = await r.json();
+      for (const item of (data.feed || [])) if (item.post) posts.push(item.post);
+      onProgress?.({ fetched: posts.length });
+      if (!data.cursor || data.cursor === cursor || !(data.feed || []).length) break;
+      cursor = data.cursor;
+      // be polite
+      await new Promise(res => setTimeout(res, 50));
+    }
+    return posts;
+  }
+
+  async function openBluesky(handle, { onFetchProgress } = {}) {
+    if (!handle || !/^[a-zA-Z0-9.\-]+$/.test(handle)) {
+      throw new Error('Invalid Bluesky handle. Try something like name.bsky.social');
+    }
+    // Pre-fetch profile and posts. The 'tweetFiles' becomes one virtual file
+    // whose read() returns the prefetched array as JSON — so the indexer's
+    // batched control flow keeps working without a special case.
+    const profile = await fetchBlueskyProfile(handle);
+    const posts = await fetchBlueskyAuthorFeed(handle, onFetchProgress);
+    const raw = JSON.stringify(posts);
+    const profileRaw = JSON.stringify(profile);
+    return {
+      provider: 'bluesky',
+      mode: 'api',
+      tweetFiles: [{
+        path: `bluesky:${handle}`,
+        name: `${handle}.json`,
+        read: async () => raw
+      }],
+      accountFile: { path: `bluesky:${handle}:profile`, name: 'profile.json', read: async () => profileRaw },
+      likeFile: null,
+      handle
+    };
+  }
+
+  return { openZip, openFolder, openBluesky };
 })();
 
 // ── stats (aggregates + cache) ──────────────────────────────────────────────
@@ -2854,11 +3106,12 @@ const indexer = (() => {
 
     if (resumingPhase === 'tweets') {
       for (let i = startFileIdx; i < tweetFiles.length; i++) {
-        const { path, read } = tweetFiles[i];
+        const { path, read, providerOverride } = tweetFiles[i];
+        const fileProvider = providerOverride || provider;
         onPhase?.(`Parsing ${path}…`);
         const text = await read();
         let arr;
-        try { arr = parser.parseTweetsBatch(provider, text); }
+        try { arr = parser.parseTweetsBatch(fileProvider, text); }
         catch (e) { console.error(`Parse failed for ${path}:`, e); continue; }
         let offset = (i === startFileIdx) ? startOffset : 0;
         while (offset < arr.length) {
@@ -4553,7 +4806,19 @@ const ui = (() => {
       }
     });
   }
-  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton,
+
+  function bindBlueskyButton(onHandle) {
+    const btn = $('btn-bsky');
+    const input = $('bsky-handle');
+    if (!btn || !input) return;
+    btn.addEventListener('click', () => {
+      const h = (input.value || '').trim().replace(/^@/, '');
+      if (!h) { input.focus(); return; }
+      onHandle(h);
+    });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') btn.click(); });
+  }
+  return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
            bindHelp, bindWrappedControls };
 })();
@@ -4586,6 +4851,24 @@ async function startWithFile(file) {
   } catch (e) {
     console.error(e);
     ui.showError(e.message || 'Failed to open ZIP', e.stack || '');
+  }
+}
+
+async function startWithBluesky(handle) {
+  if (!handle) return;
+  show('screen-index');
+  $('count').textContent = '0';
+  $('count-likes').textContent = '0';
+  $('progress-bar').style.width = '0%';
+  ui.setPhase(`Fetching @${handle} via Bluesky API…`);
+  try {
+    const source = await archive.openBluesky(handle, {
+      onFetchProgress: ({ fetched }) => ui.setPhase(`Fetched ${fetched.toLocaleString()} posts from @${handle}…`)
+    });
+    await startWithSource(source);
+  } catch (e) {
+    console.error(e);
+    ui.showError(e.message || 'Failed to fetch from Bluesky', e.stack || '');
   }
 }
 
@@ -4626,6 +4909,7 @@ async function bootstrap() {
   }
   ui.bindDropZone(startWithFile);
   ui.bindFolderButton(startWithFolder);
+  ui.bindBlueskyButton(startWithBluesky);
   ui.bindTabs();
   ui.bindSearch();
   ui.bindTopicsControls();
@@ -4660,6 +4944,7 @@ const notImpl = (name) => () => { throw new Error(`bakwaas.${name}() not impleme
 window.bakwaas = {
   async openZip(file) { return startWithFile(file); },
   async openFolder(handle) { return startWithFolder(handle); },
+  async openBluesky(handle) { return startWithBluesky(handle); },
   async getIndexStatus() {
     const [state, account, fp, tweetCount, likeCount, provider] = await Promise.all([
       store.metaGet('index_state'),
