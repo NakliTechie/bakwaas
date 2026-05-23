@@ -8313,43 +8313,64 @@ const ui = (() => {
       const progEl = $('semantic-progress');
       const progText = $('semantic-progress-text');
       const progBar = $('sem-prog-bar');
+      const importBtn = $('emb-import-btn');
+      // Disable button for the duration of the import
+      if (importBtn) { importBtn.disabled = true; importBtn.style.opacity = '0.45'; importBtn.style.cursor = 'not-allowed'; }
       if (progEl) progEl.style.display = '';
       if (progText) progText.textContent = `Reading ${file.name} …`;
       if (progBar) progBar.style.width = '0%';
       try {
-        const buf = await file.arrayBuffer();
+        // Phase 1 (0→50%): read file with progress via FileReader
+        const buf = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onprogress = (e) => {
+            if (e.lengthComputable && progBar) {
+              const pct = Math.round(e.loaded / e.total * 50);
+              progBar.style.width = pct + '%';
+              if (progText) progText.textContent = `Reading … ${Math.round(e.loaded / e.total * 100)}%`;
+            }
+          };
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error || new Error('File read failed'));
+          reader.readAsArrayBuffer(file);
+        });
+        if (progBar) progBar.style.width = '50%';
+        // Parse header
         const magic = String.fromCharCode(...new Uint8Array(buf, 0, 4));
         if (magic !== 'BWEM') throw new Error('Not a valid bakwaas-emb.bin file (wrong magic bytes).');
         const hdr = new DataView(buf, 0, 16);
-        const numTweets  = hdr.getUint32(4, true);
-        const dim        = hdr.getUint32(8, true);
+        const numTweets   = hdr.getUint32(4, true);
+        const dim         = hdr.getUint32(8, true);
         const idBlockSize = hdr.getUint32(12, true);
-        if (progText) progText.textContent = `Importing ${numTweets.toLocaleString()} embeddings …`;
+        if (progText) progText.textContent = `Saving ${numTweets.toLocaleString()} embeddings …`;
         // Parse IDs
         const idBytes = new Uint8Array(buf, 16, idBlockSize);
         const ids = new TextDecoder().decode(idBytes).split('\x00').filter(s => s.length > 0);
         if (ids.length !== numTweets) throw new Error(`ID count mismatch: got ${ids.length}, expected ${numTweets}`);
-        // Parse vectors (copy to avoid alignment issues)
+        // Parse vectors
         const vectorBuf = buf.slice(16 + idBlockSize);
         const vectors = new Float32Array(vectorBuf);
-        if (vectors.length !== numTweets * dim) throw new Error(`Vector length mismatch.`);
-        // Store chunks to IDB
+        if (vectors.length !== numTweets * dim) throw new Error('Vector length mismatch.');
+        // Phase 2 (50→100%): store chunks to IDB
         await store.embClear();
         const CHUNK = 256;
         const numChunks = Math.ceil(numTweets / CHUNK);
         for (let ci = 0; ci < numChunks; ci++) {
           const s = ci * CHUNK, e = Math.min(s + CHUNK, numTweets);
           await store.embSet(ci, { ids: ids.slice(s, e), vectors: Array.from(vectors.slice(s * dim, e * dim)) });
-          const pct = Math.round((ci + 1) / numChunks * 100);
+          const pct = 50 + Math.round((ci + 1) / numChunks * 50);
           if (progBar) progBar.style.width = pct + '%';
           if (ci % 20 === 0) await new Promise(r => setTimeout(r, 0));
         }
         await store.metaSet('emb_meta', { total: numTweets, chunks: numChunks, dim, done_at: Date.now(), source: 'import' });
         if (progEl) progEl.style.display = 'none';
+        syncSemanticInfo();
         setSearchMeta(`✓ Imported ${numTweets.toLocaleString()} embeddings — semantic search ready.`);
       } catch (e) {
         if (progEl) progEl.style.display = 'none';
         setSearchMeta('Import failed: ' + (e.message || e));
+      } finally {
+        if (importBtn) { importBtn.disabled = false; importBtn.style.opacity = ''; importBtn.style.cursor = ''; }
       }
     }
 
