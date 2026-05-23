@@ -297,6 +297,17 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .filter-bar .near-toggle input { margin: 0; cursor: pointer; }
 .filter-bar .near-toggle:has(input:checked) { background: var(--accent); color: #fff; border-color: var(--accent); }
 .filter-bar .semantic-toggle:has(input:checked) { background: var(--accent-2); color: #fff; border-color: var(--accent-2); }
+.semantic-info { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; font-size: 13px; }
+.semantic-info h4 { margin: 0 0 10px; font-size: 13px; color: var(--text); font-weight: 600; }
+.semantic-info-options { display: flex; gap: 12px; flex-wrap: wrap; }
+.sem-opt { flex: 1; min-width: 200px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+.sem-opt strong { display: block; color: var(--text); margin-bottom: 4px; }
+.sem-opt p { margin: 0 0 6px; color: var(--muted); line-height: 1.5; }
+.sem-opt code { font-family: var(--mono); font-size: 11px; background: var(--panel-2); border-radius: 3px; padding: 1px 4px; color: var(--accent); }
+.sem-opt ol { margin: 6px 0; padding-left: 18px; color: var(--muted); line-height: 1.7; }
+.sem-opt ol li code { display: inline; }
+.sem-opt-dl { margin-top: 8px; background: var(--accent); color: #fff; border: none; border-radius: 5px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.sem-opt-dl:hover { opacity: 0.85; }
 .semantic-progress { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
 .sem-prog-bar-wrap { height: 4px; background: var(--panel); border-radius: 2px; margin-top: 6px; overflow: hidden; }
 .sem-prog-bar { height: 100%; background: var(--accent-2); border-radius: 2px; width: 0%; transition: width 0.3s; }
@@ -1349,6 +1360,26 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
             <span class="scrubber-window-label" id="scrubber-label">—</span>
           </div>
           <div id="search-scrubber-host"></div>
+        </div>
+        <div class="semantic-info" id="semantic-info" style="display:none;">
+          <h4>Semantic search needs a one-time embedding pass</h4>
+          <div class="semantic-info-options">
+            <div class="sem-opt">
+              <strong>A — In browser</strong>
+              <p>Type any query below and it starts automatically.<br>
+              Large archives (100k+ tweets) can take 15–20 min.</p>
+            </div>
+            <div class="sem-opt">
+              <strong>B — Python script&nbsp; <span style="color:var(--ok);font-size:11px;font-weight:400;">10–50× faster</span></strong>
+              <p>Runs on your machine, uses native CPU/GPU.</p>
+              <ol>
+                <li><code>pip install sentence-transformers</code></li>
+                <li><code>python3 embed.py</code> → pick your archive</li>
+                <li>Click <strong>↑ Import emb.</strong> with the output file</li>
+              </ol>
+              <button class="sem-opt-dl" id="emb-download-zip">⬇ Download embed.py + README</button>
+            </div>
+          </div>
         </div>
         <div class="semantic-progress" id="semantic-progress" style="display:none;">
           <span id="semantic-progress-text">Building semantic index…</span>
@@ -8234,6 +8265,50 @@ const ui = (() => {
       }
     }
 
+    async function downloadEmbedZip() {
+      try {
+        const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')).default;
+        const zip = new JSZip();
+        const scriptSrc = document.getElementById('embed-py-src')?.textContent?.trimStart() || '';
+        const readme = [
+          '# Bakwaas offline embedder',
+          '',
+          'Generates `bakwaas-emb.bin` for import into Bakwaas\'s semantic search.',
+          'Much faster than in-browser embedding — uses native CPU/GPU via PyTorch.',
+          '',
+          '## Install',
+          '```',
+          'pip install sentence-transformers',
+          '```',
+          '',
+          '## Run',
+          '```',
+          'python3 embed.py',
+          '# Opens a file picker — select your Twitter/X archive ZIP or folder.',
+          '# Outputs bakwaas-emb.bin in the current directory.',
+          '```',
+          '',
+          '## Import into Bakwaas',
+          '1. Open Bakwaas in your browser',
+          '2. Go to the **Search** tab',
+          '3. Tick **Semantic**',
+          '4. Click **↑ Import emb.** and pick `bakwaas-emb.bin`',
+          '',
+          'Embedding is cached in your browser — subsequent searches are instant.',
+        ].join('\n');
+        zip.file('embed.py', scriptSrc);
+        zip.file('README.md', readme);
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'bakwaas-embed.zip';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (e) {
+        alert('Download failed: ' + e.message);
+      }
+    }
+
     async function importEmbeddingsFile(file) {
       const progEl = $('semantic-progress');
       const progText = $('semantic-progress-text');
@@ -8369,7 +8444,22 @@ const ui = (() => {
     const nearEl = $('search-near');
     nearEl?.addEventListener('change', () => { state.near = !!nearEl.checked; run(); });
     const semanticEl = $('search-semantic');
-    semanticEl?.addEventListener('change', () => { state.semantic = !!semanticEl.checked; run(); });
+    async function syncSemanticInfo() {
+      const infoEl = $('semantic-info');
+      if (!infoEl) return;
+      if (semanticEl?.checked) {
+        const meta = await store.metaGet('emb_meta');
+        infoEl.style.display = meta ? 'none' : '';
+      } else {
+        infoEl.style.display = 'none';
+      }
+    }
+    semanticEl?.addEventListener('change', () => {
+      state.semantic = !!semanticEl.checked;
+      syncSemanticInfo();
+      run();
+    });
+    $('emb-download-zip')?.addEventListener('click', downloadEmbedZip);
     resetEl?.addEventListener('click', () => {
       if (sinceEl) sinceEl.value = '';
       if (untilEl) untilEl.value = '';
@@ -9474,6 +9564,162 @@ self.onmessage = async ({ data }) => {
     postMessage({ type: 'error', id, msg: (e && e.message) || String(e) });
   }
 };
+</script>
+
+<script id="embed-py-src" type="text/plain">
+#!/usr/bin/env python3
+"""
+Bakwaas offline embedder
+========================
+Reads a Twitter/X archive and writes a bakwaas-emb.bin file you can import
+into Bakwaas via the "Import embeddings" button in the Search tab.
+
+Much faster than in-browser embedding: uses native Python + PyTorch and can
+use your GPU if available.
+
+Usage:
+    python3 embed.py /path/to/twitter-archive.zip
+    python3 embed.py /path/to/twitter-archive-folder/
+    python3 embed.py /path/to/archive.zip  my-output.bin
+
+Requires:
+    pip install sentence-transformers
+
+Output:
+    bakwaas-emb.bin  (~310 MB for 200k tweets)
+"""
+
+import sys
+import json
+import re
+import struct
+import zipfile
+import os
+from pathlib import Path
+
+
+def strip_js_wrapper(content):
+    content = content.strip()
+    m = re.match(r'^[^=\[]*=\s*', content)
+    if m:
+        content = content[m.end():]
+    return content
+
+
+def extract_tweets(items):
+    out = []
+    for item in items:
+        tw = item.get('tweet', item)
+        tweet_id = tw.get('id_str') or tw.get('id')
+        text = tw.get('full_text') or tw.get('text', '')
+        if tweet_id and text:
+            text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+            out.append((str(tweet_id), text))
+    return out
+
+
+def parse_file(content):
+    try:
+        return extract_tweets(json.loads(strip_js_wrapper(content)))
+    except Exception as e:
+        print(f'  Warning: parse error: {e}')
+        return []
+
+
+def load_from_zip(zip_path):
+    tweets, seen = [], set()
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        names = z.namelist()
+        tweet_files = sorted([n for n in names if re.search(r'data/tweets.*\.js$', n)])
+        if not tweet_files:
+            sys.exit('No tweets-part*.js found. Is this a Twitter/X archive ZIP?')
+        print(f'  Found {len(tweet_files)} tweet file(s)')
+        for fname in tweet_files:
+            with z.open(fname) as f:
+                batch = parse_file(f.read().decode('utf-8', errors='replace'))
+            new = [(i, t) for i, t in batch if i not in seen]
+            seen.update(i for i, _ in new)
+            tweets.extend(new)
+            print(f'  {fname}: {len(new)} tweets')
+    return tweets
+
+
+def load_from_folder(folder):
+    tweets, seen = [], set()
+    data_dir = Path(folder) / 'data'
+    if not data_dir.exists():
+        data_dir = Path(folder)
+    tweet_files = sorted(data_dir.glob('tweets*.js'))
+    if not tweet_files:
+        sys.exit(f'No tweets*.js found in {data_dir}.')
+    print(f'  Found {len(tweet_files)} tweet file(s)')
+    for p in tweet_files:
+        batch = parse_file(p.read_text(encoding='utf-8', errors='replace'))
+        new = [(i, t) for i, t in batch if i not in seen]
+        seen.update(i for i, _ in new)
+        tweets.extend(new)
+        print(f'  {p.name}: {len(new)} tweets')
+    return tweets
+
+
+def write_bin(output_path, ids, embeddings):
+    import numpy as np
+    num_tweets, dim = len(ids), embeddings.shape[1]
+    id_block = '\x00'.join(ids).encode('utf-8') + b'\x00'
+    while len(id_block) % 4:
+        id_block += b'\x00'
+    with open(output_path, 'wb') as f:
+        f.write(b'BWEM')
+        f.write(struct.pack('<III', num_tweets, dim, len(id_block)))
+        f.write(id_block)
+        f.write(embeddings.astype('<f4').tobytes())
+    mb = os.path.getsize(output_path) / 1024 / 1024
+    print(f'\nWrote {output_path}  ({mb:.0f} MB, {num_tweets:,} tweets × {dim}d)')
+
+
+def pick_archive():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog, messagebox
+        root = tk.Tk(); root.withdraw(); root.lift(); root.attributes('-topmost', True)
+        choice = messagebox.askquestion('Bakwaas', 'Is your Twitter archive a ZIP file?\n\nYes → pick a .zip\nNo  → pick a folder')
+        if choice == 'yes':
+            path = filedialog.askopenfilename(title='Select archive ZIP', filetypes=[('ZIP', '*.zip'), ('All', '*.*')])
+        else:
+            path = filedialog.askdirectory(title='Select unzipped archive folder')
+        root.destroy()
+        return path.strip() if path else ''
+    except Exception:
+        print('Paste the path to your archive (ZIP or folder):')
+        return input('> ').strip().strip('"').strip("'")
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] in ('-h', '--help'):
+        print(__doc__); sys.exit(0)
+    archive_path = sys.argv[1] if len(sys.argv) >= 2 else pick_archive()
+    if not archive_path:
+        sys.exit('No archive selected.')
+    output_path = sys.argv[2] if len(sys.argv) > 2 else 'bakwaas-emb.bin'
+    print(f'Loading: {archive_path}')
+    tweets = load_from_zip(archive_path) if zipfile.is_zipfile(archive_path) else load_from_folder(archive_path)
+    if not tweets:
+        sys.exit('No tweets found.')
+    print(f'\n{len(tweets):,} tweets loaded.')
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError:
+        sys.exit('\nInstall: pip install sentence-transformers\n')
+    print('Loading model (all-MiniLM-L6-v2) …')
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    print(f'Embedding {len(tweets):,} tweets …')
+    embeddings = model.encode([t[1] for t in tweets], normalize_embeddings=True,
+                              batch_size=512, show_progress_bar=True, convert_to_numpy=True)
+    write_bin(output_path, [t[0] for t in tweets], embeddings)
+    print('\nIn Bakwaas → Search → tick Semantic → ↑ Import emb. → pick the .bin file')
+
+if __name__ == '__main__':
+    main()
 </script>
 
 </body>
