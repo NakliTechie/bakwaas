@@ -1835,9 +1835,117 @@ const store = (() => {
       req.onblocked = () => res();
     });
   }
+  async function embGet(ci) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('embeddings', 'readonly');
+      const req = tx.objectStore('embeddings').get(ci);
+      req.onsuccess = () => res(req.result || null); req.onerror = () => rej(req.error);
+    });
+  }
+  async function embSet(ci, data) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('embeddings', 'readwrite');
+      tx.objectStore('embeddings').put(data, ci);
+      tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function embClear() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('embeddings', 'readwrite');
+      tx.objectStore('embeddings').clear();
+      tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function getAllTweetTexts() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const out = [];
+      const tx = db.transaction('tweets', 'readonly');
+      const cur = tx.objectStore('tweets').openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) { res(out); return; }
+        out.push({ id: c.value.id, text: c.value.text || '' });
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+  }
   return { open, metaGet, metaSet, putTweetsBatch, tweetCount, tweetStats,
            putLikesBatch, likeCount, likeStats,
-           getById, getManyByIds, updateMany, listWhere, wipe };
+           getById, getManyByIds, updateMany, listWhere, wipe,
+           embGet, embSet, embClear, getAllTweetTexts };
+})();
+
+// ── semEmbed (main-thread ML — avoids blob-worker ESM issues) ───────────────
+const semEmbed = (() => {
+  let _pipeline = null;
+  const CHUNK = 128;
+  const MODEL = 'Xenova/all-MiniLM-L6-v2';
+  const CDN   = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+  async function _pipe(onProgress) {
+    if (_pipeline) return _pipeline;
+    const { pipeline, env } = await import(CDN);
+    env.allowLocalModels = false;
+    _pipeline = await pipeline('feature-extraction', MODEL, {
+      quantized: true,
+      progress_callback: p => {
+        if (p.status === 'progress')
+          onProgress?.({ stage: 'load', loaded: p.loaded || 0, total: p.total || 0, file: p.file || '' });
+      }
+    });
+    return _pipeline;
+  }
+
+  async function embedAll(onProgress) {
+    onProgress?.({ stage: 'load_start' });
+    const pipe = await _pipe(onProgress);
+    onProgress?.({ stage: 'load_done' });
+    await store.embClear();
+    const tweets = await store.getAllTweetTexts();
+    const total = tweets.length;
+    let done = 0;
+    for (let ci = 0; ci * CHUNK < total; ci++) {
+      const slice = tweets.slice(ci * CHUNK, (ci + 1) * CHUNK);
+      const out = await pipe(slice.map(t => t.text || ''), { pooling: 'mean', normalize: true });
+      await store.embSet(ci, { ids: slice.map(t => t.id), vectors: Array.from(out.data) });
+      done += slice.length;
+      onProgress?.({ stage: 'embed', done, total });
+    }
+    await store.metaSet('emb_meta', { total, chunks: Math.ceil(total / CHUNK), done_at: Date.now() });
+  }
+
+  async function embedQuery(text) {
+    const pipe = await _pipe();
+    const out = await pipe(text, { pooling: 'mean', normalize: true });
+    return out.data;
+  }
+
+  async function semanticSearch(queryVec, k = 20) {
+    const meta = await store.metaGet('emb_meta');
+    if (!meta?.chunks) return [];
+    const dim = queryVec.length;
+    const results = [];
+    for (let ci = 0; ci < meta.chunks; ci++) {
+      const chunk = await store.embGet(ci);
+      if (!chunk) continue;
+      const { ids, vectors } = chunk;
+      for (let i = 0; i < ids.length; i++) {
+        let dot = 0;
+        const off = i * dim;
+        for (let d = 0; d < dim; d++) dot += queryVec[d] * vectors[off + d];
+        results.push({ id: ids[i], score: dot });
+      }
+    }
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, k);
+  }
+
+  return { embedAll, embedQuery, semanticSearch };
 })();
 
 // ── deletion (click-to-delete + bulk) ───────────────────────────────────────
@@ -8062,14 +8170,14 @@ const ui = (() => {
       const progEl = $('semantic-progress');
       const progText = $('semantic-progress-text');
       const progBar = $('sem-prog-bar');
-      const embMeta = await bwWorker.embStatus();
+      const embMeta = await store.metaGet('emb_meta');
       if (!embMeta) {
         if (progEl) progEl.style.display = '';
         if (progText) progText.textContent = 'Building semantic index — this runs once…';
         if (progBar) progBar.style.width = '0%';
         setSearchMeta('Building semantic index…');
         try {
-          await bwWorker.embedAll((p) => {
+          await semEmbed.embedAll((p) => {
             if (p.stage === 'load_start') {
               if (progText) progText.textContent = 'Downloading embedding model (~20 MB)…';
             } else if (p.stage === 'load') {
@@ -8094,8 +8202,8 @@ const ui = (() => {
       }
       setSearchMeta('Semantic searching…');
       try {
-        const vec = await bwWorker.embedQuery(q);
-        const topK = await bwWorker.semanticSearch(new Float32Array(vec), 50);
+        const vec = await semEmbed.embedQuery(q);
+        const topK = await semEmbed.semanticSearch(vec, 50);
         if (!topK || !topK.length) {
           $('search-results').innerHTML = '<div class="results-empty">No semantic matches.</div>';
           setSearchMeta('No semantic matches.');
