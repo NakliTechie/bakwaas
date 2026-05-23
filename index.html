@@ -9673,8 +9673,9 @@ def write_bin(output_path, ids, embeddings):
         f.write(struct.pack('<III', num_tweets, dim, len(id_block)))
         f.write(id_block)
         f.write(embeddings.astype('<f4').tobytes())
-    mb = os.path.getsize(output_path) / 1024 / 1024
-    print(f'\nWrote {output_path}  ({mb:.0f} MB, {num_tweets:,} tweets × {dim}d)')
+    abs_path = os.path.abspath(output_path)
+    mb = os.path.getsize(abs_path) / 1024 / 1024
+    print(f'\nWrote {abs_path}  ({mb:.0f} MB, {num_tweets:,} tweets × {dim}d)')
 
 
 def pick_archive():

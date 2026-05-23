@@ -137,8 +137,9 @@ def write_bin(output_path: str, ids: list[str], embeddings) -> None:
         f.write(id_block)
         f.write(embeddings.astype('<f4').tobytes())
 
-    size_mb = os.path.getsize(output_path) / 1024 / 1024
-    print(f'\nWrote {output_path}  ({size_mb:.0f} MB, {num_tweets:,} tweets × {dim}d)')
+    abs_path = os.path.abspath(output_path)
+    size_mb = os.path.getsize(abs_path) / 1024 / 1024
+    print(f'\nWrote {abs_path}  ({size_mb:.0f} MB, {num_tweets:,} tweets × {dim}d)')
 
 
 # ── picker ───────────────────────────────────────────────────────────────────
