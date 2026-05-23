@@ -357,6 +357,17 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .card-item .card-actions a:hover { border-color: var(--accent); color: var(--accent); }
 .results-empty { padding: 32px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+.results-more-wrap { display: flex; justify-content: center; margin-top: 14px; padding: 8px 0; }
+.results-more-btn {
+  background: var(--panel-2); color: var(--accent);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 8px 18px; font-size: 13px; font-family: var(--mono);
+  transition: background .15s, border-color .15s;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.results-more-btn:hover { background: var(--panel); border-color: var(--accent); }
+.results-more-btn .results-more-rem { color: var(--muted); font-size: 10px; font-weight: normal; }
+.results-more-cap { color: var(--muted); font-size: 11px; font-family: var(--mono); text-align: center; padding: 8px 14px; background: var(--panel-2); border-radius: 8px; }
 
 /* Stats charts */
 .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
@@ -1062,7 +1073,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.21 · 9 scripts phonetic</span>
+      <span class="phase" id="phase-tag">v0.22 · paginated results</span>
       <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
@@ -6238,7 +6249,11 @@ const ui = (() => {
     if (el) el.textContent = text;
   }
 
-  let lastResultItems = [];
+  let lastResultItems = [];   // currently rendered slice
+  let lastFullResults = [];   // full hydrated set (capped at MAX_RESULTS_KEPT)
+  let displayLimit = 200;
+  const PAGE_SIZE = 200;
+  const MAX_RESULTS_KEPT = 5000;
 
   async function hydrateState(items) {
     // Look up live deletion-state for each visible item so the cached
@@ -6264,24 +6279,46 @@ const ui = (() => {
     if (!root) return;
     if (!items.length) {
       lastResultItems = [];
+      lastFullResults = [];
       root.innerHTML = '<div class="results-empty">No matches — try a different query or relax the filters.</div>';
       const fa = $('sel-floating-add');
       if (fa) fa.classList.remove('is-active');
       return;
     }
+    // Hydrate once for the entire candidate set, then paginate the slice we render.
     const hydrated = await hydrateState(items);
-    lastResultItems = hydrated;
-    root.innerHTML = hydrated.map(renderCard).join('');
+    lastFullResults = hydrated;
+    await renderPage(total);
+  }
+
+  async function renderPage(total) {
+    const root = $('search-results');
+    if (!root || !lastFullResults.length) return;
+    const visibleSlice = lastFullResults.slice(0, displayLimit);
+    lastResultItems = visibleSlice;
+    const cardsHTML = visibleSlice.map(renderCard).join('');
+    const totalCount = total != null ? total : lastFullResults.length;
+    const remaining = lastFullResults.length - visibleSlice.length;
+    const showMoreHTML = remaining > 0
+      ? `<div class="results-more-wrap"><button type="button" id="results-show-more" class="results-more-btn">Show next ${Math.min(PAGE_SIZE, remaining)} <span class="results-more-rem">(${remaining.toLocaleString()} more in memory${totalCount > lastFullResults.length ? `, of ${totalCount.toLocaleString()} total — refine filters to see beyond ${MAX_RESULTS_KEPT.toLocaleString()}` : ''})</span></button></div>`
+      : (totalCount > lastFullResults.length
+          ? `<div class="results-more-wrap"><span class="results-more-cap">All ${lastFullResults.length.toLocaleString()} loaded into memory shown. ${totalCount.toLocaleString()} total matches — refine filters to access the rest.</span></div>`
+          : '');
+    root.innerHTML = cardsHTML + showMoreHTML;
     syncCheckboxes(root);
     refreshSelectionBar();
-    setSearchMeta(`Showing ${items.length.toLocaleString()} of ${(total || items.length).toLocaleString()} matches.`);
-    // Show the floating 'select all matches' affordance above the results.
+    setSearchMeta(`Showing ${visibleSlice.length.toLocaleString()} of ${totalCount.toLocaleString()} matches.`);
     const fa = $('sel-floating-add');
     if (fa) {
       fa.classList.add('is-active');
       const cnt = $('sel-add-count');
-      if (cnt) cnt.textContent = items.length.toLocaleString();
+      if (cnt) cnt.textContent = visibleSlice.length.toLocaleString();
     }
+    // Wire the show-more button (one-shot — replaced on each re-render).
+    $('results-show-more')?.addEventListener('click', () => {
+      displayLimit = Math.min(lastFullResults.length, displayLimit + PAGE_SIZE);
+      renderPage(total);
+    });
   }
 
   function selectAllMatches() {
@@ -6841,9 +6878,13 @@ const ui = (() => {
         return;
       }
       setSearchMeta(`Searching ${state.scope}${activeChipsLabel()}…`);
+      // Reset pagination cursor on every fresh query — the user always starts
+      // at the top of the new result set.
+      displayLimit = PAGE_SIZE;
       try {
         const result = await search.query({
           q: state.q, scope: state.scope, chips: state.chips, filters: state.filters, near: state.near,
+          limit: MAX_RESULTS_KEPT,
           onProgress: (p) => {
             if (p.phase === 'reading') setSearchMeta(`Reading ${p.stage} from disk…`);
             else if (p.phase === 'indexing') setSearchMeta(`Building ${p.stage} index ${p.done.toLocaleString()} / ${p.total.toLocaleString()}…`);
