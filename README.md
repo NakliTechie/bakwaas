@@ -31,6 +31,7 @@ Fast full-text over tweets and likes via MiniSearch with a rich filter surface:
 - **Date-range scrubber** — SVG dual-thumb range picker over a tweets-per-month histogram. Drag thumbs or the highlighted band; two-way sync with the date inputs
 - **Scope toggle**: Tweets / Likes / Both
 - **Near match** toggle — folds in phonetic-encoded variants so `amrika`/`umrika` find `america`, and Latin `chirag` finds Devanagari `चिराग` (phonetic indexing runs at MiniSearch-build time)
+- **Semantic search** — tick **Semantic** to search by meaning rather than keywords. Runs `all-MiniLM-L6-v2` in the browser (one-time embedding pass, results cached in IndexedDB). Large archives can use the offline Python script (`scripts/embed.py`) instead — 10–50× faster, uses your machine's CPU/GPU, outputs a `.bin` file you import once via **↑ Import emb.**
 - **Filters-only searches** — leave the text box empty, set `min_faves:100 since:2018`, get tweets streamed via IndexedDB cursor with the `created_at` index
 - **Select-all matches** + per-result selection — adds to the global selection set
 
@@ -115,10 +116,11 @@ Where state lives:
 - **Single-file HTML**, vanilla JS, no build step. Open with `python3 -m http.server` or any static host.
 - **MiniSearch** for full-text (CDN ESM @ 7.1.2). Indexes serialised to IndexedDB. Lazy rebuild on first search.
 - **JSZip** for ZIP ingestion (CDN ESM). FSA folder mode skips it entirely.
-- **Palette**: [Rangrez](https://github.com/NakliTechie/rangrez) — SHEESHAM (india1-10). A culturally-grounded colour library by the same author; every palette has a story.
-- **Phonetic indexing**: per-tweet `phonetic_text` field generated at index time. Cross-script transliteration covers nine non-Latin scripts — Brahmic family (**Devanagari, Bengali, Tamil, Gurmukhi, Gujarati, Telugu, Kannada, Malayalam**) via shared inherent-a/halant logic plus **Cyrillic** and **Greek** as alphabetic 1:1. Latin output then runs through a consonant-skeleton encoder (`c/ch/ck → k`, `ph → f`, vowel + `h` strip, dedupe). Result: `chirag`, `chiraag`, and `चिराग` all hash to `krg`; `america`/`amrika`/`umrika` → `mrk`. Arabic + CJK deferred (different structural patterns).
+- **Palette**: [Rangrez](https://github.com/NakliTechie/rangrez) — periwinkle dark (`--accent:#6b8ef5`, `--accent-2:#f0845a` coral). Light mode via `.theme-light`. Toggle in the header persists to localStorage; auto-detects OS preference on first visit.
+- **Phonetic indexing**: per-tweet `phonetic_text` field generated at index time. Cross-script transliteration covers nine non-Latin scripts — Brahmic family (**Devanagari, Bengali, Tamil, Gurmukhi, Gujarati, Telugu, Kannada, Malayalam**) via shared inherent-a/halant logic plus **Cyrillic** and **Greek** as alphabetic 1:1. CJK covered: Chinese → pinyin, Japanese kanji → kana → romaji, Korean → romaja. Latin output runs through a consonant-skeleton encoder. Result: `chirag`, `chiraag`, and `चिराग` all hash to `krg`; `america`/`amrika`/`umrika` → `mrk`.
+- **Semantic search**: `@xenova/transformers@2.17.2` / `all-MiniLM-L6-v2` runs on the main thread (384-dim vectors, chunked with `setTimeout(0)` yields). Embeddings stored in IndexedDB (DB_VERSION=3, `embeddings` store). For large archives, `scripts/embed.py` generates the same vectors offline via `sentence-transformers` (batch_size=512); output is a BWEM binary (magic + uint32 header + null-separated ID block + raw float32 matrix) imported once. CSP must include `https://hf.co https://*.hf.co https://*.xethub.hf.co` — HuggingFace redirects large ONNX files to the XetHub CDN, not `huggingface.co`.
 - **OAuth 1.0a signing** for the X API delete path: HMAC-SHA1 via SubtleCrypto, RFC-3986 percent-encoded base-string assembly.
-- **CSP** pinned: `default-src 'self'`, `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net`, `connect-src` extended for the BYOK provider hosts.
+- **CSP** pinned: `default-src 'self'`, `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net`, `connect-src` extended for BYOK provider hosts + HuggingFace / XetHub CDN for model weights.
 
 ---
 
@@ -126,10 +128,11 @@ Where state lives:
 
 What's in `PENDING.md` (local-only) — the next-session work:
 
-- **Web Worker refactor** — move `JSON.parse(100MB)` + `patterns.aggregate()` + `stats.aggregate()` off the main thread so the tab never freezes during a parse pass
-- **Semantic search** — Transformers.js + `all-MiniLM-L6-v2` (or similar). Embed every tweet to 384-dim vectors, query by cosine similarity. "Find more like this" on every result; Topics gets free LLM-less cluster labels from centroid embeddings
-- **More cross-script tables** — Bengali, Tamil, Gurmukhi, Arabic, Cyrillic for the phonetic indexing pipeline
+- **Semantic "Find more like this"** — surface the top-K semantically similar tweets on any result, now that embeddings are cached in IDB
+- **Topics cluster labels** — derive 2–4 word labels from centroid embeddings per hashtag cluster (no LLM needed)
+- **Arabic phonetic indexing** — different structural pattern from Brahmic (right-to-left, short vowels typically omitted); Buckwalter-style consonantal skeleton
 - **Instagram archive** as a fifth provider
+- **BYOK LLM** (Anthropic / OpenAI / Gemini) — natural-language → filter spec in Search; cluster labels in Topics; bulk classify in Patterns
 
 ---
 
