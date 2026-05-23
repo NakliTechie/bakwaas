@@ -72,7 +72,9 @@ The deletion confirmation tray:
 
 **BYOK X API delete** *(optional)*. If you have your own X developer credentials (OAuth 1.0a Read+Write), Bakwaas can bulk-delete via `DELETE /2/tweets/:id` directly. Keys live in IndexedDB only — never the FSA sidecar, never anywhere except `api.x.com`. Honest about cost: X v2 DELETE is a paid endpoint these days.
 
-No X API. No OAuth. No accounts. No server. No telemetry. Every export is a download from your browser, not an upload from it.
+No X API. No OAuth. No accounts. No server. Every export is a download from your browser, not an upload from it.
+
+**One transparent exception:** Bakwaas runs Google Analytics 4 (`G-E5XCNWFXNC`) for page visits and tab opens — a basic "is anyone using this" counter for the project. **No archive content is ever sent**, only the URL and which tab you opened. `anonymize_ip` is on. Block it with uBlock / Privacy Badger if you prefer.
 
 ---
 
@@ -127,6 +129,22 @@ What's in `PENDING.md` (local-only) — the next-session work:
 - **Semantic search** — Transformers.js + `all-MiniLM-L6-v2` (or similar). Embed every tweet to 384-dim vectors, query by cosine similarity. "Find more like this" on every result; Topics gets free LLM-less cluster labels from centroid embeddings
 - **More cross-script tables** — Bengali, Tamil, Gurmukhi, Arabic, Cyrillic for the phonetic indexing pipeline
 - **Instagram archive** as a fifth provider
+
+---
+
+## Part of the NakliTechie series
+
+Bakwaas is a sibling of a handful of other browser-native, single-file tools by the same author. All zero-server, all your data stays on your device.
+
+| Tool | What it does |
+|---|---|
+| [**Crate**](https://github.com/NakliTechie/crate) | A drop-anything organiser surface — the browser face of the `private-mesh` fabric |
+| [**nakliOS**](https://naklios.dev) | The "desktop" launcher that hosts the rest of the series — apps run in iframes via a cooperative postMessage protocol |
+| [**LocalMind**](https://github.com/NakliTechie/LocalMind) | Private AI research agent — 9 tools, RAG, web search, multimodal, BYOK model |
+| [**VaultMind**](https://github.com/NakliTechie/VaultMind) | Obsidian vault explorer + builder — force graph, semantic search, AI chat, in-place editing |
+| [**Tijori**](https://github.com/NakliTechie/Tijori) | Single-file password vault — hardware-key-aware, multi-vault, KeePass-export-compatible |
+
+[See the full series →](https://naklitechie.github.io/)
 
 ---
 

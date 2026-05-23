@@ -8,10 +8,10 @@
 <meta name="version" content="0.1.0-phase1">
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
+  script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://www.googletagmanager.com;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob: https://*.twimg.com;
-  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://public.api.bsky.app https://api.x.com https://api.twitter.com;
+  img-src 'self' data: blob: https://*.twimg.com https://www.google-analytics.com;
+  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://public.api.bsky.app https://api.x.com https://api.twitter.com https://www.google-analytics.com https://www.googletagmanager.com;
   base-uri 'none';
   form-action 'none';
   frame-src 'none';
@@ -19,6 +19,15 @@
   object-src 'none';
 ">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%237d8aef'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='system-ui,sans-serif' font-weight='700' font-size='14' fill='%230d1117'%3EBK%3C/text%3E%3C/svg%3E">
+<!-- Google Analytics 4 — only telemetry in the app. Counts page visits + tab
+     opens; never your archive content. See README + help modal for details. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-E5XCNWFXNC"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-E5XCNWFXNC', { anonymize_ip: true });
+</script>
 <title>Bakwaas — explore your Twitter archive</title>
 <style>
 :root {
@@ -870,6 +879,30 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .global-sel-chip:hover { filter: brightness(1.08); }
 .global-sel-chip .gs-arrow { font-size: 14px; }
 
+/* Unified chart hover tooltip */
+.chart-tooltip {
+  position: fixed; left: 0; top: 0; display: none;
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--accent); border-radius: 8px;
+  padding: 8px 12px; font-size: 12px; font-family: var(--mono);
+  pointer-events: none; z-index: 1000;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  white-space: nowrap; line-height: 1.4;
+  opacity: 0; transition: opacity .08s;
+}
+.chart-tooltip.is-on { display: block; opacity: 1; }
+.chart-tooltip .ct-title { color: var(--accent); font-weight: 700; }
+.chart-tooltip .ct-stat { color: var(--text); }
+.chart-tooltip .ct-hint { color: var(--muted); font-size: 10px; margin-top: 3px; }
+
+/* Hover-target overlays on line charts — invisible by default, dots appear on hover */
+.linechart [data-tip], .scrubber-svg [data-tip], .spark [data-tip] { cursor: pointer; }
+.linechart .lc-dot { fill: var(--accent); opacity: 0; transition: opacity .12s; pointer-events: none; }
+.linechart:hover .lc-dot { opacity: 0.9; }
+.linechart .lc-hover { fill: transparent; }
+.linechart .lc-hover:hover ~ .lc-dot-set .lc-dot { opacity: 1; }
+.spark-row .spark-hover { fill: transparent; }
+
 /* Best friends — bubble cards */
 .best-friends { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .bf-card {
@@ -1029,7 +1062,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.19 · phonetic + cross-script</span>
+      <span class="phase" id="phase-tag">v0.20 · tooltips + settings + GA</span>
+      <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1216,7 +1250,6 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <span class="sel-spacer"></span>
           <button type="button" id="sel-select-all-matches">Select all matches</button>
           <button type="button" id="sel-clear">Clear</button>
-          <button type="button" id="sel-xapi-setup" class="xapi-setup-btn" title="Bulk delete via your own X API keys">⚙ X API</button>
           <button type="button" id="sel-xapi-delete" class="danger" style="display:none;">Delete via X API</button>
           <button type="button" id="sel-open" class="primary">Open all tabs</button>
           <button type="button" id="sel-mark" class="danger">Mark deleted</button>
@@ -1254,7 +1287,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         Supported sources: <strong>Twitter/X</strong> (full surface), <strong>Mastodon</strong> (no engagement counts in their export), <strong>Bluesky</strong> (live API, full surface), <strong>Reddit</strong> (posts + comments, no engagement counts).
       </p>
       <p class="muted">
-        Everything runs locally. Nothing leaves your tab. No server, no accounts, no API keys to X, no telemetry. Even Wrapped exports are downloads from your browser, not uploads from it.
+        Everything runs locally. Your archive stays in this tab. No server, no accounts, no API keys to X required. Even Wrapped exports are downloads from your browser, not uploads from it.
+      </p>
+      <p class="muted" style="font-size:11px;">
+        One honest exception: Bakwaas uses <strong>Google Analytics 4</strong> (G-E5XCNWFXNC) for page visits and tab opens — basic 'is anyone using this' counters. No archive content is ever sent. <code>anonymize_ip</code> is on. Use uBlock / Privacy Badger to block it if you'd prefer.
       </p>
 
       <h3>What's in each tab</h3>
@@ -1316,7 +1352,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <div class="help-backdrop" id="xapi-backdrop" role="dialog" aria-modal="true" aria-labelledby="xapi-title">
     <div class="help-card">
       <button class="help-close" id="xapi-close" type="button" aria-label="Close">×</button>
-      <h2 id="xapi-title">X API — bulk delete setup</h2>
+      <h2 id="xapi-title">Settings — X API (bulk delete)</h2>
       <p class="muted">
         Bring your own keys. Bakwaas uses your X developer credentials to delete tweets directly via the v2 API. Nothing leaves your tab except to <code>api.x.com</code>, signed with your keys.
       </p>
@@ -1386,6 +1422,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
     <span id="global-sel-count">0</span> selected
     <span class="gs-arrow">→</span>
   </div>
+  <div class="chart-tooltip" id="chart-tooltip" aria-hidden="true"></div>
 
 <script type="module">
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4406,7 +4443,7 @@ const ui = (() => {
         const row = (i + yearStart.getUTCDay()) % 7;
         const x = col * (CELL + GAP);
         const yy = row * (CELL + GAP);
-        cells += `<rect class="heatmap-cell ${heatClass(n)}" data-day="${key}" data-count="${n}" x="${x}" y="${yy}" width="${CELL}" height="${CELL}" rx="2"><title>${key}: ${n} — click to drill in</title></rect>`;
+        cells += `<rect class="heatmap-cell ${heatClass(n)}" data-day="${key}" data-count="${n}" data-tip-title="${key}" data-tip-stat="${n.toLocaleString()} tweet${n===1?'':'s'}" ${n>0?'data-tip-hint="click to drill into search"':''} x="${x}" y="${yy}" width="${CELL}" height="${CELL}" rx="2"></rect>`;
       }
       html += `<div class="heatmap-year">${y}</div><svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${cells}</svg>`;
     }
@@ -4421,7 +4458,7 @@ const ui = (() => {
       rows += `<div class="hod-grid"><div class="hod-row-label">${DAYS[d]}</div>`;
       for (let h = 0; h < 24; h++) {
         const n = hourDow[d * 24 + h];
-        rows += `<div class="hod-cell ${hodClass(n, max)}" title="${DAYS[d]} ${String(h).padStart(2,'0')}:00 — ${n}"></div>`;
+        rows += `<div class="hod-cell ${hodClass(n, max)}" data-tip-title="${DAYS[d]} ${String(h).padStart(2,'0')}:00 UTC" data-tip-stat="${n.toLocaleString()} tweet${n===1?'':'s'}"></div>`;
       }
       rows += `</div>`;
     }
@@ -4435,7 +4472,7 @@ const ui = (() => {
     const max = Math.max(...buckets) || 1;
     return '<div class="top-list">' + buckets.map((v, i) => {
       const width = Math.max(2, Math.round((v / max) * 120));
-      return `<div class="top-row">
+      return `<div class="top-row" data-tip-title="bucket ${labels[i]}" data-tip-stat="${v.toLocaleString()} tweets">
         <span class="top-label">${labels[i]}</span>
         <div class="top-bar-wrap">
           <div class="top-bar" style="width:${width}px"></div>
@@ -4618,6 +4655,8 @@ const ui = (() => {
       if (target === 'tab-wrapped') renderWrapped();
       if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
       if (target === 'tab-selection') renderTray();
+      // Fire a coarse-grain analytics event (no archive content, just the tab id).
+      try { if (typeof gtag === 'function') gtag('event', 'tab_open', { tab: target }); } catch {}
     });
   }
 
@@ -5103,7 +5142,7 @@ const ui = (() => {
       </div>`;
     }).join('');
   }
-  function linechartHTML(series, _kind) {
+  function linechartHTML(series, kind) {
     if (!series.length) return '<div class="top-empty">— no data —</div>';
     const W = 720, H = 140, PAD_L = 32, PAD_R = 8, PAD_T = 8, PAD_B = 18;
     const ys = series.map(s => s.y);
@@ -5115,10 +5154,22 @@ const ui = (() => {
     const ticks = [max, Math.round(max / 2), 0].map(v => `<text x="0" y="${ysC(v).toFixed(1) + 3}">${v.toLocaleString()}</text>`).join('');
     const xLabels = (series.length > 1 ? [0, Math.floor(series.length / 2), series.length - 1] : [0])
       .map(i => `<text x="${xs(i).toFixed(1)}" y="${H - 4}" text-anchor="middle">${series[i].x}</text>`).join('');
+    // Hover overlays: a tall transparent rect per point + a visible-on-hover dot.
+    const statSuffix = kind === 'chars' ? ' avg chars' : kind === 'count' ? '' : '';
+    const barSpan = (W - PAD_L - PAD_R) / Math.max(1, series.length);
+    const hoverRects = series.map((s, i) => {
+      const x = xs(i);
+      const halfW = Math.max(4, barSpan / 2);
+      const val = typeof s.y === 'number' ? (kind === 'chars' ? s.y.toFixed(1) : s.y.toLocaleString()) : String(s.y);
+      return `<rect class="lc-hover" x="${(x - halfW).toFixed(1)}" y="${PAD_T}" width="${(halfW * 2).toFixed(1)}" height="${(H - PAD_T - PAD_B).toFixed(1)}" data-tip-title="${s.x}" data-tip-stat="${val}${statSuffix}"/>`;
+    }).join('');
+    const dots = series.map((s, i) => `<circle class="lc-dot" cx="${xs(i).toFixed(1)}" cy="${ysC(s.y).toFixed(1)}" r="3"/>`).join('');
     return `<svg class="linechart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet">
       ${ticks}${xLabels}
       <polygon class="ln-area" points="${area}"/>
       <polyline class="ln" points="${pts}"/>
+      <g class="lc-dot-set">${dots}</g>
+      ${hoverRects}
     </svg>`;
   }
   function emojiMoodHTML(arr) {
@@ -5176,11 +5227,18 @@ const ui = (() => {
       const ys = (v) => H - 1 - (v / max) * (H - 2);
       const pts = r.series.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(' ');
       const area = `0,${H - 1} ` + pts + ` ${W},${H - 1}`;
+      const span = W / Math.max(1, r.series.length);
+      const hover = r.series.map((v, i) => {
+        if (v === 0) return '';
+        const month = months[i];
+        return `<rect class="spark-hover" x="${(i * span).toFixed(1)}" y="0" width="${span.toFixed(1)}" height="${H}" data-tip-title="#${safe(r.tag)} · ${month}" data-tip-stat="${v} use${v===1?'':'s'} that month"/>`;
+      }).join('');
       return `<div class="spark-row">
         <div class="spark-label">#${safe(r.tag)}</div>
         <svg class="spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="none">
           <polygon class="spark-area" points="${area}"/>
           <polyline class="spark-line" points="${pts}"/>
+          ${hover}
         </svg>
         <div class="spark-count">${r.total.toLocaleString()}</div>
       </div>`;
@@ -5279,6 +5337,14 @@ const ui = (() => {
     const zeroY = ysC(0).toFixed(1);
     const xLabels = (series.length > 1 ? [0, Math.floor(series.length / 2), series.length - 1] : [0])
       .map(i => `<text x="${xs(i).toFixed(1)}" y="${H - 4}" text-anchor="middle">${series[i].x}</text>`).join('');
+    const barSpan = (W - PAD_L - PAD_R) / Math.max(1, series.length);
+    const hoverRects = series.map((s, i) => {
+      const x = xs(i);
+      const halfW = Math.max(4, barSpan / 2);
+      const mood = s.y > 0.1 ? ' (positive)' : s.y < -0.1 ? ' (negative)' : ' (neutral)';
+      return `<rect class="lc-hover" x="${(x - halfW).toFixed(1)}" y="${PAD_T}" width="${(halfW * 2).toFixed(1)}" height="${(H - PAD_T - PAD_B).toFixed(1)}" data-tip-title="${s.x}" data-tip-stat="score ${s.y.toFixed(2)}${mood}"/>`;
+    }).join('');
+    const dots = series.map((s, i) => `<circle class="lc-dot" cx="${xs(i).toFixed(1)}" cy="${ysC(s.y).toFixed(1)}" r="3"/>`).join('');
     return `<svg class="linechart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet">
       <text x="0" y="${ysC(1).toFixed(1) + 3}">+1</text>
       <text x="0" y="${(parseFloat(zeroY) + 3).toFixed(1)}">0</text>
@@ -5286,6 +5352,8 @@ const ui = (() => {
       <line x1="${PAD_L}" y1="${zeroY}" x2="${W - PAD_R}" y2="${zeroY}" class="ln-baseline"/>
       ${xLabels}
       <polyline class="ln" points="${pts}"/>
+      <g class="lc-dot-set">${dots}</g>
+      ${hoverRects}
     </svg>`;
   }
 
@@ -5330,7 +5398,7 @@ const ui = (() => {
           ? (h >= sleep.start && h < sleep.end)
           : (h >= sleep.start || h < sleep.end);
         const fill = isSleep ? 'var(--panel-2)' : 'var(--accent)';
-        bars += `<rect x="${x}" y="${ROW_H - heightPx - 2}" width="${CELL}" height="${heightPx}" rx="1" fill="${fill}"><title>${year} ${String(h).padStart(2,'0')}:00 UTC — ${v.toLocaleString()}</title></rect>`;
+        bars += `<rect x="${x}" y="${ROW_H - heightPx - 2}" width="${CELL}" height="${heightPx}" rx="1" fill="${fill}" data-tip-title="${year} · ${String(h).padStart(2,'0')}:00 UTC" data-tip-stat="${v.toLocaleString()} tweets${isSleep ? ' (within quiet hours)' : ''}"></rect>`;
       }
       return `<svg viewBox="0 0 ${W} ${ROW_H}" width="${W}" height="${ROW_H}" style="display:block;margin-bottom:2px;" preserveAspectRatio="xMinYMid meet">${bars}</svg>`;
     }).join('') +
@@ -5401,7 +5469,7 @@ const ui = (() => {
       const hue = colorForHandle(handle);
       const partners = coPartners.get(handle);
       const partnerHint = partners && partners.size ? `often with ${[...partners].slice(0, 2).map(x => '@' + safe(x)).join(', ')}` : 'solo';
-      return `<div class="bf-card" data-handle="${safe(handle)}">
+      return `<div class="bf-card" data-handle="${safe(handle)}" data-tip-title="@${safe(handle)} · rank #${i + 1}" data-tip-stat="${count.toLocaleString()} mentions" data-tip-hint="click to open conversation">
         <div class="bf-rank">#${i + 1}</div>
         <div class="bf-avatar" style="background: linear-gradient(135deg, hsl(${hue},65%,55%), hsl(${(hue + 30) % 360},65%,40%));">${safe(initialsFor(handle))}</div>
         <div class="bf-handle">@${safe(handle)}</div>
@@ -5451,7 +5519,7 @@ const ui = (() => {
     });
     let dots = '';
     for (const n of nodes) {
-      dots += `<g><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${n.dotR.toFixed(1)}" fill="hsl(${n.hue}, 60%, 50%)" opacity="0.9"><title>@${safe(n.handle)} — ${n.count.toLocaleString()} mentions</title></circle>
+      dots += `<g><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${n.dotR.toFixed(1)}" fill="hsl(${n.hue}, 60%, 50%)" opacity="0.9" data-tip-title="@${safe(n.handle)}" data-tip-stat="${n.count.toLocaleString()} mentions" data-tip-hint="click bubble to open conversation"></circle>
         <text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1) + 3}" text-anchor="middle" fill="#fff" font-size="9" font-weight="700" font-family="var(--sans)" pointer-events="none">${safe(initialsFor(n.handle))}</text>
         <text x="${n.x.toFixed(1)}" y="${(n.y + n.dotR + 12).toFixed(1)}" text-anchor="middle" fill="var(--muted)" font-size="9" font-family="var(--mono)" pointer-events="none">@${safe(n.handle)}</text></g>`;
     }
@@ -5544,7 +5612,7 @@ const ui = (() => {
     const nodeSvg = nodes.map(n => {
       const r = 4 + (n.deg / maxDeg) * 8;
       const labelOffset = r + 4;
-      return `<g><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r.toFixed(1)}" fill="var(--accent)" opacity="0.85"><title>@${n.id} — ${n.deg} co-mentions</title></circle>
+      return `<g><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r.toFixed(1)}" fill="var(--accent)" opacity="0.85" data-tip-title="@${n.id}" data-tip-stat="${n.deg.toLocaleString()} co-mentions"></circle>
         <text x="${n.x.toFixed(1)}" y="${(n.y + labelOffset + 8).toFixed(1)}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="var(--mono)">@${n.id}</text></g>`;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;background:var(--panel-2);border-radius:8px;" preserveAspectRatio="xMidYMid meet">${edgeSvg}${nodeSvg}</svg>`;
@@ -5559,7 +5627,7 @@ const ui = (() => {
       for (let h = 0; h < 24; h++) {
         const v = hodEng[d * 24 + h];
         const cls = hodClass(v, max);
-        rows += `<div class="hod-cell ${cls}" title="${DAYS[d]} ${String(h).padStart(2,'0')}:00 — avg eng ${v.toFixed(2)}"></div>`;
+        rows += `<div class="hod-cell ${cls}" data-tip-title="${DAYS[d]} ${String(h).padStart(2,'0')}:00 UTC" data-tip-stat="avg engagement ${v.toFixed(2)}"></div>`;
       }
       rows += `</div>`;
     }
@@ -5967,6 +6035,37 @@ const ui = (() => {
     const gcnt = $('global-sel-count');
     if (gchip) gchip.classList.toggle('is-active', n > 0);
     if (gcnt) gcnt.textContent = n.toLocaleString();
+  }
+
+  // ── Unified chart hover tooltip ────────────────────────────────────────
+  function bindChartTooltips() {
+    const tip = $('chart-tooltip');
+    if (!tip) return;
+    function showAt(el, x, y) {
+      const html = el.dataset.tipHtml
+        || (el.dataset.tipTitle
+              ? `<div class="ct-title">${el.dataset.tipTitle}</div><div class="ct-stat">${el.dataset.tipStat || ''}</div>${el.dataset.tipHint ? `<div class="ct-hint">${el.dataset.tipHint}</div>` : ''}`
+              : `<div class="ct-stat">${el.dataset.tip}</div>`);
+      tip.innerHTML = html;
+      // Position with viewport edge clamping
+      tip.classList.add('is-on');
+      const r = tip.getBoundingClientRect();
+      const vw = window.innerWidth, vh = window.innerHeight;
+      let nx = x + 14, ny = y + 16;
+      if (nx + r.width > vw - 8) nx = x - r.width - 14;
+      if (ny + r.height > vh - 8) ny = y - r.height - 14;
+      if (nx < 8) nx = 8;
+      if (ny < 8) ny = 8;
+      tip.style.transform = `translate(${nx}px, ${ny}px)`;
+    }
+    function hide() { tip.classList.remove('is-on'); }
+    document.addEventListener('pointermove', (e) => {
+      const el = e.target.closest('[data-tip], [data-tip-title]');
+      if (!el) { hide(); return; }
+      showAt(el, e.clientX, e.clientY);
+    }, { passive: true });
+    document.addEventListener('pointerleave', hide);
+    window.addEventListener('scroll', hide, true);
   }
 
   // Document-level handler for the small mark-for-deletion button used
@@ -6530,8 +6629,8 @@ const ui = (() => {
     });
     $('sel-select-all-matches')?.addEventListener('click', selectAllMatches);
     $('sel-add-all')?.addEventListener('click', selectAllMatches);
-    $('sel-xapi-setup')?.addEventListener('click', openXapiModal);
     $('sel-xapi-delete')?.addEventListener('click', bulkDeleteViaXapi);
+    $('settings-btn')?.addEventListener('click', openXapiModal);
     $('sel-open').addEventListener('click', async () => {
       const n = selectionSet.size;
       if (!n) return;
@@ -6825,7 +6924,7 @@ const ui = (() => {
         const h = (months[i].count / maxCount) * (H - 12);
         const x = PAD + i * barSpan;
         const inWindow = i >= sinceIdx && i <= untilIdx;
-        bars += `<rect class="bar${inWindow ? ' in-window' : ''}" x="${x.toFixed(1)}" y="${(H - 4 - h).toFixed(1)}" width="${Math.max(0.5, barSpan - 0.5).toFixed(1)}" height="${h.toFixed(1)}"/>`;
+        bars += `<rect class="bar${inWindow ? ' in-window' : ''}" x="${x.toFixed(1)}" y="${(H - 4 - h).toFixed(1)}" width="${Math.max(0.5, barSpan - 0.5).toFixed(1)}" height="${h.toFixed(1)}" data-tip-title="${months[i].key}" data-tip-stat="${months[i].count.toLocaleString()} tweet${months[i].count===1?'':'s'}"/>`;
       }
       const dimL = `<rect class="dim" x="${PAD}" y="0" width="${(sinceX - PAD).toFixed(1)}" height="${H}"/>`;
       const dimR = `<rect class="dim" x="${untilX.toFixed(1)}" y="0" width="${(W - PAD - untilX).toFixed(1)}" height="${H}"/>`;
@@ -6983,7 +7082,7 @@ const ui = (() => {
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
            bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer,
-           bindMarkButtons };
+           bindMarkButtons, bindChartTooltips };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -7085,6 +7184,7 @@ async function bootstrap() {
   ui.bindConvoModal();
   ui.bindThreadsExplorer();
   ui.bindMarkButtons();
+  ui.bindChartTooltips();
   // Convo modal's 'Open in Search' link delegation
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-convo-search]');
