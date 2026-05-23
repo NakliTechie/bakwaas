@@ -272,6 +272,26 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   font-family: var(--mono);
 }
 
+/* Scrubber — dual-thumb range picker over a tweets-per-month histogram. */
+.scrubber-wrap {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; margin-top: 10px;
+}
+.scrubber-wrap .scrubber-head {
+  display: flex; gap: 8px; align-items: baseline;
+  font-size: 11px; font-family: var(--mono); color: var(--muted); margin-bottom: 4px;
+}
+.scrubber-wrap .scrubber-head .scrubber-window-label { color: var(--accent); }
+.scrubber-svg { width: 100%; height: 60px; display: block; touch-action: none; user-select: none; }
+.scrubber-svg .bar { fill: var(--accent); opacity: 0.35; }
+.scrubber-svg .bar.in-window { opacity: 0.9; }
+.scrubber-svg .dim { fill: rgba(13, 17, 23, 0.7); }
+.scrubber-svg .thumb { fill: var(--accent); cursor: ew-resize; }
+.scrubber-svg .thumb-handle { fill: #fff; }
+.scrubber-svg .window-band { fill: transparent; cursor: grab; }
+.scrubber-svg.dragging .window-band { cursor: grabbing; }
+.scrubber-svg .frame { fill: none; stroke: var(--border); stroke-width: 0.5; }
+
 .results-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; font-family: var(--mono); }
 
 .results-list { display: flex; flex-direction: column; gap: 10px; }
@@ -320,7 +340,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
 .heatmap-year { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 10px; }
 .heatmap-year:first-of-type { margin-top: 0; }
-.heatmap-cell { stroke: var(--bg); stroke-width: 0.5; }
+.heatmap-cell { stroke: var(--bg); stroke-width: 0.5; cursor: pointer; transition: stroke .12s; }
+.heatmap-cell:hover { stroke: var(--text); stroke-width: 1.5; }
 .heatmap-cell.h0 { fill: var(--panel-2); }
 .heatmap-cell.h1 { fill: #2a3160; }
 .heatmap-cell.h2 { fill: #4a548a; }
@@ -444,6 +465,19 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .selection-bar button.primary:hover { filter: brightness(1.08); }
 .selection-bar button.danger:hover { border-color: var(--danger); color: var(--danger); }
 .selection-bar button:hover { border-color: var(--text); }
+
+/* Floating 'select all matches' affordance — shows above results when there are matches. */
+.sel-floating-add {
+  display: none; justify-content: center; margin: 10px 0 6px;
+}
+.sel-floating-add.is-active { display: flex; }
+.sel-add-btn {
+  background: var(--panel-2); color: var(--accent);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 6px 16px; font-size: 12px; font-family: var(--mono);
+  transition: background .15s, border-color .15s;
+}
+.sel-add-btn:hover { background: var(--panel); border-color: var(--accent); }
 
 /* Guard modal */
 .modal-backdrop {
@@ -763,7 +797,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.14 · advanced search</span>
+      <span class="phase" id="phase-tag">v0.15 · scrubber + select-all</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -916,14 +950,25 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
             <code>since:2018-01-01 until:2019-12-31 min_faves:10 has:media -crypto "exact phrase" from:elonmusk lang:en</code>
           </details>
         </div>
+        <div class="scrubber-wrap" id="search-scrubber-wrap" style="display:none;">
+          <div class="scrubber-head">
+            <span>Scrub a window:</span>
+            <span class="scrubber-window-label" id="scrubber-label">—</span>
+          </div>
+          <div id="search-scrubber-host"></div>
+        </div>
         <div class="results-meta" id="search-meta">Type to search across <span id="search-scope-label">tweets</span>.</div>
         <div class="results-list" id="search-results"></div>
         <div class="selection-bar" id="selection-bar">
           <span class="sel-count"><span id="sel-count-n">0</span> selected</span>
           <span class="sel-spacer"></span>
+          <button type="button" id="sel-select-all-matches">Select all matches</button>
           <button type="button" id="sel-clear">Clear</button>
           <button type="button" id="sel-open" class="primary">Open all tabs</button>
           <button type="button" id="sel-mark" class="danger">Mark deleted</button>
+        </div>
+        <div id="sel-floating-add" class="sel-floating-add">
+          <button type="button" id="sel-add-all" class="sel-add-btn">+ Select all <span id="sel-add-count">N</span> matches</button>
         </div>
       </div>
 
@@ -3564,7 +3609,7 @@ const ui = (() => {
         const row = (i + yearStart.getUTCDay()) % 7;
         const x = col * (CELL + GAP);
         const yy = row * (CELL + GAP);
-        cells += `<rect class="heatmap-cell ${heatClass(n)}" x="${x}" y="${yy}" width="${CELL}" height="${CELL}" rx="2"><title>${key}: ${n}</title></rect>`;
+        cells += `<rect class="heatmap-cell ${heatClass(n)}" data-day="${key}" data-count="${n}" x="${x}" y="${yy}" width="${CELL}" height="${CELL}" rx="2"><title>${key}: ${n} — click to drill in</title></rect>`;
       }
       html += `<div class="heatmap-year">${y}</div><svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${cells}</svg>`;
     }
@@ -3661,6 +3706,30 @@ const ui = (() => {
         </div>
       </div>`;
     bindStatsRangePicker(s);
+    bindHeatmapDrillDown();
+  }
+
+  function bindHeatmapDrillDown() {
+    const host = $('stats-charts');
+    if (!host) return;
+    host.addEventListener('click', (e) => {
+      const cell = e.target.closest('.heatmap-cell[data-day]');
+      if (!cell) return;
+      const day = cell.dataset.day;
+      const count = parseInt(cell.dataset.count || '0', 10);
+      if (!day || count === 0) return;
+      // Switch to Search tab + set since=until=day + clear text + trigger.
+      const searchTabBtn = document.querySelector('#screen-summary .tab[data-tab="tab-search"]');
+      searchTabBtn?.click();
+      const since = $('search-since'), until = $('search-until');
+      if (since) since.value = day;
+      if (until) until.value = day;
+      const sInput = $('search-input');
+      if (sInput) { sInput.value = ''; }
+      // Dispatch 'change' so the bindSearch listeners pick it up + run.
+      since?.dispatchEvent(new Event('change'));
+      until?.dispatchEvent(new Event('change'));
+    });
   }
 
   let statsRangeDebounce = null;
@@ -4924,6 +4993,8 @@ const ui = (() => {
     if (!items.length) {
       lastResultItems = [];
       root.innerHTML = '<div class="results-empty">No matches — try a different query or relax the filters.</div>';
+      const fa = $('sel-floating-add');
+      if (fa) fa.classList.remove('is-active');
       return;
     }
     const hydrated = await hydrateState(items);
@@ -4932,6 +5003,23 @@ const ui = (() => {
     syncCheckboxes(root);
     refreshSelectionBar();
     setSearchMeta(`Showing ${items.length.toLocaleString()} of ${(total || items.length).toLocaleString()} matches.`);
+    // Show the floating 'select all matches' affordance above the results.
+    const fa = $('sel-floating-add');
+    if (fa) {
+      fa.classList.add('is-active');
+      const cnt = $('sel-add-count');
+      if (cnt) cnt.textContent = items.length.toLocaleString();
+    }
+  }
+
+  function selectAllMatches() {
+    if (!lastResultItems || !lastResultItems.length) return;
+    for (const it of lastResultItems) {
+      const k = itemKey(it);
+      selectionSet.add(k);
+    }
+    refreshSelectionBar();
+    syncCheckboxes($('search-results'));
   }
 
   function refreshCardForKey(key) {
@@ -5015,6 +5103,8 @@ const ui = (() => {
       refreshSelectionBar();
       syncCheckboxes($('search-results'));
     });
+    $('sel-select-all-matches')?.addEventListener('click', selectAllMatches);
+    $('sel-add-all')?.addEventListener('click', selectAllMatches);
     $('sel-open').addEventListener('click', async () => {
       const n = selectionSet.size;
       if (!n) return;
@@ -5211,8 +5301,185 @@ const ui = (() => {
             langEl.appendChild(opt);
           }
         }
+        mountScrubber(s, () => { syncFiltersFromInputs(); scheduleRun(); });
       } catch { /* stats not ready yet — filter bar still works without min/max hints */ }
     })();
+  }
+
+  // ── Scrubber: SVG dual-thumb range picker over monthly tweet histogram ──
+  function mountScrubber(s, onChange) {
+    const wrap = $('search-scrubber-wrap');
+    const host = $('search-scrubber-host');
+    const label = $('scrubber-label');
+    if (!wrap || !host || !s || !s.firstDate || !s.lastDate) return;
+
+    // Build monthly buckets from byDay.
+    const byMonth = new Map();
+    for (const [day, count] of (s.byDay || [])) {
+      const m = day.slice(0, 7);
+      byMonth.set(m, (byMonth.get(m) || 0) + count);
+    }
+    const months = [];
+    let y = new Date(s.firstDate).getUTCFullYear();
+    let m = new Date(s.firstDate).getUTCMonth();
+    const eY = new Date(s.lastDate).getUTCFullYear();
+    const eM = new Date(s.lastDate).getUTCMonth();
+    let safety = 0;
+    while ((y < eY || (y === eY && m <= eM)) && safety++ < 1000) {
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      months.push({ key, count: byMonth.get(key) || 0 });
+      m++; if (m === 12) { m = 0; y++; }
+    }
+    if (months.length < 2) return; // not enough range to scrub
+    wrap.style.display = '';
+
+    const W = 1000, H = 60, PAD = 4;
+    const trackW = W - 2 * PAD;
+    const barSpan = trackW / months.length;
+    const maxCount = Math.max(1, ...months.map(mm => mm.count));
+
+    function monthIdxToSinceISO(idx) {
+      const [yy, mm] = months[Math.max(0, Math.min(months.length - 1, idx))].key.split('-').map(n => parseInt(n, 10));
+      return `${yy}-${String(mm).padStart(2,'0')}-01`;
+    }
+    function monthIdxToUntilISO(idx) {
+      const [yy, mm] = months[Math.max(0, Math.min(months.length - 1, idx))].key.split('-').map(n => parseInt(n, 10));
+      // last day of month
+      const last = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+      return `${yy}-${String(mm).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+    }
+    function dateToMonthIdx(iso) {
+      if (!iso) return -1;
+      const k = iso.slice(0, 7);
+      return months.findIndex(mm => mm.key === k);
+    }
+
+    let sinceIdx = 0;
+    let untilIdx = months.length - 1;
+
+    function xForIdx(i, isUntil) {
+      // Since thumb sits at left edge of month bar; until at right edge of month bar.
+      return PAD + (isUntil ? (i + 1) : i) * barSpan;
+    }
+
+    function render() {
+      const sinceX = xForIdx(sinceIdx, false);
+      const untilX = xForIdx(untilIdx, true);
+      let bars = '';
+      for (let i = 0; i < months.length; i++) {
+        const h = (months[i].count / maxCount) * (H - 12);
+        const x = PAD + i * barSpan;
+        const inWindow = i >= sinceIdx && i <= untilIdx;
+        bars += `<rect class="bar${inWindow ? ' in-window' : ''}" x="${x.toFixed(1)}" y="${(H - 4 - h).toFixed(1)}" width="${Math.max(0.5, barSpan - 0.5).toFixed(1)}" height="${h.toFixed(1)}"/>`;
+      }
+      const dimL = `<rect class="dim" x="${PAD}" y="0" width="${(sinceX - PAD).toFixed(1)}" height="${H}"/>`;
+      const dimR = `<rect class="dim" x="${untilX.toFixed(1)}" y="0" width="${(W - PAD - untilX).toFixed(1)}" height="${H}"/>`;
+      const winBand = `<rect class="window-band" x="${sinceX.toFixed(1)}" y="0" width="${(untilX - sinceX).toFixed(1)}" height="${H}"/>`;
+      const tSince = `<g class="thumb" data-thumb="since" transform="translate(${sinceX.toFixed(1)},0)">
+        <rect x="-4" y="0" width="4" height="${H}"/>
+        <rect class="thumb-handle" x="-3" y="${H/2 - 6}" width="2" height="12"/>
+      </g>`;
+      const tUntil = `<g class="thumb" data-thumb="until" transform="translate(${untilX.toFixed(1)},0)">
+        <rect x="0" y="0" width="4" height="${H}"/>
+        <rect class="thumb-handle" x="1" y="${H/2 - 6}" width="2" height="12"/>
+      </g>`;
+      const frame = `<rect class="frame" x="${PAD - 0.5}" y="0.5" width="${trackW + 1}" height="${H - 1}"/>`;
+      host.innerHTML = `<svg class="scrubber-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        ${bars}${dimL}${dimR}${winBand}${tSince}${tUntil}${frame}
+      </svg>`;
+      // label
+      if (label) label.textContent = `${months[sinceIdx].key} → ${months[untilIdx].key} (${(untilIdx - sinceIdx + 1)} months)`;
+      attachPointerHandlers();
+    }
+
+    function clientXToViewX(svg, clientX) {
+      const r = svg.getBoundingClientRect();
+      return ((clientX - r.left) / r.width) * W;
+    }
+    function clamp(idx) { return Math.max(0, Math.min(months.length - 1, idx)); }
+    function viewXToMonthIdx(vx) {
+      return Math.round(((vx - PAD) / trackW) * months.length - 0.5);
+    }
+
+    function attachPointerHandlers() {
+      const svg = host.querySelector('.scrubber-svg');
+      if (!svg) return;
+      let drag = null; // { kind, startVX, startSince, startUntil }
+      const onDown = (e) => {
+        e.preventDefault();
+        const vx = clientXToViewX(svg, e.clientX);
+        const target = e.target.closest('[data-thumb]');
+        if (target) {
+          drag = { kind: target.dataset.thumb, startVX: vx, startSince: sinceIdx, startUntil: untilIdx };
+        } else if (e.target.closest('.window-band')) {
+          drag = { kind: 'window', startVX: vx, startSince: sinceIdx, startUntil: untilIdx };
+        } else {
+          // Click on histogram outside the window — set nearest thumb to that month
+          const idx = clamp(viewXToMonthIdx(vx));
+          // Pick whichever thumb is closer
+          const dSince = Math.abs(idx - sinceIdx);
+          const dUntil = Math.abs(idx - untilIdx);
+          if (dSince <= dUntil) { sinceIdx = Math.min(idx, untilIdx); } else { untilIdx = Math.max(idx, sinceIdx); }
+          drag = null;
+          render();
+          commit();
+          return;
+        }
+        svg.classList.add('dragging');
+        svg.setPointerCapture(e.pointerId);
+      };
+      const onMove = (e) => {
+        if (!drag) return;
+        const vx = clientXToViewX(svg, e.clientX);
+        const deltaIdx = Math.round((vx - drag.startVX) / barSpan);
+        if (drag.kind === 'since') sinceIdx = clamp(Math.min(drag.startSince + deltaIdx, untilIdx));
+        else if (drag.kind === 'until') untilIdx = clamp(Math.max(drag.startUntil + deltaIdx, sinceIdx));
+        else if (drag.kind === 'window') {
+          const span = drag.startUntil - drag.startSince;
+          let ns = drag.startSince + deltaIdx;
+          let nu = drag.startUntil + deltaIdx;
+          if (ns < 0) { nu -= ns; ns = 0; }
+          if (nu > months.length - 1) { ns -= (nu - (months.length - 1)); nu = months.length - 1; }
+          sinceIdx = ns; untilIdx = nu;
+        }
+        render();
+      };
+      const onUp = (e) => {
+        if (!drag) return;
+        svg.classList.remove('dragging');
+        try { svg.releasePointerCapture(e.pointerId); } catch {}
+        drag = null;
+        commit();
+      };
+      svg.addEventListener('pointerdown', onDown);
+      svg.addEventListener('pointermove', onMove);
+      svg.addEventListener('pointerup', onUp);
+      svg.addEventListener('pointercancel', onUp);
+    }
+
+    function commit() {
+      const sinceEl = $('search-since'), untilEl = $('search-until');
+      if (!sinceEl || !untilEl) return;
+      sinceEl.value = monthIdxToSinceISO(sinceIdx);
+      untilEl.value = monthIdxToUntilISO(untilIdx);
+      onChange && onChange();
+    }
+
+    // Initial render: full range
+    render();
+
+    // Listen to date input changes and reflect on scrubber.
+    const sinceEl = $('search-since'), untilEl = $('search-until');
+    function syncFromInputs() {
+      const sIdx = dateToMonthIdx(sinceEl?.value);
+      const uIdx = dateToMonthIdx(untilEl?.value);
+      let changed = false;
+      if (sIdx >= 0 && sIdx !== sinceIdx) { sinceIdx = Math.min(sIdx, untilIdx); changed = true; }
+      if (uIdx >= 0 && uIdx !== untilIdx) { untilIdx = Math.max(uIdx, sinceIdx); changed = true; }
+      if (changed) render();
+    }
+    sinceEl?.addEventListener('change', syncFromInputs);
+    untilEl?.addEventListener('change', syncFromInputs);
   }
 
   function bindHelp() {
