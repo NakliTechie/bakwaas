@@ -364,6 +364,11 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .card-tag:hover { border-color: var(--danger); color: var(--danger); }
 .btn-tag { background: transparent; border: 1px dashed var(--border); border-radius: 6px; padding: 3px 7px; font-size: 11px; color: var(--muted); cursor: pointer; }
 .btn-tag:hover { border-color: var(--accent); color: var(--accent); }
+.btn-similar { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 3px 7px; font-size: 11px; color: var(--muted); cursor: pointer; }
+.btn-similar:hover { border-color: var(--accent); color: var(--accent); }
+.similar-banner { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+.similar-banner-clear { margin-left: auto; background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.similar-banner-clear:hover { border-color: var(--danger); color: var(--danger); }
 /* tag popup */
 .tag-popup { position: fixed; z-index: 900; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.4); min-width: 220px; display: none; }
 .tag-popup.is-open { display: block; }
@@ -1106,7 +1111,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.22 · paginated results</span>
+      <span class="phase" id="phase-tag">v0.23 · engagement + similar</span>
       <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
@@ -1293,6 +1298,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <div id="search-scrubber-host"></div>
         </div>
         <div class="results-meta" id="search-meta">Type to search across <span id="search-scope-label">tweets</span>.</div>
+        <div class="similar-banner" id="similar-banner" style="display:none;">
+          <span id="similar-banner-text" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+          <button type="button" class="similar-banner-clear" id="similar-banner-clear">Clear</button>
+        </div>
         <div class="results-list" id="search-results"></div>
         <div class="selection-bar" id="selection-bar">
           <span class="sel-count"><span id="sel-count-n">0</span> selected</span>
@@ -3105,7 +3114,7 @@ const patterns = (() => {
     if (inflight) return inflight;
     inflight = (async () => {
       const cached = await store.metaGet('patterns_cache');
-      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth && cached.cohorts && cached.topThreadTrees && cached.topByFav) return cached;
+      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth && cached.cohorts && cached.topThreadTrees && cached.topByFav && cached.lenBuckets) return cached;
 
       const db = await store.open();
       const TOP_VIRAL = 30;
@@ -3162,6 +3171,14 @@ const patterns = (() => {
       const bigramsByYear = new Map();         // bigram → Set<year> (for recurring-themes pruning)
       const piiCandidates = [];                // [{ id, text, types, date }] — capped
       const PII_CAP = 50;
+
+      // Length × engagement buckets (originals + replies only; RTs excluded)
+      const lenBuckets = [
+        { label: '0–50', desc: 'Very short', count: 0, sumFav: 0, sumRT: 0 },
+        { label: '51–140', desc: 'Classic tweet', count: 0, sumFav: 0, sumRT: 0 },
+        { label: '141–280', desc: 'Long tweet', count: 0, sumFav: 0, sumRT: 0 },
+        { label: '281+', desc: 'Very long', count: 0, sumFav: 0, sumRT: 0 }
+      ];
 
       let scanCount = 0;
       const PROGRESS_EVERY = 5000;
@@ -3273,6 +3290,15 @@ const patterns = (() => {
             if (bottomZeroSamples.length < BOTTOM_ZERO_SAMPLES) {
               bottomZeroSamples.push({ id: t.id, text: (t.text || '').slice(0, 200), date: t.created_at, is_reply: !!t.is_reply });
             }
+          }
+
+          // Length × engagement (originals + replies; not RTs)
+          if (!t.is_retweet) {
+            const tlen = (t.text || '').length;
+            const bi = tlen <= 50 ? 0 : tlen <= 140 ? 1 : tlen <= 280 ? 2 : 3;
+            lenBuckets[bi].count++;
+            lenBuckets[bi].sumFav += fav;
+            lenBuckets[bi].sumRT += rt;
           }
 
           // ── Phase 8 trackers ─────────────────────────────────────────────
@@ -3840,6 +3866,7 @@ const patterns = (() => {
         piiCandidates: piiCandidates.slice(0, PII_CAP),
         cohorts,
         topThreadTrees,
+        lenBuckets,
         computed_at: Date.now()
       };
 
@@ -4567,7 +4594,51 @@ const search = (() => {
     buildPromise = null;
   }
 
-  return { ensureIndexes, query, invalidateCaches };
+  async function getSimilar(tweet) {
+    await ensureIndexes();
+    const sig = new Set();
+    for (const h of (tweet.hashtags || [])) sig.add('#' + h.toLowerCase());
+    for (const m of (tweet.mentions || [])) sig.add('@' + m.toLowerCase());
+    // Fallback signal for tagless tweets: content words ≥4 chars
+    const useTags = sig.size >= 1;
+    const fallbackWords = useTags ? [] :
+      ((tweet.text || '').toLowerCase()
+        .replace(/https?:\/\/\S+|\bRT\s|@\w+|#\w+/g, ' ')
+        .match(/[a-z]{4,}/g) || []).slice(0, 8);
+    if (!useTags && !fallbackWords.length) return [];
+    let candidates;
+    if (useTags) {
+      candidates = tweetIndex.search([...sig].map(s => s.slice(1)).join(' '), {
+        fields: ['hashtags_joined', 'mentions_joined'], combineWith: 'OR', limit: 2000
+      });
+    } else {
+      candidates = tweetIndex.search(fallbackWords.join(' '), {
+        fields: ['text'], combineWith: 'OR', limit: 800
+      });
+    }
+    const out = [];
+    for (const hit of candidates) {
+      if (hit.id === tweet.id) continue;
+      let jaccard;
+      if (useTags) {
+        const cs = new Set();
+        for (const h of (hit.hashtags || [])) cs.add('#' + h.toLowerCase());
+        for (const m of (hit.mentions || [])) cs.add('@' + m.toLowerCase());
+        let inter = 0; for (const s of sig) if (cs.has(s)) inter++;
+        const union = sig.size + cs.size - inter;
+        jaccard = union > 0 ? inter / union : 0;
+      } else {
+        const cw = new Set((hit.text || '').toLowerCase().match(/[a-z]{4,}/g) || []);
+        let inter = 0; for (const w of fallbackWords) if (cw.has(w)) inter++;
+        const union = fallbackWords.length + cw.size - inter;
+        jaccard = union > 0 ? inter / union : 0;
+      }
+      if (jaccard >= 0.05) out.push({ ...hit, __scope: 'tweet', __jaccard: jaccard });
+    }
+    return out.sort((a, b) => b.__jaccard - a.__jaccard).slice(0, 20);
+  }
+
+  return { ensureIndexes, query, getSimilar, invalidateCaches };
 })();
 
 // ── fingerprint ─────────────────────────────────────────────────────────────
@@ -5299,6 +5370,30 @@ const ui = (() => {
             </div>
           </div>
         </div>
+
+        ${(p.lenBuckets && p.lenBuckets.some(b => b.count > 0)) ? `
+        <div class="patterns-section">
+          <h2>Engagement vs tweet length</h2>
+          <div class="charts-grid">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Avg engagement (♥ + ↻) by character count — originals &amp; replies only</h3>
+              <div class="top-list">${(() => {
+                const maxAvg = Math.max(...p.lenBuckets.map(b => b.count ? (b.sumFav + b.sumRT) / b.count : 0), 0.01);
+                return p.lenBuckets.map(b => {
+                  const avg = b.count ? (b.sumFav + b.sumRT) / b.count : 0;
+                  const w = Math.max(2, Math.round((avg / maxAvg) * 180));
+                  return `<div class="top-row">
+                    <span class="top-label" title="${b.desc}">${safe(b.label)} <span style="opacity:.55;font-size:11px;">${b.desc}</span></span>
+                    <div class="top-bar-wrap">
+                      <div class="top-bar" style="width:${w}px"></div>
+                      <span class="top-count">${avg.toFixed(1)} <span style="opacity:.55;font-size:10px;">(${b.count.toLocaleString()} tweets)</span></span>
+                    </div>
+                  </div>`;
+                }).join('');
+              })()}</div>
+            </div>
+          </div>
+        </div>` : ''}
 
         <div class="patterns-section">
           <h2>What's NOT in the archive</h2>
@@ -6462,6 +6557,7 @@ const ui = (() => {
       ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
       <div class="card-actions">
         <a href="${url}" target="_blank" rel="noopener" data-role="open">Open on X →</a>
+        <button type="button" class="btn-similar" data-role="similar" title="Find similar tweets by hashtags &amp; mentions">Similar</button>
         <button type="button" class="btn-tag" data-role="tag" title="Add/remove tags">🏷 Tag</button>
         <button type="button" class="btn-mark" data-role="mark">Mark deleted</button>
         <button type="button" class="btn-undo" data-role="undo">Undo</button>
@@ -6942,6 +7038,34 @@ const ui = (() => {
         await refreshCardsAfterUpdate([card.dataset.key]);
         return;
       }
+      const sim = e.target.closest('button[data-role="similar"]');
+      if (sim) {
+        const card = sim.closest('.card-item');
+        const src = lastFullResults.find(x => x.id === card.dataset.id && x.__scope === 'tweet');
+        if (!src) return;
+        const banner = $('similar-banner'), bannerText = $('similar-banner-text');
+        if (banner && bannerText) {
+          const snippet = (src.text || '').slice(0, 70) + ((src.text || '').length > 70 ? '…' : '');
+          bannerText.textContent = `Similar to: "${snippet}"`;
+          banner.style.display = 'flex';
+        }
+        setSearchMeta('Finding similar tweets…');
+        const results = await search.getSimilar(src);
+        if (!results.length) {
+          $('search-results').innerHTML = '<div class="results-empty">No similar tweets found — try a tweet with hashtags or mentions.</div>';
+          setSearchMeta('No similar tweets found.');
+          return;
+        }
+        displayLimit = PAGE_SIZE;
+        await renderResults({ items: results, total: results.length });
+        return;
+      }
+    });
+    $('similar-banner-clear')?.addEventListener('click', () => {
+      const banner = $('similar-banner');
+      if (banner) banner.style.display = 'none';
+      $('search-results').innerHTML = '';
+      setSearchMeta('Type to search across tweets.');
     });
   }
 
@@ -7435,6 +7559,7 @@ const ui = (() => {
       // Reset pagination cursor on every fresh query — the user always starts
       // at the top of the new result set.
       displayLimit = PAGE_SIZE;
+      const sb = $('similar-banner'); if (sb) sb.style.display = 'none';
       try {
         const result = await search.query({
           q: state.q, scope: state.scope, chips: state.chips, filters: state.filters, near: state.near,
