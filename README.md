@@ -115,7 +115,7 @@ Where state lives:
 - **Single-file HTML**, vanilla JS, no build step. Open with `python3 -m http.server` or any static host.
 - **MiniSearch** for full-text (CDN ESM @ 7.1.2). Indexes serialised to IndexedDB. Lazy rebuild on first search.
 - **JSZip** for ZIP ingestion (CDN ESM). FSA folder mode skips it entirely.
-- **Phonetic indexing**: per-tweet `phonetic_text` field generated at index time. Devanagari → Latin (inherent-a-aware mapper) → consonant skeleton with `c/ch/ck → k`, `ph → f`, vowel + `h` strip, dedupe. Result: `chirag`, `chiraag`, and `चिराग` all hash to `krg`. Same field for `america`/`amrika`/`umrika` → `mrk`.
+- **Phonetic indexing**: per-tweet `phonetic_text` field generated at index time. Cross-script transliteration covers nine non-Latin scripts — Brahmic family (**Devanagari, Bengali, Tamil, Gurmukhi, Gujarati, Telugu, Kannada, Malayalam**) via shared inherent-a/halant logic plus **Cyrillic** and **Greek** as alphabetic 1:1. Latin output then runs through a consonant-skeleton encoder (`c/ch/ck → k`, `ph → f`, vowel + `h` strip, dedupe). Result: `chirag`, `chiraag`, and `चिराग` all hash to `krg`; `america`/`amrika`/`umrika` → `mrk`. Arabic + CJK deferred (different structural patterns).
 - **OAuth 1.0a signing** for the X API delete path: HMAC-SHA1 via SubtleCrypto, RFC-3986 percent-encoded base-string assembly.
 - **CSP** pinned: `default-src 'self'`, `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net`, `connect-src` extended for the BYOK provider hosts.
 

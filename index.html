@@ -1062,7 +1062,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.20 · tooltips + settings + GA</span>
+      <span class="phase" id="phase-tag">v0.21 · 9 scripts phonetic</span>
       <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
@@ -3794,61 +3794,158 @@ const search = (() => {
   const TWEET_STORED = ['id', 'created_at', 'text', 'is_reply', 'is_retweet', 'favorite_count', 'retweet_count', 'has_media', 'hashtags', 'mentions'];
   const LIKE_FIELDS = ['text', 'phonetic_text'];
   const LIKE_STORED = ['tweet_id', 'expanded_url', 'text', 'has_text'];
-  const MS_CACHE_VERSION = 2; // bump when fields change to force one-time re-index
+  const MS_CACHE_VERSION = 3; // bump when fields change to force one-time re-index
 
-  // ── Phonetic + cross-script encoding (Devanagari → Latin → phonetic) ──
-  // Devanagari support is the first cross-script implementation; the same
-  // pattern (per-script table + inherent-vowel rules) extends to Bengali,
-  // Tamil, Gurmukhi etc. as follow-ups.
-  const DEV_VOWELS_INDEP = {
-    'अ':'a','आ':'aa','इ':'i','ई':'ii','उ':'u','ऊ':'uu','ऋ':'ri','ऌ':'li',
-    'ए':'e','ऐ':'ai','ओ':'o','औ':'au','ॲ':'a','ऍ':'e','ऑ':'o'
-  };
-  const DEV_VOWELS_DEP = {
-    'ा':'aa','ि':'i','ी':'ii','ु':'u','ू':'uu','ृ':'ri','ॢ':'li',
-    'े':'e','ै':'ai','ो':'o','ौ':'au','ॅ':'e','ॉ':'o'
-  };
-  const DEV_CONS = {
-    'क':'k','ख':'kh','ग':'g','घ':'gh','ङ':'ng',
-    'च':'ch','छ':'chh','ज':'j','झ':'jh','ञ':'ny',
-    'ट':'t','ठ':'th','ड':'d','ढ':'dh','ण':'n',
-    'त':'t','थ':'th','द':'d','ध':'dh','न':'n',
-    'प':'p','फ':'ph','ब':'b','भ':'bh','म':'m',
-    'य':'y','र':'r','ल':'l','व':'v',
-    'श':'sh','ष':'sh','स':'s','ह':'h',
-    'क़':'q','ख़':'kh','ग़':'g','ज़':'z','ड़':'r','ढ़':'rh','फ़':'f','य़':'y'
-  };
-  const DEV_HALANT = '्';
-  const DEV_ANUSVARA = 'ं';
-  const DEV_VISARGA = 'ः';
-  const DEV_NUKTA = '़';
-  const DEV_RE = /[ऀ-ॿ]/;
+  // ── Phonetic + cross-script encoding ─────────────────────────────────
+  // Cross-script transliteration → consonant skeleton.
+  // Brahmic scripts (Devanagari, Bengali, Tamil, Gurmukhi, Gujarati, Telugu,
+  // Kannada, Malayalam, Oriya) all share the same structural rules:
+  // independent vowels, dependent vowel signs, consonants with inherent 'a',
+  // halant/virama for suppression, anusvara + visarga.
+  // Cyrillic + Greek are alphabetic 1:1 substitutions.
+  // Arabic / CJK deferred — different structural patterns.
 
-  function devanagariToLatin(text) {
-    if (!text || !DEV_RE.test(text)) return text;
+  // Generic Brahmic config — one entry per script.
+  const BRAHMIC = {
+    devanagari: {
+      range: /[ऀ-ॿ]/,
+      indep: {'अ':'a','आ':'aa','इ':'i','ई':'ii','उ':'u','ऊ':'uu','ऋ':'ri','ऌ':'li','ए':'e','ऐ':'ai','ओ':'o','औ':'au','ॲ':'a','ऍ':'e','ऑ':'o'},
+      dep:   {'ा':'aa','ि':'i','ी':'ii','ु':'u','ू':'uu','ृ':'ri','ॢ':'li','े':'e','ै':'ai','ो':'o','ौ':'au','ॅ':'e','ॉ':'o'},
+      cons:  {'क':'k','ख':'kh','ग':'g','घ':'gh','ङ':'ng','च':'ch','छ':'chh','ज':'j','झ':'jh','ञ':'ny','ट':'t','ठ':'th','ड':'d','ढ':'dh','ण':'n','त':'t','थ':'th','द':'d','ध':'dh','न':'n','प':'p','फ':'ph','ब':'b','भ':'bh','म':'m','य':'y','र':'r','ल':'l','व':'v','श':'sh','ष':'sh','स':'s','ह':'h','क़':'q','ख़':'kh','ग़':'g','ज़':'z','ड़':'r','ढ़':'rh','फ़':'f','य़':'y'},
+      halant: '्', anusvara: 'ं', visarga: 'ः', nukta: '़'
+    },
+    bengali: {
+      range: /[ঀ-৿]/,
+      indep: {'অ':'a','আ':'aa','ই':'i','ঈ':'ii','উ':'u','ঊ':'uu','ঋ':'ri','এ':'e','ঐ':'ai','ও':'o','ঔ':'au'},
+      dep:   {'া':'aa','ি':'i','ী':'ii','ু':'u','ূ':'uu','ৃ':'ri','ে':'e','ৈ':'ai','ো':'o','ৌ':'au'},
+      cons:  {'ক':'k','খ':'kh','গ':'g','ঘ':'gh','ঙ':'ng','চ':'ch','ছ':'chh','জ':'j','ঝ':'jh','ঞ':'ny','ট':'t','ঠ':'th','ড':'d','ঢ':'dh','ণ':'n','ত':'t','থ':'th','দ':'d','ধ':'dh','ন':'n','প':'p','ফ':'ph','ব':'b','ভ':'bh','ম':'m','য':'y','র':'r','ল':'l','শ':'sh','ষ':'sh','স':'s','হ':'h','ড়':'r','ঢ়':'rh','য়':'y'},
+      halant: '্', anusvara: 'ং', visarga: 'ঃ', nukta: '়'
+    },
+    gurmukhi: {
+      range: /[਀-੿]/,
+      indep: {'ਅ':'a','ਆ':'aa','ਇ':'i','ਈ':'ii','ਉ':'u','ਊ':'uu','ਏ':'e','ਐ':'ai','ਓ':'o','ਔ':'au'},
+      dep:   {'ਾ':'aa','ਿ':'i','ੀ':'ii','ੁ':'u','ੂ':'uu','ੇ':'e','ੈ':'ai','ੋ':'o','ੌ':'au'},
+      cons:  {'ਕ':'k','ਖ':'kh','ਗ':'g','ਘ':'gh','ਙ':'ng','ਚ':'ch','ਛ':'chh','ਜ':'j','ਝ':'jh','ਞ':'ny','ਟ':'t','ਠ':'th','ਡ':'d','ਢ':'dh','ਣ':'n','ਤ':'t','ਥ':'th','ਦ':'d','ਧ':'dh','ਨ':'n','ਪ':'p','ਫ':'ph','ਬ':'b','ਭ':'bh','ਮ':'m','ਯ':'y','ਰ':'r','ਲ':'l','ਵ':'v','ਸ਼':'sh','ਸ':'s','ਹ':'h','ਖ਼':'kh','ਗ਼':'g','ਜ਼':'z','ੜ':'r','ਫ਼':'f'},
+      halant: '੍', anusvara: 'ਂ', visarga: null, nukta: '਼'
+    },
+    gujarati: {
+      range: /[઀-૿]/,
+      indep: {'અ':'a','આ':'aa','ઇ':'i','ઈ':'ii','ઉ':'u','ઊ':'uu','ઋ':'ri','એ':'e','ઐ':'ai','ઓ':'o','ઔ':'au'},
+      dep:   {'ા':'aa','િ':'i','ી':'ii','ુ':'u','ૂ':'uu','ૃ':'ri','ે':'e','ૈ':'ai','ો':'o','ૌ':'au'},
+      cons:  {'ક':'k','ખ':'kh','ગ':'g','ઘ':'gh','ઙ':'ng','ચ':'ch','છ':'chh','જ':'j','ઝ':'jh','ઞ':'ny','ટ':'t','ઠ':'th','ડ':'d','ઢ':'dh','ણ':'n','ત':'t','થ':'th','દ':'d','ધ':'dh','ન':'n','પ':'p','ફ':'ph','બ':'b','ભ':'bh','મ':'m','ય':'y','ર':'r','લ':'l','વ':'v','શ':'sh','ષ':'sh','સ':'s','હ':'h','ળ':'l'},
+      halant: '્', anusvara: 'ં', visarga: 'ઃ', nukta: '઼'
+    },
+    tamil: {
+      range: /[஀-௿]/,
+      indep: {'அ':'a','ஆ':'aa','இ':'i','ஈ':'ii','உ':'u','ஊ':'uu','எ':'e','ஏ':'ee','ஐ':'ai','ஒ':'o','ஓ':'oo','ஔ':'au'},
+      dep:   {'ா':'aa','ி':'i','ீ':'ii','ு':'u','ூ':'uu','ெ':'e','ே':'ee','ை':'ai','ொ':'o','ோ':'oo','ௌ':'au'},
+      cons:  {'க':'k','ங':'ng','ச':'ch','ஞ':'ny','ட':'t','ண':'n','த':'t','ந':'n','ப':'p','ம':'m','ய':'y','ர':'r','ல':'l','வ':'v','ழ':'l','ள':'l','ற':'r','ன':'n','ஜ':'j','ஶ':'sh','ஷ':'sh','ஸ':'s','ஹ':'h'},
+      halant: '்', anusvara: null, visarga: null, nukta: null
+    },
+    telugu: {
+      range: /[ఀ-౿]/,
+      indep: {'అ':'a','ఆ':'aa','ఇ':'i','ఈ':'ii','ఉ':'u','ఊ':'uu','ఋ':'ri','ఎ':'e','ఏ':'ee','ఐ':'ai','ఒ':'o','ఓ':'oo','ఔ':'au'},
+      dep:   {'ా':'aa','ి':'i','ీ':'ii','ు':'u','ూ':'uu','ృ':'ri','ె':'e','ే':'ee','ై':'ai','ొ':'o','ో':'oo','ౌ':'au'},
+      cons:  {'క':'k','ఖ':'kh','గ':'g','ఘ':'gh','ఙ':'ng','చ':'ch','ఛ':'chh','జ':'j','ఝ':'jh','ఞ':'ny','ట':'t','ఠ':'th','డ':'d','ఢ':'dh','ణ':'n','త':'t','థ':'th','ద':'d','ధ':'dh','న':'n','ప':'p','ఫ':'ph','బ':'b','భ':'bh','మ':'m','య':'y','ర':'r','ల':'l','వ':'v','శ':'sh','ష':'sh','స':'s','హ':'h','ళ':'l'},
+      halant: '్', anusvara: 'ం', visarga: 'ః', nukta: null
+    },
+    kannada: {
+      range: /[ಀ-೿]/,
+      indep: {'ಅ':'a','ಆ':'aa','ಇ':'i','ಈ':'ii','ಉ':'u','ಊ':'uu','ಋ':'ri','ಎ':'e','ಏ':'ee','ಐ':'ai','ಒ':'o','ಓ':'oo','ಔ':'au'},
+      dep:   {'ಾ':'aa','ಿ':'i','ೀ':'ii','ು':'u','ೂ':'uu','ೃ':'ri','ೆ':'e','ೇ':'ee','ೈ':'ai','ೊ':'o','ೋ':'oo','ೌ':'au'},
+      cons:  {'ಕ':'k','ಖ':'kh','ಗ':'g','ಘ':'gh','ಙ':'ng','ಚ':'ch','ಛ':'chh','ಜ':'j','ಝ':'jh','ಞ':'ny','ಟ':'t','ಠ':'th','ಡ':'d','ಢ':'dh','ಣ':'n','ತ':'t','ಥ':'th','ದ':'d','ಧ':'dh','ನ':'n','ಪ':'p','ಫ':'ph','ಬ':'b','ಭ':'bh','ಮ':'m','ಯ':'y','ರ':'r','ಲ':'l','ವ':'v','ಶ':'sh','ಷ':'sh','ಸ':'s','ಹ':'h','ಳ':'l'},
+      halant: '್', anusvara: 'ಂ', visarga: 'ಃ', nukta: null
+    },
+    malayalam: {
+      range: /[ഀ-ൿ]/,
+      indep: {'അ':'a','ആ':'aa','ഇ':'i','ഈ':'ii','ഉ':'u','ഊ':'uu','ഋ':'ri','എ':'e','ഏ':'ee','ഐ':'ai','ഒ':'o','ഓ':'oo','ഔ':'au'},
+      dep:   {'ാ':'aa','ി':'i','ീ':'ii','ു':'u','ൂ':'uu','ൃ':'ri','െ':'e','േ':'ee','ൈ':'ai','ൊ':'o','ോ':'oo','ൌ':'au'},
+      cons:  {'ക':'k','ഖ':'kh','ഗ':'g','ഘ':'gh','ങ':'ng','ച':'ch','ഛ':'chh','ജ':'j','ഝ':'jh','ഞ':'ny','ട':'t','ഠ':'th','ഡ':'d','ഢ':'dh','ണ':'n','ത':'t','ഥ':'th','ദ':'d','ധ':'dh','ന':'n','പ':'p','ഫ':'ph','ബ':'b','ഭ':'bh','മ':'m','യ':'y','ര':'r','ല':'l','വ':'v','ശ':'sh','ഷ':'sh','സ':'s','ഹ':'h','ള':'l','ഴ':'l','റ':'r'},
+      halant: '്', anusvara: 'ം', visarga: 'ഃ', nukta: null
+    }
+  };
+
+  // Cyrillic + Greek — alphabetic, no inherent vowel logic needed.
+  const CYRILLIC_MAP = {
+    'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya','і':'i','ї':'yi','є':'ye','ґ':'g'
+  };
+  const CYRILLIC_RE = /[Ѐ-ӿ]/;
+  const GREEK_MAP = {
+    'α':'a','β':'b','γ':'g','δ':'d','ε':'e','ζ':'z','η':'i','θ':'th','ι':'i','κ':'k','λ':'l','μ':'m','ν':'n','ξ':'ks','ο':'o','π':'p','ρ':'r','σ':'s','ς':'s','τ':'t','υ':'y','φ':'f','χ':'kh','ψ':'ps','ω':'o'
+  };
+  const GREEK_RE = /[Ͱ-Ͽ]/;
+
+  // Walk a Brahmic-script string, applying the inherent-'a' / halant /
+  // matra rules. Same algorithm for every script — only the table differs.
+  function brahmicToLatin(text, cfg) {
+    if (!text) return '';
     let out = '';
     const chars = [...text];
     for (let i = 0; i < chars.length; i++) {
       const c = chars[i];
       const next = chars[i + 1];
-      if (DEV_CONS[c]) {
-        out += DEV_CONS[c];
-        if (next === DEV_HALANT) {
+      if (cfg.cons[c]) {
+        out += cfg.cons[c];
+        if (next === cfg.halant) {
           i++; // suppresses inherent 'a'
-        } else if (DEV_VOWELS_DEP[next]) {
-          out += DEV_VOWELS_DEP[next];
+        } else if (cfg.dep[next]) {
+          out += cfg.dep[next];
           i++;
         } else {
-          out += 'a'; // inherent
+          out += 'a'; // inherent vowel
         }
-      } else if (DEV_VOWELS_INDEP[c]) {
-        out += DEV_VOWELS_INDEP[c];
-      } else if (c === DEV_ANUSVARA) {
+      } else if (cfg.indep[c]) {
+        out += cfg.indep[c];
+      } else if (c === cfg.anusvara) {
         out += 'n';
-      } else if (c === DEV_VISARGA) {
+      } else if (c === cfg.visarga) {
         out += 'h';
-      } else if (c === DEV_NUKTA || c === DEV_HALANT) {
-        // skip — already handled or no Latin equivalent in isolation
+      } else if (c === cfg.nukta || c === cfg.halant) {
+        // skip; handled or no Latin equivalent in isolation
+      } else {
+        out += c; // pass-through (digit, space, etc.)
+      }
+    }
+    return out;
+  }
+
+  // Master transliterator: detects which script the text lives in and
+  // dispatches. Mixed-script text gets each character routed separately.
+  function transliterateToLatin(text) {
+    if (!text) return text;
+    let hasNonLatin = false;
+    for (const k of Object.keys(BRAHMIC)) {
+      if (BRAHMIC[k].range.test(text)) { hasNonLatin = true; break; }
+    }
+    if (!hasNonLatin && !CYRILLIC_RE.test(text) && !GREEK_RE.test(text)) return text;
+    let out = '';
+    const chars = [...text];
+    for (let i = 0; i < chars.length; i++) {
+      const c = chars[i];
+      const next = chars[i + 1];
+      // Try each Brahmic table; the first that owns this char handles it.
+      let handled = false;
+      for (const k of Object.keys(BRAHMIC)) {
+        const cfg = BRAHMIC[k];
+        if (!cfg.range.test(c)) continue;
+        if (cfg.cons[c]) {
+          out += cfg.cons[c];
+          if (next === cfg.halant) { i++; }
+          else if (cfg.dep[next]) { out += cfg.dep[next]; i++; }
+          else { out += 'a'; }
+        } else if (cfg.indep[c]) out += cfg.indep[c];
+        else if (c === cfg.anusvara) out += 'n';
+        else if (c === cfg.visarga) out += 'h';
+        else if (c === cfg.nukta || c === cfg.halant) { /* skip */ }
+        else out += c;
+        handled = true;
+        break;
+      }
+      if (handled) continue;
+      if (CYRILLIC_MAP[c.toLowerCase()] !== undefined) {
+        out += CYRILLIC_MAP[c.toLowerCase()];
+      } else if (GREEK_MAP[c.toLowerCase()] !== undefined) {
+        out += GREEK_MAP[c.toLowerCase()];
       } else {
         out += c;
       }
@@ -3856,12 +3953,15 @@ const search = (() => {
     return out;
   }
 
+  // Legacy alias kept for code that imports it directly.
+  function devanagariToLatin(text) { return transliterateToLatin(text); }
+
   // Consonant-skeleton phonetic: removes vowels, normalises common digraphs
   // and homophone substitutions. End result is a fuzzy hash where
   // america / amrika / umrika → 'mrk', chirag / chiraag / चिराग → 'krg'.
   function phoneticEncode(text) {
     if (!text) return '';
-    const latinized = devanagariToLatin(text);
+    const latinized = transliterateToLatin(text);
     return latinized.toLowerCase()
       .replace(/[^a-z\s]/g, ' ')
       .split(/\s+/)
