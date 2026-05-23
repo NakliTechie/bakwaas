@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="author" content="Chirag Patnaik">
-<meta name="version" content="0.1.0-phase1">
+<meta name="version" content="0.27.0">
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://www.googletagmanager.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://*.twimg.com https://www.google-analytics.com;
-  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://public.api.bsky.app https://api.x.com https://api.twitter.com https://www.google-analytics.com https://www.googletagmanager.com;
+  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://public.api.bsky.app https://api.x.com https://api.twitter.com https://www.google-analytics.com https://www.googletagmanager.com https://huggingface.co https://*.huggingface.co;
+  worker-src blob: 'self';
   base-uri 'none';
   form-action 'none';
   frame-src 'none';
@@ -271,6 +272,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .filter-bar .near-toggle:hover { border-color: var(--accent); }
 .filter-bar .near-toggle input { margin: 0; cursor: pointer; }
 .filter-bar .near-toggle:has(input:checked) { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-bar .semantic-toggle:has(input:checked) { background: var(--accent-2); color: #fff; border-color: var(--accent-2); }
+.semantic-progress { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.sem-prog-bar-wrap { height: 4px; background: var(--panel); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.sem-prog-bar { height: 100%; background: var(--accent-2); border-radius: 2px; width: 0%; transition: width 0.3s; }
 .filter-bar button {
   background: transparent; color: var(--muted);
   border: 1px solid var(--border); border-radius: 6px;
@@ -1116,7 +1121,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.26 · cjk + cluster similar + tag sync</span>
+      <span class="phase" id="phase-tag">v0.27 · worker + semantic search</span>
       <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
@@ -1284,6 +1289,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <label>Tag:</label><input type="text" id="search-tag-filter" placeholder="any" autocomplete="off" list="search-tag-datalist" style="width:90px;" />
           <datalist id="search-tag-datalist"></datalist>
           <label class="near-toggle" title="Catches edit-distance variants — 'amrika' picks up 'america' etc."><input type="checkbox" id="search-near"> Near match</label>
+          <label class="near-toggle semantic-toggle" title="Semantic similarity — finds conceptually related tweets. One-time embedding pass required (~1–5 min)."><input type="checkbox" id="search-semantic"> Semantic</label>
           <button type="button" id="search-filter-reset">Reset</button>
         </div>
         <div class="preset-bar" id="search-preset-bar">
@@ -1308,6 +1314,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
             <span class="scrubber-window-label" id="scrubber-label">—</span>
           </div>
           <div id="search-scrubber-host"></div>
+        </div>
+        <div class="semantic-progress" id="semantic-progress" style="display:none;">
+          <span id="semantic-progress-text">Building semantic index…</span>
+          <div class="sem-prog-bar-wrap"><div class="sem-prog-bar" id="sem-prog-bar"></div></div>
         </div>
         <div class="results-meta" id="search-meta">Type to search across <span id="search-scope-label">tweets</span>.</div>
         <div class="similar-banner" id="similar-banner" style="display:none;">
@@ -1536,7 +1546,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DB_NAME = 'bakwaas-v1';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const SCHEMA_VERSION = 2;
 const BATCH_SIZE = 1000;
 const OPFS_STATE_FILE = 'bakwaas-state.json';
@@ -1583,6 +1593,9 @@ const store = (() => {
         }
         if (!db.objectStoreNames.contains('meta')) {
           db.createObjectStore('meta');
+        }
+        if (!db.objectStoreNames.contains('embeddings')) {
+          db.createObjectStore('embeddings');
         }
       };
       req.onsuccess = () => {
@@ -4103,6 +4116,86 @@ const patterns = (() => {
   return { aggregate, anniversary, byDate, conversationsWith, fullThreadMap, expandThread, setProgressHandler };
 })();
 
+// ── bwWorker (off-main-thread indexing + semantic search) ────────────────────
+const bwWorker = (() => {
+  let _worker = null;
+  let _pending = new Map();
+  let _msgId = 0;
+  let _onProgress = null;
+  let _onPhase = null;
+  let _onEmbedProgress = null;
+
+  function _init() {
+    if (_worker) return;
+    const src = document.getElementById('bw-worker')?.textContent;
+    if (!src) { console.error('[bwWorker] script tag not found'); return; }
+    const blob = new Blob([src], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    _worker = new Worker(url);
+    URL.revokeObjectURL(url);
+    _worker.onerror = e => console.error('[bwWorker]', e.message || e);
+    _worker.onmessageerror = e => console.error('[bwWorker] message error', e);
+    _worker.onmessage = ({ data }) => {
+      const { type, id } = data;
+      if (type === 'progress') { _onProgress?.(data); return; }
+      if (type === 'phase') { _onPhase?.(data.text); return; }
+      if (type === 'embed_progress') { _onEmbedProgress?.(data); return; }
+      const p = _pending.get(id);
+      if (!p) return;
+      _pending.delete(id);
+      if (type === 'error') p.reject(new Error(data.msg));
+      else p.resolve(data);
+    };
+  }
+
+  function _call(msg) {
+    _init();
+    return new Promise((resolve, reject) => {
+      const id = ++_msgId;
+      _pending.set(id, { resolve, reject });
+      _worker.postMessage({ ...msg, id });
+    });
+  }
+
+  async function index({ source, onProgress, onPhase }) {
+    _onProgress = onProgress;
+    _onPhase = onPhase;
+    const { tweetFiles, accountFile, likeFile, provider = 'twitter' } = source;
+    let accountRaw = '';
+    if (accountFile) { try { accountRaw = await accountFile.read(); } catch {} }
+    const fileContents = [], filePaths = [], fileProviders = [];
+    for (const { path, read, providerOverride } of tweetFiles) {
+      filePaths.push(path);
+      fileProviders.push(providerOverride || provider);
+      fileContents.push(await read());
+    }
+    let likeText = null, likePath = null;
+    if (likeFile) { try { likeText = await likeFile.read(); likePath = likeFile.path; } catch {} }
+    return _call({ type: 'index', fileContents, filePaths, fileProviders, accountRaw, likeText, likePath, provider });
+  }
+
+  async function embedAll(onProgress) {
+    _onEmbedProgress = onProgress;
+    return _call({ type: 'embed_all' });
+  }
+
+  async function embedQuery(text) {
+    const r = await _call({ type: 'embed_query', text });
+    return r.vec;
+  }
+
+  async function semanticSearch(queryVec, k) {
+    const r = await _call({ type: 'semantic_search', queryVec: Array.from(queryVec), k: k || 20 });
+    return r.results;
+  }
+
+  function embStatus() {
+    return store.metaGet('emb_meta');
+  }
+
+  return { index, embedAll, embedQuery, semanticSearch, embStatus };
+})();
+
 // ── search (MiniSearch) ─────────────────────────────────────────────────────
 const search = (() => {
   let MS = null;
@@ -4851,6 +4944,13 @@ const indexer = (() => {
   }
 
   async function run({ source, onProgress, onPhase }) {
+    const result = await bwWorker.index({ source, onProgress, onPhase });
+    if (source.mode === 'folder' && source.dirHandle && result.finalState) {
+      await persist.writeSidecar(result.finalState, source.dirHandle);
+    }
+    return result;
+  }
+  async function _run_legacy({ source, onProgress, onPhase }) {
     onPhase?.('Reading archive…');
     const { tweetFiles, accountFile, likeFile, mode, dirHandle, provider = 'twitter' } = source;
 
@@ -7827,7 +7927,7 @@ const ui = (() => {
       q: '', scope: 'tweets',
       chips: { originals: false, replies: false, retweets: false, media: false, link: false },
       filters: { since: null, until: null, minFav: 0, minRT: 0, lang: [], has: [], from: [], exclude: [], tag: null },
-      near: false
+      near: false, semantic: false
     };
     let debounce = null;
 
@@ -7844,7 +7944,72 @@ const ui = (() => {
       return parts.length ? ` · filters: ${parts.join(', ')}` : '';
     }
 
+    async function runSemantic() {
+      const q = (state.q || '').trim();
+      if (!q) {
+        $('search-results').innerHTML = '';
+        setSearchMeta('Type a query for semantic search.');
+        return;
+      }
+      const progEl = $('semantic-progress');
+      const progText = $('semantic-progress-text');
+      const progBar = $('sem-prog-bar');
+      const embMeta = await bwWorker.embStatus();
+      if (!embMeta) {
+        if (progEl) progEl.style.display = '';
+        if (progText) progText.textContent = 'Building semantic index — this runs once…';
+        if (progBar) progBar.style.width = '0%';
+        setSearchMeta('Building semantic index…');
+        try {
+          await bwWorker.embedAll((p) => {
+            if (p.stage === 'load_start') {
+              if (progText) progText.textContent = 'Downloading embedding model (~20 MB)…';
+            } else if (p.stage === 'load') {
+              const pct = p.total > 0 ? Math.round(p.loaded / p.total * 100) : 0;
+              if (progText) progText.textContent = `Downloading model${p.file ? ` (${p.file})` : ''}: ${pct}%`;
+              if (progBar) progBar.style.width = `${Math.round(pct * 0.3)}%`;
+            } else if (p.stage === 'load_done') {
+              if (progText) progText.textContent = 'Embedding tweets…';
+              if (progBar) progBar.style.width = '30%';
+            } else if (p.stage === 'embed') {
+              const pct = p.total > 0 ? Math.round(p.done / p.total * 100) : 0;
+              if (progText) progText.textContent = `Embedding: ${p.done.toLocaleString()} / ${p.total.toLocaleString()} tweets (${pct}%)`;
+              if (progBar) progBar.style.width = `${30 + Math.round(pct * 0.7)}%`;
+            }
+          });
+        } catch (e) {
+          if (progEl) progEl.style.display = 'none';
+          setSearchMeta('Embedding failed: ' + (e.message || e));
+          return;
+        }
+        if (progEl) progEl.style.display = 'none';
+      }
+      setSearchMeta('Semantic searching…');
+      try {
+        const vec = await bwWorker.embedQuery(q);
+        const topK = await bwWorker.semanticSearch(new Float32Array(vec), 50);
+        if (!topK || !topK.length) {
+          $('search-results').innerHTML = '<div class="results-empty">No semantic matches.</div>';
+          setSearchMeta('No semantic matches.');
+          return;
+        }
+        const ids = topK.map(r => r.id);
+        const items = await store.getManyByIds('tweets', ids);
+        const rankMap = new Map(ids.map((id, i) => [id, i]));
+        items.sort((a, b) => (rankMap.get(a.id) ?? 999) - (rankMap.get(b.id) ?? 999));
+        displayLimit = PAGE_SIZE;
+        const sb = $('similar-banner');
+        const sbText = $('similar-banner-text');
+        if (sb && sbText) { sbText.textContent = `Semantic: "${q}"`; sb.style.display = ''; }
+        renderResults({ items, total: items.length });
+      } catch (e) {
+        console.error('semantic search failed:', e);
+        setSearchMeta('Semantic search failed: ' + (e.message || e));
+      }
+    }
+
     async function run() {
+      if (state.semantic) { await runSemantic(); return; }
       const hasText = !!(state.q && state.q.trim());
       const hasAnyFilter = Object.values(state.chips).some(Boolean)
         || state.filters.since !== null || state.filters.until !== null
@@ -7927,6 +8092,8 @@ const ui = (() => {
     tagFilterEl?.addEventListener('input', scheduleRun);
     const nearEl = $('search-near');
     nearEl?.addEventListener('change', () => { state.near = !!nearEl.checked; run(); });
+    const semanticEl = $('search-semantic');
+    semanticEl?.addEventListener('change', () => { state.semantic = !!semanticEl.checked; run(); });
     resetEl?.addEventListener('click', () => {
       if (sinceEl) sinceEl.value = '';
       if (untilEl) untilEl.value = '';
@@ -8470,5 +8637,539 @@ setTimeout(() => {
   }
 }, 4000);
 </script>
+
+<script id="bw-worker" type="text/plain">
+// ─── Bakwaas Web Worker ────────────────────────────────────────────────────
+// Off-main-thread: archive indexing + semantic embedding.
+// Loaded via blob URL from <script id="bw-worker" type="text/plain">.
+'use strict';
+
+const DB_NAME = 'bakwaas-v1';
+const DB_VERSION = 3;
+const SCHEMA_VERSION = 2;
+const BATCH_SIZE = 1000;
+const OPFS_STATE_FILE = 'bakwaas-state.json';
+const EMB_CHUNK_SIZE = 128;
+const EMB_DIM = 384;
+
+async function sha256Hex(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ─── Worker-side IDB ─────────────────────────────────────────────────────
+const wStore = (() => {
+  let _db = null;
+  function open() {
+    if (_db) return Promise.resolve(_db);
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('tweets')) {
+          const s = db.createObjectStore('tweets', { keyPath: 'id' });
+          s.createIndex('created_at', 'created_at');
+          s.createIndex('lang', 'lang');
+          s.createIndex('is_reply', 'is_reply');
+          s.createIndex('is_retweet', 'is_retweet');
+          s.createIndex('favorite_count', 'favorite_count');
+          s.createIndex('retweet_count', 'retweet_count');
+          s.createIndex('has_media', 'has_media');
+        }
+        if (!db.objectStoreNames.contains('likes')) {
+          const s = db.createObjectStore('likes', { keyPath: 'tweet_id' });
+          s.createIndex('archive_order', 'archive_order');
+          s.createIndex('has_text', 'has_text');
+        }
+        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+        if (!db.objectStoreNames.contains('embeddings')) db.createObjectStore('embeddings');
+      };
+      req.onsuccess = () => { _db = req.result; resolve(_db); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function idbPromise(stores, mode, fn) {
+    return open().then(db => new Promise((res, rej) => {
+      const t = db.transaction(stores, mode);
+      t.onerror = () => rej(t.error);
+      fn(t, res, rej);
+    }));
+  }
+  const metaGet = k => idbPromise('meta', 'readonly', (t, res, rej) => {
+    const r = t.objectStore('meta').get(k);
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  const metaSet = (k, v) => idbPromise('meta', 'readwrite', (t, res) => {
+    t.objectStore('meta').put(v, k); t.oncomplete = () => res();
+  });
+  const putTweetsBatch = rows => idbPromise('tweets', 'readwrite', (t, res) => {
+    const s = t.objectStore('tweets');
+    for (const r of rows) s.put(r);
+    t.oncomplete = () => res();
+  });
+  const putLikesBatch = rows => idbPromise('likes', 'readwrite', (t, res) => {
+    const s = t.objectStore('likes');
+    for (const r of rows) s.put(r);
+    t.oncomplete = () => res();
+  });
+  const tweetCount = () => idbPromise('tweets', 'readonly', (t, res, rej) => {
+    const r = t.objectStore('tweets').count();
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  async function wipe() {
+    const db = await open();
+    db.close(); _db = null;
+    await new Promise((res, rej) => {
+      const r = indexedDB.deleteDatabase(DB_NAME);
+      r.onsuccess = () => res(); r.onerror = () => rej(r.error); r.onblocked = () => res();
+    });
+  }
+  const embGet = ci => idbPromise('embeddings', 'readonly', (t, res, rej) => {
+    const r = t.objectStore('embeddings').get(ci);
+    r.onsuccess = () => res(r.result || null); r.onerror = () => rej(r.error);
+  });
+  const embSet = (ci, data) => idbPromise('embeddings', 'readwrite', (t, res) => {
+    t.objectStore('embeddings').put(data, ci); t.oncomplete = () => res();
+  });
+  const embClear = () => idbPromise('embeddings', 'readwrite', (t, res) => {
+    t.objectStore('embeddings').clear(); t.oncomplete = () => res();
+  });
+  async function getAllTweetTexts() {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const out = [];
+      const t = db.transaction('tweets', 'readonly');
+      const cur = t.objectStore('tweets').openCursor();
+      cur.onsuccess = e => {
+        const c = e.target.result;
+        if (!c) { resolve(out); return; }
+        out.push({ id: c.value.id, text: c.value.text || '' });
+        c.continue();
+      };
+      cur.onerror = () => reject(cur.error);
+    });
+  }
+  return { metaGet, metaSet, putTweetsBatch, putLikesBatch, tweetCount, wipe, embGet, embSet, embClear, getAllTweetTexts };
+})();
+
+// ─── OPFS write ───────────────────────────────────────────────────────────
+async function writeOPFS(state) {
+  try {
+    const root = await navigator.storage.getDirectory();
+    const h = await root.getFileHandle(OPFS_STATE_FILE, { create: true });
+    const w = await h.createWritable();
+    await w.write(JSON.stringify(state, null, 2));
+    await w.close();
+  } catch {}
+}
+
+// ─── Parser ───────────────────────────────────────────────────────────────
+function stripYTDPrefix(text) {
+  const eq = text.indexOf('=');
+  if (eq === -1) throw new Error('Not a YTD file (no `=`)');
+  return text.slice(eq + 1).trim();
+}
+function parseYTD(text) { return JSON.parse(stripYTDPrefix(text)); }
+const ENTITY_RE = /&(amp|lt|gt|quot|#39|apos|nbsp);/g;
+const ENTITY_MAP = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' };
+function decodeEntities(s) {
+  if (!s) return '';
+  return s.replace(ENTITY_RE, (_, e) => ENTITY_MAP[e] || _);
+}
+function stripSourceHtml(s) {
+  if (!s) return '';
+  const m = s.match(/>([^<]+)</);
+  return m ? m[1] : s;
+}
+function parseTweetRecord(entry) {
+  const t = entry.tweet || entry;
+  const id = t.id_str || t.id;
+  if (!id) return null;
+  const fullText = t.full_text || t.text || '';
+  const isRT = !!(t.retweeted_status_id_str || /^RT @/.test(fullText));
+  const isReply = !!(t.in_reply_to_status_id_str || t.in_reply_to_user_id_str);
+  let createdAt = Date.parse(t.created_at);
+  if (Number.isNaN(createdAt)) createdAt = null;
+  return {
+    id: String(id), created_at: createdAt,
+    full_text: fullText, text: decodeEntities(fullText),
+    lang: t.lang || null, source: stripSourceHtml(t.source || ''),
+    is_reply: isReply,
+    in_reply_to_user_id: t.in_reply_to_user_id_str || null,
+    in_reply_to_status_id: t.in_reply_to_status_id_str || null,
+    in_reply_to_screen_name: t.in_reply_to_screen_name || null,
+    is_retweet: isRT, retweeted_status_id: t.retweeted_status_id_str || null,
+    favorite_count: parseInt(t.favorite_count || '0', 10) || 0,
+    retweet_count: parseInt(t.retweet_count || '0', 10) || 0,
+    has_media: !!((t.entities && t.entities.media && t.entities.media.length) ||
+                  (t.extended_entities && t.extended_entities.media && t.extended_entities.media.length)),
+    hashtags: ((t.entities && t.entities.hashtags) || []).map(h => h.text).filter(Boolean),
+    mentions: ((t.entities && t.entities.user_mentions) || []).map(m => m.screen_name).filter(Boolean),
+    urls: ((t.entities && t.entities.urls) || []).map(u => u.expanded_url || u.url).filter(Boolean),
+    marked_for_deletion: false, opened_for_deletion_at: null, confirmed_deleted_at: null, tags: []
+  };
+}
+function parseAccountRecord(arr) {
+  if (!Array.isArray(arr) || !arr.length) return null;
+  const a = arr[0].account || arr[0];
+  return { accountId: a.accountId || null, username: a.username || null, accountDisplayName: a.accountDisplayName || null, createdAt: a.createdAt || null };
+}
+function parseLikeRecord(entry, archive_order) {
+  const l = entry.like || entry;
+  const id = l.tweetId || l.tweet_id;
+  if (!id) return null;
+  const fullText = l.fullText || l.full_text || '';
+  return {
+    tweet_id: String(id),
+    expanded_url: l.expandedUrl || l.expanded_url || `https://twitter.com/i/web/status/${id}`,
+    full_text: fullText, text: decodeEntities(fullText), has_text: !!fullText,
+    archive_order, marked_for_unlike: false, opened_for_unlike_at: null,
+    confirmed_unliked_at: null, tags: [], provider: 'twitter'
+  };
+}
+function parseMastodonOutbox(raw) {
+  const obj = JSON.parse(raw);
+  return obj.orderedItems || obj.items || [];
+}
+function parseMastodonNoteRecord(item) {
+  if (!item) return null;
+  const o = item.object;
+  if (!o || typeof o !== 'object') return null;
+  if (o.type !== 'Note' && o.type !== 'Question') return null;
+  const id = (o.id || '').split('/').pop();
+  if (!id) return null;
+  const text = (o.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const tgs = Array.isArray(o.tag) ? o.tag : [];
+  const hashtags = tgs.filter(t => t && t.type === 'Hashtag').map(t => (t.name || '').replace(/^#/, '').toLowerCase()).filter(Boolean);
+  const mentions = tgs.filter(t => t && t.type === 'Mention').map(t => (t.name || '').replace(/^@/, '')).filter(Boolean);
+  const createdAt = o.published ? Date.parse(o.published) : NaN;
+  return {
+    id: String(id), created_at: Number.isNaN(createdAt) ? null : createdAt,
+    full_text: text, text, lang: (o.contentMap && Object.keys(o.contentMap)[0]) || o.language || null,
+    source: null, is_reply: !!o.inReplyTo, in_reply_to_user_id: null,
+    in_reply_to_status_id: o.inReplyTo ? String(o.inReplyTo).split('/').pop() : null,
+    is_retweet: false, retweeted_status_id: null, favorite_count: 0, retweet_count: 0,
+    has_media: !!(o.attachment && o.attachment.length), hashtags, mentions, urls: [],
+    marked_for_deletion: false, opened_for_deletion_at: null, confirmed_deleted_at: null,
+    tags: [], provider: 'mastodon'
+  };
+}
+function parseMastodonActor(raw) {
+  let a; try { a = JSON.parse(raw); } catch { return null; }
+  if (!a) return null;
+  return { accountId: a.id || null, username: a.preferredUsername || (a.id ? a.id.split('/').pop() : null), accountDisplayName: a.name || null, createdAt: a.published || null };
+}
+function parseMastodonLikeRecord(item, archive_order) {
+  if (!item) return null;
+  const ref = item.object;
+  const url = typeof ref === 'string' ? ref : (ref && ref.id) || '';
+  if (!url) return null;
+  const id = url.split('/').pop();
+  return { tweet_id: String(id || url), expanded_url: url, full_text: '', text: '', has_text: false, archive_order, marked_for_unlike: false, opened_for_unlike_at: null, confirmed_unliked_at: null, tags: [], provider: 'mastodon' };
+}
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cur = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') { if (text[i+1] === '"') { cur += '"'; i++; } else inQuotes = false; }
+      else cur += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { row.push(cur); cur = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i+1] === '\n') i++;
+        row.push(cur); cur = ''; rows.push(row); row = [];
+      } else cur += ch;
+    }
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+function redditRowsToRecords(rows, kind) {
+  if (!rows || rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const col = h => header.indexOf(h);
+  const idC = col('id'), permC = col('permalink'), dateC = col('date'), subC = col('subreddit'),
+        bodyC = col('body'), titleC = col('title'), parentC = col('parent'), urlC = col('url');
+  const out = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const id = idC >= 0 ? r[idC] : '';
+    if (!id) continue;
+    const date = dateC >= 0 ? Date.parse(r[dateC]) : NaN;
+    const sub = subC >= 0 ? r[subC] : '';
+    const body = bodyC >= 0 ? r[bodyC] : '';
+    const title = (titleC >= 0 ? r[titleC] : '') || '';
+    const permalink = permC >= 0 ? r[permC] : '';
+    const text = (title ? title + '\n\n' : '') + body;
+    const parent = parentC >= 0 ? r[parentC] : '';
+    out.push({
+      id: String(id), created_at: Number.isNaN(date) ? null : date,
+      full_text: text, text, lang: null, source: sub ? `r/${sub}` : (kind || null),
+      is_reply: kind === 'comment', in_reply_to_user_id: null,
+      in_reply_to_status_id: parent && parent.startsWith('t1_') ? parent.slice(3) : null,
+      is_retweet: false, retweeted_status_id: null, favorite_count: 0, retweet_count: 0,
+      has_media: false, hashtags: [], mentions: [],
+      urls: urlC >= 0 && r[urlC] ? [r[urlC]] : [], permalink,
+      marked_for_deletion: false, opened_for_deletion_at: null, confirmed_deleted_at: null,
+      tags: [], provider: 'reddit'
+    });
+  }
+  return out;
+}
+function parseBlueskyPost(post) {
+  if (!post || !post.uri) return null;
+  const r = post.record || {};
+  const id = post.uri.split('/').pop();
+  if (!id) return null;
+  const text = r.text || '';
+  const createdAt = r.createdAt ? Date.parse(r.createdAt) : NaN;
+  const facets = Array.isArray(r.facets) ? r.facets : [];
+  const hashtags = [], mentions = [], urls = [];
+  for (const f of facets) {
+    for (const feat of (f.features || [])) {
+      const ty = feat.$type || '';
+      if (ty.endsWith('#tag') && feat.tag) hashtags.push(String(feat.tag).toLowerCase());
+      else if (ty.endsWith('#mention') && feat.did) mentions.push(String(feat.did));
+      else if (ty.endsWith('#link') && feat.uri) urls.push(String(feat.uri));
+    }
+  }
+  return {
+    id: String(id), created_at: Number.isNaN(createdAt) ? null : createdAt,
+    full_text: text, text, lang: (r.langs && r.langs[0]) || null, source: 'bluesky',
+    is_reply: !!r.reply, in_reply_to_user_id: null,
+    in_reply_to_status_id: (r.reply && r.reply.parent && r.reply.parent.uri) ? r.reply.parent.uri.split('/').pop() : null,
+    is_retweet: false, retweeted_status_id: null,
+    favorite_count: post.likeCount || 0, retweet_count: post.repostCount || 0,
+    has_media: !!post.embed, hashtags, mentions, urls,
+    marked_for_deletion: false, opened_for_deletion_at: null, confirmed_deleted_at: null,
+    tags: [], provider: 'bluesky', bsky_uri: post.uri, bsky_author_handle: post.author && post.author.handle
+  };
+}
+function parseTweetsBatch(provider, raw) {
+  if (provider === 'mastodon') return parseMastodonOutbox(raw).map(parseMastodonNoteRecord).filter(Boolean);
+  if (provider === 'bluesky') { try { return JSON.parse(raw).map(parseBlueskyPost).filter(Boolean); } catch { return []; } }
+  if (provider === 'reddit-posts') return redditRowsToRecords(parseCSV(raw), 'post');
+  if (provider === 'reddit-comments') return redditRowsToRecords(parseCSV(raw), 'comment');
+  return parseYTD(raw).map(parseTweetRecord).filter(Boolean);
+}
+function parseLikesBatch(provider, raw, baseOffset) {
+  const offset = baseOffset || 0;
+  if (provider === 'mastodon') {
+    const items = (() => { try { const o = JSON.parse(raw); return o.orderedItems || o.items || []; } catch { return []; } })();
+    return items.map((it, i) => parseMastodonLikeRecord(it, offset + i)).filter(Boolean);
+  }
+  if (provider === 'bluesky' || provider === 'reddit-posts' || provider === 'reddit-comments') return [];
+  return parseYTD(raw).map((e, i) => parseLikeRecord(e, offset + i)).filter(Boolean);
+}
+function parseAccountFor(provider, raw) {
+  if (provider === 'mastodon') return parseMastodonActor(raw);
+  if (provider === 'bluesky') { try { const a = JSON.parse(raw); return { accountId: a.did || null, username: a.handle || null, accountDisplayName: a.displayName || null, createdAt: a.createdAt || null }; } catch { return null; } }
+  if (provider === 'reddit-posts' || provider === 'reddit-comments') { try { return JSON.parse(raw); } catch { return null; } }
+  try { return parseAccountRecord(parseYTD(raw)); } catch { return null; }
+}
+
+// ─── handleIndex ─────────────────────────────────────────────────────────
+async function handleIndex(msg) {
+  const { id, fileContents, filePaths, fileProviders, accountRaw, likeText, likePath, provider = 'twitter' } = msg;
+  const phase = text => postMessage({ type: 'phase', text });
+  const progress = data => postMessage({ type: 'progress', ...data });
+
+  let account = null;
+  if (accountRaw) { try { account = parseAccountFor(provider, accountRaw); } catch {} }
+
+  let firstId = null;
+  if (fileContents.length > 0) {
+    phase(`Probing ${filePaths[0]}…`);
+    try {
+      const recs = parseTweetsBatch(fileProviders[0] || provider, fileContents[0]);
+      firstId = recs.length ? recs[0].id : null;
+    } catch {}
+  }
+
+  const resumeKey = await sha256Hex((accountRaw || '') + '||' + (firstId || ''));
+  const priorState = await wStore.metaGet('index_state');
+  const priorResume = await wStore.metaGet('resume_key');
+
+  if (priorState && priorState.phase === 'done' && priorResume === resumeKey) {
+    phase('Already indexed — skipping.');
+    postMessage({ type: 'done', id, account, resumed: true });
+    return;
+  }
+
+  let startFileIdx = 0, startOffset = 0, startLikeOffset = 0, resumingPhase = 'tweets';
+  if (priorState && priorState.phase !== 'done' && priorResume === resumeKey) {
+    resumingPhase = priorState.phase || 'tweets';
+    if (resumingPhase === 'tweets') {
+      startFileIdx = priorState.fileIndex || 0;
+      startOffset = priorState.offset || 0;
+      phase(`Resuming tweets from file ${startFileIdx + 1}+${startOffset}…`);
+    } else if (resumingPhase === 'likes') {
+      startLikeOffset = priorState.offset || 0;
+      phase(`Resuming likes at +${startLikeOffset}…`);
+    }
+  } else if (priorState) {
+    phase('Different archive — re-indexing…');
+    await wStore.wipe();
+  }
+
+  await wStore.metaSet('resume_key', resumeKey);
+  await wStore.metaSet('account', account);
+  await wStore.metaSet('version', SCHEMA_VERSION);
+  await wStore.metaSet('provider', provider);
+
+  let totalIndexed = (startFileIdx > 0 || startOffset > 0) ? await wStore.tweetCount() : 0;
+  let lastId = null;
+
+  if (resumingPhase === 'tweets') {
+    for (let i = startFileIdx; i < fileContents.length; i++) {
+      const path = filePaths[i] || `file ${i + 1}`;
+      const fileProvider = fileProviders[i] || provider;
+      phase(`Parsing ${path}…`);
+      let arr;
+      try { arr = parseTweetsBatch(fileProvider, fileContents[i]); }
+      catch (e) { console.error('[bw-worker] parse failed:', path, e); continue; }
+      let offset = (i === startFileIdx) ? startOffset : 0;
+      while (offset < arr.length) {
+        const rows = arr.slice(offset, offset + BATCH_SIZE).filter(Boolean);
+        if (rows.length) { await wStore.putTweetsBatch(rows); lastId = rows[rows.length - 1].id; }
+        offset += BATCH_SIZE;
+        if (offset > arr.length) offset = arr.length;
+        totalIndexed += rows.length;
+        const indexState = { phase: 'tweets', fileIndex: i, offset, file: path };
+        await wStore.metaSet('index_state', indexState);
+        await writeOPFS({ schema_version: SCHEMA_VERSION, ...indexState, opened_at: Date.now(), marked_for_deletion: [], marked_for_unlike: [] });
+        progress({ tweetCount: totalIndexed, likeCount: 0, fileIdx: i, fileTotal: fileContents.length, path, scope: 'tweets' });
+      }
+    }
+  }
+
+  let likesIndexed = startLikeOffset || 0;
+  if (likeText) {
+    phase(`Parsing ${likePath || 'likes'}…`);
+    let arr = [];
+    try { arr = parseLikesBatch(provider, likeText, 0); } catch {}
+    let offset = startLikeOffset;
+    while (offset < arr.length) {
+      const rows = arr.slice(offset, offset + BATCH_SIZE).filter(Boolean);
+      if (rows.length) await wStore.putLikesBatch(rows);
+      offset += BATCH_SIZE;
+      if (offset > arr.length) offset = arr.length;
+      likesIndexed += rows.length;
+      const indexState = { phase: 'likes', offset, file: likePath || 'likes' };
+      await wStore.metaSet('index_state', indexState);
+      await writeOPFS({ schema_version: SCHEMA_VERSION, ...indexState, opened_at: Date.now(), marked_for_deletion: [], marked_for_unlike: [] });
+      progress({ tweetCount: totalIndexed, likeCount: likesIndexed, fileIdx: 0, fileTotal: 1, path: likePath || 'likes', scope: 'likes' });
+    }
+  } else {
+    phase('No likes file — skipping.');
+  }
+
+  const fpInput = [accountRaw || '', totalIndexed, likesIndexed, firstId || '', lastId || ''].join('||');
+  const fingerprint = await sha256Hex(fpInput);
+  await wStore.metaSet('archive_fingerprint', fingerprint);
+  await wStore.metaSet('index_state', { phase: 'done', tweetCount: totalIndexed, likeCount: likesIndexed, completed_at: Date.now() });
+  const finalState = { schema_version: SCHEMA_VERSION, phase: 'done', archive_fingerprint: fingerprint, tweetCount: totalIndexed, likeCount: likesIndexed, completed_at: Date.now(), marked_for_deletion: [], marked_for_unlike: [] };
+  await writeOPFS(finalState);
+  phase('Done.');
+  postMessage({ type: 'done', id, account, resumed: false, tweetCount: totalIndexed, likeCount: likesIndexed, finalState });
+}
+
+// ─── Semantic embedding ───────────────────────────────────────────────────
+let _pipeline = null;
+async function getPipeline() {
+  if (_pipeline) return _pipeline;
+  const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/+esm');
+  env.allowLocalModels = false;
+  _pipeline = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+    quantized: true,
+    progress_callback: p => {
+      if (p.status === 'progress') {
+        postMessage({ type: 'embed_progress', stage: 'load', loaded: p.loaded || 0, total: p.total || 0, file: p.file || '' });
+      }
+    }
+  });
+  return _pipeline;
+}
+
+async function handleEmbedAll(msg) {
+  const { id } = msg;
+  postMessage({ type: 'embed_progress', stage: 'load_start' });
+  const pipe = await getPipeline();
+  postMessage({ type: 'embed_progress', stage: 'load_done' });
+
+  await wStore.embClear();
+  const allTweets = await wStore.getAllTweetTexts();
+  const total = allTweets.length;
+  let done = 0;
+
+  for (let ci = 0; ci * EMB_CHUNK_SIZE < total; ci++) {
+    const chunk = allTweets.slice(ci * EMB_CHUNK_SIZE, (ci + 1) * EMB_CHUNK_SIZE);
+    const texts = chunk.map(t => t.text || '');
+    const ids = chunk.map(t => t.id);
+    const output = await pipe(texts, { pooling: 'mean', normalize: true });
+    await wStore.embSet(ci, { ids, vectors: output.data.slice() });
+    done += chunk.length;
+    postMessage({ type: 'embed_progress', stage: 'embed', done, total });
+  }
+
+  await wStore.metaSet('emb_meta', { total, chunks: Math.ceil(total / EMB_CHUNK_SIZE), done_at: Date.now() });
+  postMessage({ type: 'done', id, total });
+}
+
+async function handleEmbedQuery(msg) {
+  const { id, text } = msg;
+  const pipe = await getPipeline();
+  const output = await pipe(text, { pooling: 'mean', normalize: true });
+  postMessage({ type: 'done', id, vec: Array.from(output.data) });
+}
+
+async function handleSemanticSearch(msg) {
+  const { id, queryVec, k = 20 } = msg;
+  const qv = new Float32Array(queryVec);
+  const emb_meta = await wStore.metaGet('emb_meta');
+  if (!emb_meta || !emb_meta.chunks) { postMessage({ type: 'done', id, results: [] }); return; }
+
+  const topK = [];
+  for (let ci = 0; ci < emb_meta.chunks; ci++) {
+    const chunk = await wStore.embGet(ci);
+    if (!chunk) continue;
+    const { ids, vectors } = chunk;
+    const n = ids.length;
+    for (let i = 0; i < n; i++) {
+      let dot = 0;
+      const base = i * EMB_DIM;
+      for (let d = 0; d < EMB_DIM; d++) dot += qv[d] * vectors[base + d];
+      if (topK.length < k) {
+        topK.push({ id: ids[i], score: dot });
+        if (topK.length === k) topK.sort((a, b) => b.score - a.score);
+      } else if (dot > topK[k - 1].score) {
+        topK[k - 1] = { id: ids[i], score: dot };
+        topK.sort((a, b) => b.score - a.score);
+      }
+    }
+  }
+  topK.sort((a, b) => b.score - a.score);
+  postMessage({ type: 'done', id, results: topK });
+}
+
+// ─── Message handler ──────────────────────────────────────────────────────
+self.onmessage = async ({ data }) => {
+  const { type, id } = data;
+  try {
+    if (type === 'index') { await handleIndex(data); return; }
+    if (type === 'embed_all') { await handleEmbedAll(data); return; }
+    if (type === 'embed_query') { await handleEmbedQuery(data); return; }
+    if (type === 'semantic_search') { await handleSemanticSearch(data); return; }
+    postMessage({ type: 'error', id, msg: `Unknown type: ${type}` });
+  } catch (e) {
+    postMessage({ type: 'error', id, msg: (e && e.message) || String(e) });
+  }
+};
+</script>
+
 </body>
 </html>
