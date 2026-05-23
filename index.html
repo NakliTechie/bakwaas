@@ -9711,7 +9711,14 @@ def main():
     except ImportError:
         sys.exit('\nInstall: pip install sentence-transformers\n')
     print('Loading model (all-MiniLM-L6-v2) …')
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    import io as _io
+    _old_err = sys.stderr; _buf = _io.StringIO(); sys.stderr = _buf
+    try:
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+    finally:
+        sys.stderr = _old_err
+        for _line in _buf.getvalue().splitlines():
+            if 'GetPrototype' not in _line: print(_line, file=sys.stderr)
     print(f'Embedding {len(tweets):,} tweets …')
     embeddings = model.encode([t[1] for t in tweets], normalize_embeddings=True,
                               batch_size=512, show_progress_bar=True, convert_to_numpy=True)

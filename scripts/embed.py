@@ -215,7 +215,19 @@ def main():
         sys.exit('\nMissing dependency:\n  pip install sentence-transformers\n')
 
     print('Loading model (all-MiniLM-L6-v2) …')
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    # sentence-transformers + protobuf ≥4 print harmless AttributeError noise to
+    # stderr during init.  Capture and re-emit only lines that aren't that spam.
+    import io as _io
+    _old_err = sys.stderr
+    _buf = _io.StringIO()
+    sys.stderr = _buf
+    try:
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+    finally:
+        sys.stderr = _old_err
+        for _line in _buf.getvalue().splitlines():
+            if 'GetPrototype' not in _line:
+                print(_line, file=sys.stderr)
 
     ids   = [t[0] for t in tweets]
     texts = [t[1] for t in tweets]
