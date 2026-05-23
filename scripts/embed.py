@@ -141,15 +141,60 @@ def write_bin(output_path: str, ids: list[str], embeddings) -> None:
     print(f'\nWrote {output_path}  ({size_mb:.0f} MB, {num_tweets:,} tweets × {dim}d)')
 
 
+# ── picker ───────────────────────────────────────────────────────────────────
+
+def pick_archive() -> str:
+    """Open a GUI file/folder picker. Falls back to a prompt if tkinter is absent."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog, messagebox
+
+        root = tk.Tk()
+        root.withdraw()
+        root.lift()
+        root.attributes('-topmost', True)
+
+        # Ask: ZIP file or folder?
+        choice = messagebox.askquestion(
+            'Bakwaas — select archive',
+            'Is your Twitter archive a ZIP file?\n\n'
+            'Yes → pick a .zip file\n'
+            'No  → pick an unzipped folder',
+            icon='question',
+        )
+        if choice == 'yes':
+            path = filedialog.askopenfilename(
+                title='Select Twitter archive ZIP',
+                filetypes=[('ZIP archive', '*.zip'), ('All files', '*.*')],
+            )
+        else:
+            path = filedialog.askdirectory(title='Select unzipped Twitter archive folder')
+
+        root.destroy()
+        return path.strip() if path else ''
+
+    except Exception:
+        # tkinter not available — plain prompt
+        print('No GUI available. Paste the path to your archive (ZIP or folder):')
+        return input('> ').strip().strip('"').strip("'")
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
+    if len(sys.argv) > 1 and sys.argv[1] in ('-h', '--help'):
         print(__doc__)
         sys.exit(0)
 
-    archive_path = sys.argv[1]
-    output_path  = sys.argv[2] if len(sys.argv) > 2 else 'bakwaas-emb.bin'
+    if len(sys.argv) >= 2:
+        archive_path = sys.argv[1]
+    else:
+        archive_path = pick_archive()
+
+    if not archive_path:
+        sys.exit('No archive selected. Exiting.')
+
+    output_path = sys.argv[2] if len(sys.argv) > 2 else 'bakwaas-emb.bin'
 
     print(f'Loading archive: {archive_path}')
 
