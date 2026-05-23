@@ -634,6 +634,11 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .help-card .help-foot a { color: var(--accent); text-decoration: none; }
 .help-card .help-foot a:hover { text-decoration: underline; }
+.intro-card { align-items: center; text-align: center; max-width: 500px; }
+.intro-card h2 { font-size: 30px; color: var(--text); }
+.intro-card h2 .devanagari { font-size: 36px; }
+.intro-list { margin: 0; padding-left: 22px; text-align: left; }
+.intro-list li { margin-bottom: 8px; font-size: 14px; line-height: 1.5; color: var(--text); }
 
 /* X API setup modal — reuses .help-backdrop + .help-card with a form skin. */
 .xapi-form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
@@ -1111,7 +1116,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.23 · engagement + similar</span>
+      <span class="phase" id="phase-tag">v0.25 · memory tab</span>
       <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
@@ -1180,6 +1185,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <button class="tab" data-tab="tab-search" type="button">Search</button>
         <button class="tab" data-tab="tab-engagement" type="button">Engagement</button>
         <button class="tab" data-tab="tab-patterns" type="button">Patterns</button>
+        <button class="tab" data-tab="tab-memory" type="button">Memory</button>
         <button class="tab" data-tab="tab-wrapped" type="button">Wrapped</button>
         <button class="tab" data-tab="tab-topics" type="button">Topics</button>
         <button class="tab" data-tab="tab-selection" type="button">Selection</button>
@@ -1214,6 +1220,12 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <div class="tab-panel" id="tab-patterns">
         <div id="patterns-host">
           <div class="stats-loading">Open this tab to compute patterns (one-time pass over your archive).</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-memory">
+        <div id="memory-host">
+          <div class="stats-loading">Open this tab to see anniversaries, eras, and yearly firsts.</div>
         </div>
       </div>
 
@@ -1357,7 +1369,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <ul class="tab-tour">
         <li><b>Stats</b><span>Counts, top hashtags / mentions / sources / languages, temporal heatmap (GitHub-contributions style across your full archive), hour × day-of-week, engagement distributions.</span></li>
         <li><b>Search</b><span>Fast full-text over tweets and likes via MiniSearch. Filter by originals / replies / retweets / media; flip scope between tweets, likes, both.</span></li>
-        <li><b>Patterns</b><span>Algorithmic deep dive: viral tweets, hashtag &amp; source ROI, burst hashtags (era detection), activity change-points, longest streak &amp; longest silence, verbosity drift, emoji + word-list mood timelines, top phrases (bigrams), recurring themes (≥3 years), hashtag-lifecycle sparklines, top link hosts, sleep / quiet-hours by year, style fingerprint + archetype, self-reply threads, co-mention pairs (force-directed graph), eras compared (chronological thirds, side-by-side), first &amp; last and top tweet per year, on-this-day anniversaries, "what were you doing then?" date picker, zero-engagement cleanup pile + PII audit.</span></li>
+        <li><b>Patterns</b><span>Algorithmic deep dive: viral tweets, hashtag &amp; source ROI, burst hashtags (era detection), activity change-points, longest streak &amp; longest silence, verbosity drift, emoji + word-list mood timelines, top phrases (bigrams), recurring themes (≥3 years), hashtag-lifecycle sparklines, top link hosts, sleep / quiet-hours by year, style fingerprint + archetype, self-reply threads, co-mention pairs (force-directed graph), zero-engagement cleanup pile + PII audit.</span></li>
+        <li><b>Memory</b><span>Looking back: on-this-day anniversaries across years, "what were you doing then?" date picker, eras compared (chronological thirds, side-by-side), first &amp; last and top tweet per year.</span></li>
         <li><b>Wrapped</b><span>Spotify-Wrapped-style poster card for any year or all-time. Top tweet, top hashtag, peak month, era, posting personality. Download as standalone HTML (hostable anywhere) or PNG (postable to social).</span></li>
         <li><b>Topics</b><span>Hashtag co-occurrence clusters — themes you tag together. Drag the threshold slider to widen or tighten clusters.</span></li>
         <li><b>Selection</b><span>The confirmation tray. Everything you've opened to delete or marked deleted ends up here.</span></li>
@@ -1366,6 +1379,9 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <h3>How deletion works</h3>
       <p>
         Bakwaas never calls X's API. To delete a tweet you click it open on X, delete it there in the real UI, then come back and confirm. Manual, on purpose. The hard part — knowing <em>what</em> to delete — happens here. The actual delete happens in X's own UI.
+      </p>
+      <p class="muted">
+        There's also an optional <strong>Delete via X API</strong> mode: paste your own OAuth 1.0a credentials (Consumer Key, Consumer Secret, Access Token, Access Token Secret) into the panel at the bottom of the Selection tab, and a "Delete via X API" button appears in the selection bar. Bakwaas signs each DELETE request with HMAC-SHA1 locally — your keys never leave your browser. The button stays hidden until credentials are saved.
       </p>
 
       <h3>Get your archive</h3>
@@ -1387,6 +1403,21 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">⬅ More NakliTechie projects</a>
         <a href="https://github.com/NakliTechie/rangrez" target="_blank" rel="noopener">Palette: Rangrez / SHEESHAM</a>
       </div>
+    </div>
+  </div>
+
+  <div class="help-backdrop" id="intro-backdrop" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+    <div class="help-card intro-card">
+      <h2 id="intro-title"><span class="devanagari">बकवास</span></h2>
+      <p class="help-etym">Hindi/Urdu, noun — nonsense, drivel, hot air, chitchat. The stuff you say a lot of but rarely re-read.</p>
+      <p>A browser-native explorer for your social-media archives. Drop a Twitter/X, Mastodon, Bluesky, or Reddit export and dig into it locally — no server, no accounts, nothing uploaded.</p>
+      <ul class="intro-list">
+        <li>Search 200,000+ posts with full power-query syntax</li>
+        <li>Spot eras, mood drift, burst hashtags, and viral moments</li>
+        <li>Find what's worth deleting — then delete it in X's own UI</li>
+      </ul>
+      <p class="muted" style="font-size:12px;">Everything stays in your browser. Always.</p>
+      <button type="button" class="primary" id="intro-ok" style="padding:10px 32px;font-size:15px;margin-top:6px;">Let's go →</button>
     </div>
   </div>
 
@@ -5142,6 +5173,7 @@ const ui = (() => {
       document.querySelectorAll('#screen-summary .tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
       if (target === 'tab-engagement') renderEngagement();
       if (target === 'tab-patterns') renderPatterns();
+      if (target === 'tab-memory') renderMemory();
       if (target === 'tab-wrapped') renderWrapped();
       if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
       if (target === 'tab-selection') renderTray();
@@ -5596,6 +5628,25 @@ const ui = (() => {
           </div>
         </div>
 
+      `;
+    } catch (e) {
+      console.error('patterns render failed:', e);
+      host.innerHTML = '<div class="topics-empty">Could not compute patterns: ' + safe(e.message || e) + '</div>';
+    } finally {
+      patternsRendering = false;
+    }
+  }
+
+  let memoryRendering = false;
+  async function renderMemory() {
+    if (memoryRendering) return;
+    memoryRendering = true;
+    const host = $('memory-host');
+    if (!host) { memoryRendering = false; return; }
+    host.innerHTML = '<div class="stats-loading">Loading…</div>';
+    try {
+      const p = await patterns.aggregate();
+      host.innerHTML = `
         <div class="patterns-section">
           <h2>On this day</h2>
           <div class="charts-grid">
@@ -5641,14 +5692,13 @@ const ui = (() => {
           </div>
         </div>
       `;
-      // Late wiring for the lazy-loaded sub-sections.
       bindWhenControls();
       renderAnniversary();
     } catch (e) {
-      console.error('patterns render failed:', e);
-      host.innerHTML = '<div class="topics-empty">Could not compute patterns: ' + safe(e.message || e) + '</div>';
+      console.error('memory render failed:', e);
+      host.innerHTML = '<div class="topics-empty">Could not load Memory view: ' + safe(e.message || e) + '</div>';
     } finally {
-      patternsRendering = false;
+      memoryRendering = false;
     }
   }
 
@@ -6623,6 +6673,11 @@ const ui = (() => {
     const gcnt = $('global-sel-count');
     if (gchip) gchip.classList.toggle('is-active', n > 0);
     if (gcnt) gcnt.textContent = n.toLocaleString();
+    // Show X API delete button only when credentials are configured and items are selected
+    xapi.loadCreds().then(creds => {
+      const btn = $('sel-xapi-delete');
+      if (btn) btn.style.display = (creds && n > 0) ? '' : 'none';
+    });
   }
 
   // ── Unified chart hover tooltip ────────────────────────────────────────
@@ -7515,6 +7570,56 @@ const ui = (() => {
       const host = $('tray-host');
       if (host) host.querySelectorAll('.card-item.is-deleted').forEach(c => c.remove());
     });
+
+    const trayHost = $('tray-host');
+    if (!trayHost) return;
+
+    // Checkbox: toggle the item in/out of the global selection set
+    trayHost.addEventListener('change', (e) => {
+      const input = e.target.closest('input[data-role="select"]');
+      if (!input) return;
+      const card = input.closest('.card-item');
+      const key = card?.dataset.key;
+      if (!key) return;
+      if (input.checked) selectionSet.add(key); else selectionSet.delete(key);
+      card.classList.toggle('is-selected', input.checked);
+      refreshSelectionBar();
+    });
+
+    trayHost.addEventListener('click', async (e) => {
+      // Undo = remove from the deletion queue entirely
+      const undo = e.target.closest('button[data-role="undo"]');
+      if (undo) {
+        const card = undo.closest('.card-item');
+        const scope = card?.dataset.scope, id = card?.dataset.id;
+        if (!scope || !id) return;
+        await deletion.undo([{ scope, id }]);
+        selectionSet.delete(card.dataset.key);
+        refreshSelectionBar();
+        card.remove();
+        const [pending, deleted] = await Promise.all([deletion.listPending(), deletion.listDeleted()]);
+        const statsEl = $('tray-stats');
+        if (statsEl) statsEl.textContent = `${pending.length.toLocaleString()} pending · ${deleted.length.toLocaleString()} deleted`;
+        if (!pending.length && !deleted.length) {
+          trayHost.innerHTML = '<div class="empty-sel">Items you\'ve opened or marked deleted appear here. Use the Search tab to add things.</div>';
+        }
+        return;
+      }
+      // Mark = confirm deletion
+      const mark = e.target.closest('button[data-role="mark"]');
+      if (mark) {
+        const card = mark.closest('.card-item');
+        const scope = card?.dataset.scope, id = card?.dataset.id;
+        if (!scope || !id) return;
+        await deletion.markDeleted([{ scope, id }]);
+        card.classList.remove('is-opened');
+        card.classList.add('is-deleted');
+        const [pending, deleted] = await Promise.all([deletion.listPending(), deletion.listDeleted()]);
+        const statsEl = $('tray-stats');
+        if (statsEl) statsEl.textContent = `${pending.length.toLocaleString()} pending · ${deleted.length.toLocaleString()} deleted`;
+        return;
+      }
+    });
   }
 
   function bindSearch() {
@@ -7913,7 +8018,7 @@ const ui = (() => {
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
            bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer,
-           bindMarkButtons, bindChartTooltips, bindTagPopup };
+           bindMarkButtons, bindChartTooltips, bindTagPopup, renderMemory };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -8051,6 +8156,18 @@ async function bootstrap() {
   $('btn-error-reset')?.addEventListener('click', async () => {
     await store.wipe();
     location.reload();
+  });
+
+  // First-visit splash — shown once, dismissed by the CTA
+  if (!localStorage.getItem('bakwaas-intro-seen')) {
+    const introBd = $('intro-backdrop');
+    if (introBd) { introBd.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+  }
+  $('intro-ok')?.addEventListener('click', () => {
+    localStorage.setItem('bakwaas-intro-seen', '1');
+    const introBd = $('intro-backdrop');
+    if (introBd) introBd.classList.remove('is-open');
+    document.body.style.overflow = '';
   });
 }
 
