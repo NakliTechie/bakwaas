@@ -272,6 +272,21 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   font-family: var(--mono);
 }
 
+/* Quick-range preset chips beneath the filter bar */
+.preset-bar {
+  display: flex; gap: 6px; align-items: center; margin-top: -6px; margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.preset-bar .preset-label { font-size: 11px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.5px; margin-right: 2px; }
+.preset-bar .preset {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 3px 10px; font-size: 11px; font-family: var(--mono);
+  transition: color .15s, border-color .15s, background .15s;
+}
+.preset-bar .preset:hover { color: var(--text); border-color: var(--text); }
+.preset-bar .preset.active { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+
 /* Scrubber — dual-thumb range picker over a tweets-per-month histogram. */
 .scrubber-wrap {
   background: var(--panel-2); border: 1px solid var(--border);
@@ -823,8 +838,45 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px;
   padding: 14px 12px 12px; text-align: center; position: relative;
   transition: transform .15s, border-color .15s;
+  cursor: pointer;
 }
 .bf-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.bf-card:hover::after {
+  content: 'click to explore →'; position: absolute; bottom: 4px; right: 8px;
+  font-size: 9px; color: var(--accent); font-family: var(--mono); opacity: 0.85;
+}
+
+/* Conversation modal */
+.convo-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin-bottom: 18px;
+}
+.convo-stats .cs {
+  background: var(--panel-2); border-radius: 8px; padding: 10px 12px;
+}
+.convo-stats .cs-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+.convo-stats .cs-value { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+.convo-stats .cs-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+
+.convo-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.convo-tags .convo-tag {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 3px 10px; font-size: 11px; font-family: var(--mono); color: var(--text);
+}
+
+.convo-timeline { max-height: 460px; overflow-y: auto; padding-right: 4px; }
+.convo-msg {
+  background: var(--panel-2); border-left: 3px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+}
+.convo-msg.is-reply { border-left-color: var(--warn); }
+.convo-msg .convo-meta {
+  font-size: 10px; color: var(--muted); font-family: var(--mono); margin-bottom: 4px;
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.convo-msg .convo-meta a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); }
+.convo-msg .convo-meta a:hover { color: var(--accent); border-color: var(--accent); }
+.convo-msg .convo-text { font-size: 13px; line-height: 1.5; color: var(--text); }
 .bf-rank { position: absolute; top: 6px; left: 8px; font-size: 10px; font-family: var(--mono); color: var(--muted); }
 .bf-avatar {
   width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 10px;
@@ -864,6 +916,57 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .thread-tree .tt-meta a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); padding: 0 2px; }
 .thread-tree .tt-meta a:hover { color: var(--accent); }
 
+/* Thread explorer modal */
+.thread-explorer-btn {
+  background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 999px;
+  padding: 6px 16px; font-size: 12px; font-family: var(--mono);
+  transition: background .15s;
+}
+.thread-explorer-btn:hover { background: var(--accent); color: #0d1117; }
+
+.threads-explorer-controls {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 8px; margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.threads-explorer-controls input[type=search] {
+  flex: 1; min-width: 200px;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; font-family: inherit;
+}
+.threads-explorer-controls input[type=search]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.threads-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+.threads-list { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow-y: auto; }
+.thread-row-card {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; cursor: pointer;
+  transition: border-color .15s;
+}
+.thread-row-card:hover { border-color: var(--accent); }
+.thread-row-card .trc-head {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 4px;
+}
+.thread-row-card .trc-size { color: var(--accent); font-weight: 700; }
+.thread-row-card .trc-text {
+  font-size: 12px; line-height: 1.45; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.thread-expanded {
+  background: var(--panel); border: 1px solid var(--accent); border-radius: 10px;
+  padding: 14px 16px; margin-top: 8px;
+}
+.thread-expanded .te-back {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 11px; font-family: var(--mono);
+  margin-bottom: 12px;
+}
+.thread-expanded .te-back:hover { color: var(--text); border-color: var(--text); }
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -888,7 +991,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.16 · BYOK X delete</span>
+      <span class="phase" id="phase-tag">v0.17 · explorer + to: + presets</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1035,10 +1138,21 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <label>Min ↻:</label><input type="number" id="search-min-rt" min="0" value="0" />
           <label>Lang:</label><select id="search-lang"><option value="">any</option></select>
           <button type="button" id="search-filter-reset">Reset</button>
+        </div>
+        <div class="preset-bar" id="search-preset-bar">
+          <span class="preset-label">Quick range:</span>
+          <button type="button" class="preset" data-preset="7d">7d</button>
+          <button type="button" class="preset" data-preset="30d">30d</button>
+          <button type="button" class="preset" data-preset="90d">90d</button>
+          <button type="button" class="preset" data-preset="ytd">YTD</button>
+          <button type="button" class="preset" data-preset="this-year">This year</button>
+          <button type="button" class="preset" data-preset="last-year">Last year</button>
+          <button type="button" class="preset" data-preset="all">All</button>
           <details class="filter-tips">
             <summary>Power syntax</summary>
             <p>You can type operators directly in the search box. They compose with the controls above:</p>
-            <code>since:2018-01-01 until:2019-12-31 min_faves:10 has:media -crypto "exact phrase" from:elonmusk lang:en</code>
+            <code>since:2018-01-01 until:2019-12-31 min_faves:10 has:media -crypto "exact phrase"<br>from:elonmusk lang:en to:dril</code>
+            <p style="margin-top:6px;"><strong>from:</strong> — tweet mentions @user. <strong>to:</strong> — tweet is a reply to @user (uses in_reply_to_screen_name). <strong>has:</strong> media or link. <strong>-term</strong> excludes.</p>
           </details>
         </div>
         <div class="scrubber-wrap" id="search-scrubber-wrap" style="display:none;">
@@ -1129,6 +1243,26 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <a href="https://github.com/NakliTechie/bakwaas" target="_blank" rel="noopener">⌬ Source on GitHub</a>
         <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">⬅ More NakliTechie projects</a>
       </div>
+    </div>
+  </div>
+
+  <div class="help-backdrop" id="threads-backdrop" role="dialog" aria-modal="true" aria-labelledby="threads-title">
+    <div class="help-card" style="max-width: 820px;">
+      <button class="help-close" id="threads-close" type="button" aria-label="Close">×</button>
+      <h2 id="threads-title">Thread explorer</h2>
+      <div class="threads-explorer-controls">
+        <input type="search" id="threads-search" placeholder="Find thread by root-tweet text…" autocomplete="off" />
+        <span id="threads-meta" class="threads-meta">—</span>
+      </div>
+      <div id="threads-list-host"><div class="stats-loading">Scanning your archive for every thread…</div></div>
+    </div>
+  </div>
+
+  <div class="help-backdrop" id="convo-backdrop" role="dialog" aria-modal="true" aria-labelledby="convo-title">
+    <div class="help-card" style="max-width: 760px;">
+      <button class="help-close" id="convo-close" type="button" aria-label="Close">×</button>
+      <h2 id="convo-title">Conversation with @—</h2>
+      <div id="convo-body"><div class="stats-loading">Loading…</div></div>
     </div>
   </div>
 
@@ -1758,6 +1892,7 @@ const parser = (() => {
       is_reply: isReply,
       in_reply_to_user_id: t.in_reply_to_user_id_str || null,
       in_reply_to_status_id: t.in_reply_to_status_id_str || null,
+      in_reply_to_screen_name: t.in_reply_to_screen_name || null,
       is_retweet: isRT,
       retweeted_status_id: t.retweeted_status_id_str || null,
       favorite_count: parseInt(t.favorite_count || '0', 10) || 0,
@@ -2615,7 +2750,7 @@ const patterns = (() => {
     if (inflight) return inflight;
     inflight = (async () => {
       const cached = await store.metaGet('patterns_cache');
-      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth && cached.cohorts && cached.topThreadTrees) return cached;
+      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth && cached.cohorts && cached.topThreadTrees && cached.topByFav) return cached;
 
       const db = await store.open();
       const TOP_VIRAL = 30;
@@ -2629,7 +2764,9 @@ const patterns = (() => {
       const perHashtagMonths = new Map();      // tag → Map<YYYY-MM, count>
       const perSourceEng = new Map();          // source → { count, sumFav, sumRT }
       const hourDowEng = new Array(7 * 24).fill(null).map(() => ({ count: 0, sumFav: 0, sumRT: 0 }));
-      const topViral = [];                     // min-heap-ish (simple sorted insert)
+      const topViral = [];                     // min-heap-ish (sorted by combined eng)
+      const topByFav = [];                     // sorted by favorite_count desc (size capped)
+      const topByRT = [];                      // sorted by retweet_count desc
       const bottomZeroByYear = new Map();      // year → count
       const bottomZeroSamples = [];            // oldest few zero-eng tweets
 
@@ -2754,21 +2891,27 @@ const patterns = (() => {
           }
 
           // engagement extremes
-          const eng = (t.favorite_count || 0) + (t.retweet_count || 0);
-          if (eng > 0) {
-            // maintain top-N by eng with a simple sorted slot (small N → linear is fine)
-            if (topViral.length < TOP_VIRAL) {
-              topViral.push({ id: t.id, eng, fav: t.favorite_count || 0, rt: t.retweet_count || 0,
-                              text: (t.text || '').slice(0, 280), date: t.created_at,
-                              is_retweet: !!t.is_retweet, is_reply: !!t.is_reply, has_media: !!t.has_media });
-              topViral.sort((a, b) => a.eng - b.eng); // ascending; index 0 = min
-            } else if (eng > topViral[0].eng) {
-              topViral[0] = { id: t.id, eng, fav: t.favorite_count || 0, rt: t.retweet_count || 0,
-                              text: (t.text || '').slice(0, 280), date: t.created_at,
-                              is_retweet: !!t.is_retweet, is_reply: !!t.is_reply, has_media: !!t.has_media };
-              topViral.sort((a, b) => a.eng - b.eng);
+          const fav = t.favorite_count || 0;
+          const rt = t.retweet_count || 0;
+          const eng = fav + rt;
+          const rec = { id: t.id, eng, fav, rt,
+                        text: (t.text || '').slice(0, 280), date: t.created_at,
+                        is_retweet: !!t.is_retweet, is_reply: !!t.is_reply, has_media: !!t.has_media };
+          function pushTop(arr, key, cap) {
+            const k = rec[key];
+            if (k <= 0) return;
+            if (arr.length < cap) {
+              arr.push(rec);
+              arr.sort((a, b) => a[key] - b[key]);
+            } else if (k > arr[0][key]) {
+              arr[0] = rec;
+              arr.sort((a, b) => a[key] - b[key]);
             }
-          } else if (!t.is_retweet) {
+          }
+          pushTop(topViral, 'eng', TOP_VIRAL);
+          pushTop(topByFav, 'fav', TOP_VIRAL);
+          pushTop(topByRT, 'rt', TOP_VIRAL);
+          if (eng <= 0 && !t.is_retweet) {
             // zero-engagement originals/replies — main cleanup signal
             const y = t.created_at ? yOf(t.created_at) : 0;
             bottomZeroByYear.set(y, (bottomZeroByYear.get(y) || 0) + 1);
@@ -3310,6 +3453,8 @@ const patterns = (() => {
       const out = {
         version: SCHEMA_VERSION,
         topViral: topViral.sort((a, b) => b.eng - a.eng).slice(0, 20),
+        topByFav: topByFav.sort((a, b) => b.fav - a.fav).slice(0, 20),
+        topByRT: topByRT.sort((a, b) => b.rt - a.rt).slice(0, 20),
         bottomZeroByYear: [...bottomZeroByYear.entries()].sort((a, b) => a[0] - b[0]),
         bottomZeroSamples: bottomZeroSamples.slice(0, 50),
         hashtagByEng,
@@ -3402,7 +3547,146 @@ const patterns = (() => {
     });
   }
 
-  return { aggregate, anniversary, byDate, setProgressHandler };
+  // conversationsWith(handle) — lazy cursor scan returning tweets that mention
+  // the target user (in mentions[]) OR are direct replies (in_reply_to_screen_name).
+  async function conversationsWith(handle) {
+    const target = String(handle || '').replace(/^@/, '').toLowerCase();
+    if (!target) return null;
+    const db = await store.open();
+    const matches = [];
+    await new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const cur = tx.objectStore('tweets').openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res();
+        const t = c.value;
+        const mentions = (t.mentions || []).map(x => String(x).toLowerCase());
+        const isReplyTo = t.in_reply_to_screen_name && String(t.in_reply_to_screen_name).toLowerCase() === target;
+        if (mentions.includes(target) || isReplyTo) {
+          matches.push({
+            id: t.id, text: t.text, date: t.created_at,
+            fav: t.favorite_count || 0, rt: t.retweet_count || 0,
+            is_reply: !!t.is_reply, is_retweet: !!t.is_retweet, has_media: !!t.has_media,
+            isReplyTo, mentions: t.mentions || []
+          });
+        }
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+    matches.sort((a, b) => (a.date || 0) - (b.date || 0));
+    // Stats
+    const first = matches[0]?.date || null;
+    const last = matches[matches.length - 1]?.date || null;
+    const replies = matches.filter(m => m.isReplyTo).length;
+    const totalEng = matches.reduce((s, m) => s + (m.fav || 0) + (m.rt || 0), 0);
+    // Top hashtags used with them
+    const hashtagMap = new Map();
+    for (const m of matches) {
+      // We didn't keep hashtags in the projection — re-fetch text for hashtag extraction
+      // (cheap: regex over .text).
+      for (const h of ((m.text || '').match(/#[A-Za-z0-9_]+/g) || [])) {
+        const k = h.slice(1).toLowerCase();
+        hashtagMap.set(k, (hashtagMap.get(k) || 0) + 1);
+      }
+    }
+    const topHashtags = [...hashtagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    // Peak month
+    const months = new Map();
+    for (const m of matches) {
+      if (!m.date) continue;
+      const k = new Date(m.date).toISOString().slice(0, 7);
+      months.set(k, (months.get(k) || 0) + 1);
+    }
+    let peakMonth = null, peakCount = 0;
+    for (const [k, v] of months) if (v > peakCount) { peakMonth = k; peakCount = v; }
+    return {
+      handle: target,
+      first, last,
+      total: matches.length,
+      replies, mentions: matches.length - replies,
+      avgEng: matches.length ? totalEng / matches.length : 0,
+      totalEng,
+      topHashtags,
+      peakMonth: peakMonth ? { month: peakMonth, count: peakCount } : null,
+      timeline: matches
+    };
+  }
+
+  // Full-archive thread map — built lazily and cached in module memory for
+  // the rest of the session. Used by the thread explorer modal which lets
+  // users browse / search ALL detectable threads, not just the top 10.
+  let fullThreadCache = null;
+  async function fullThreadMap() {
+    if (fullThreadCache) return fullThreadCache;
+    const db = await store.open();
+    const ownIds = new Set();
+    const replies = []; // [{ id, parent }]
+    await new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const cur = tx.objectStore('tweets').openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res();
+        const t = c.value;
+        ownIds.add(t.id);
+        if (t.in_reply_to_status_id) replies.push({ id: t.id, parent: t.in_reply_to_status_id });
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+    // Build childMap of own→own only
+    const childMap = new Map();
+    for (const r of replies) {
+      if (!ownIds.has(r.parent)) continue;
+      if (!childMap.has(r.parent)) childMap.set(r.parent, []);
+      childMap.get(r.parent).push(r.id);
+    }
+    // Find root ids: tweets that have children but aren't themselves a self-reply
+    const replyChildIds = new Set(replies.filter(r => ownIds.has(r.parent)).map(r => r.id));
+    const rootCandidates = new Set([...childMap.keys()].filter(id => !replyChildIds.has(id)));
+    // Size each thread (BFS)
+    const roots = [];
+    for (const rootId of rootCandidates) {
+      let count = 0;
+      const stack = [rootId];
+      const seen = new Set([rootId]);
+      while (stack.length) {
+        const x = stack.pop();
+        const kids = childMap.get(x) || [];
+        for (const k of kids) if (!seen.has(k)) { seen.add(k); stack.push(k); count++; }
+      }
+      roots.push({ id: rootId, size: count });
+    }
+    roots.sort((a, b) => b.size - a.size);
+    fullThreadCache = { childMap, roots };
+    return fullThreadCache;
+  }
+  async function expandThread(rootId) {
+    const map = await fullThreadMap();
+    const order = [];
+    const queue = [[rootId, 0]];
+    const seen = new Set([rootId]);
+    while (queue.length) {
+      const [id, depth] = queue.shift();
+      order.push({ id, depth });
+      const kids = map.childMap.get(id) || [];
+      for (const k of kids) if (!seen.has(k)) { seen.add(k); queue.push([k, depth + 1]); }
+    }
+    const recs = await store.getManyByIds('tweets', order.map(o => o.id));
+    const byId = new Map(recs.map(r => [r.id, r]));
+    return order.map(o => {
+      const r = byId.get(o.id);
+      if (!r) return null;
+      return {
+        id: r.id, depth: o.depth, text: (r.text || '').slice(0, 280),
+        date: r.created_at, fav: r.favorite_count || 0, rt: r.retweet_count || 0
+      };
+    }).filter(Boolean);
+  }
+
+  return { aggregate, anniversary, byDate, conversationsWith, fullThreadMap, expandThread, setProgressHandler };
 })();
 
 // ── search (MiniSearch) ─────────────────────────────────────────────────────
@@ -3528,7 +3812,7 @@ const search = (() => {
   function parseQuery(raw) {
     const out = {
       text: '', since: null, until: null,
-      from: [], minFav: 0, minRT: 0,
+      from: [], to: [], minFav: 0, minRT: 0,
       has: new Set(), lang: new Set(),
       exclude: [], phrases: []
     };
@@ -3553,6 +3837,8 @@ const search = (() => {
         if (!Number.isNaN(t)) out.until = t + 86400000 - 1;
       } else if ((mm = tok.match(/^from:(.+)$/i))) {
         out.from.push(mm[1].replace(/^@/, '').toLowerCase());
+      } else if ((mm = tok.match(/^to:(.+)$/i))) {
+        out.to.push(mm[1].replace(/^@/, '').toLowerCase());
       } else if ((mm = tok.match(/^min_faves?:(\d+)$/i))) {
         out.minFav = parseInt(mm[1], 10);
       } else if ((mm = tok.match(/^min_rts?:(\d+)$/i))) {
@@ -3597,6 +3883,15 @@ const search = (() => {
       const ms = (item.mentions || []).map(x => String(x).toLowerCase());
       if (!eff.from.some(u => ms.includes(u))) return false;
     }
+    // to:user — replies addressed to that user. Uses in_reply_to_screen_name
+    // when present; falls back to the first @mention on reply tweets for older
+    // records indexed before the field was captured.
+    if (eff.to.length) {
+      if (!item.is_reply) return false;
+      const target = (item.in_reply_to_screen_name && String(item.in_reply_to_screen_name).toLowerCase())
+        || ((item.mentions || [])[0] && String(item.mentions[0]).toLowerCase());
+      if (!target || !eff.to.includes(target)) return false;
+    }
     // exclude
     if (eff.exclude.length) {
       const t = (item.text || '').toLowerCase();
@@ -3618,6 +3913,7 @@ const search = (() => {
       since: parsed.since ?? filters.since ?? null,
       until: parsed.until ?? filters.until ?? null,
       from: parsed.from.length ? parsed.from : (filters.from || []),
+      to: parsed.to.length ? parsed.to : (filters.to || []),
       minFav: Math.max(parsed.minFav || 0, filters.minFav || 0),
       minRT: Math.max(parsed.minRT || 0, filters.minRT || 0),
       has: new Set([...parsed.has, ...((filters.has || []))]),
@@ -3625,7 +3921,7 @@ const search = (() => {
       exclude: [...parsed.exclude, ...((filters.exclude || []))],
       phrases: parsed.phrases
     };
-    const hasFilters = (eff.since !== null || eff.until !== null || eff.from.length || eff.minFav || eff.minRT
+    const hasFilters = (eff.since !== null || eff.until !== null || eff.from.length || eff.to.length || eff.minFav || eff.minRT
                      || eff.has.size || eff.lang.size || eff.exclude.length || eff.phrases.length
                      || chips.originals || chips.replies || chips.retweets || chips.media);
     const text = parsed.text.trim();
@@ -4267,9 +4563,21 @@ const ui = (() => {
         <div class="patterns-section">
           <h2>Engagement</h2>
           <div class="charts-grid">
-            <div class="chart-card" style="grid-column: 1 / -1;">
-              <h3>Top 20 viral tweets</h3>
+            <div class="chart-card">
+              <h3>Top by engagement (♥ + ↻)</h3>
               <div class="compact-list">${(p.topViral || []).map(viralCardHTML).join('') || '<div class="top-empty">No engagement on any tweet yet.</div>'}</div>
+            </div>
+            <div class="chart-card">
+              <h3>Top by likes ♥</h3>
+              <div class="compact-list">${(p.topByFav || []).map(viralCardHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
+            </div>
+            <div class="chart-card">
+              <h3>Top by retweets ↻</h3>
+              <div class="compact-list">${(p.topByRT || []).map(viralCardHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3 style="margin-bottom:6px;">Views / impressions</h3>
+              <div class="top-empty" style="text-align:left;font-style:italic;">Twitter doesn't include view counts in archive exports — only ♥ and ↻ are preserved. If you want view data, you'd have to fetch it live via the v2 API after this index is built.</div>
             </div>
             <div class="chart-card">
               <h3>Hashtags by avg engagement (min 5 uses)</h3>
@@ -4344,6 +4652,9 @@ const ui = (() => {
         <div class="patterns-section">
           <h2>Long conversations — your biggest threads</h2>
           ${threadTreesHTML(p.topThreadTrees || [])}
+          <div style="margin-top:12px;text-align:center;">
+            <button type="button" id="open-thread-explorer" class="thread-explorer-btn">Browse all threads →</button>
+          </div>
         </div>
 
         <div class="patterns-section">
@@ -4820,7 +5131,7 @@ const ui = (() => {
       const hue = colorForHandle(handle);
       const partners = coPartners.get(handle);
       const partnerHint = partners && partners.size ? `often with ${[...partners].slice(0, 2).map(x => '@' + safe(x)).join(', ')}` : 'solo';
-      return `<div class="bf-card">
+      return `<div class="bf-card" data-handle="${safe(handle)}">
         <div class="bf-rank">#${i + 1}</div>
         <div class="bf-avatar" style="background: linear-gradient(135deg, hsl(${hue},65%,55%), hsl(${(hue + 30) % 360},65%,40%));">${safe(initialsFor(handle))}</div>
         <div class="bf-handle">@${safe(handle)}</div>
@@ -5543,6 +5854,194 @@ const ui = (() => {
     });
   }
 
+  // ── Thread explorer modal — browse + drill into any thread ─────────────
+  let threadsState = { all: null, rootDocs: null, filtered: null, query: '' };
+  function bindThreadsExplorer() {
+    const back = $('threads-backdrop');
+    if (!back) return;
+    $('threads-close')?.addEventListener('click', () => closeThreadsExplorer());
+    back.addEventListener('click', (e) => { if (e.target === back) closeThreadsExplorer(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && back.classList.contains('is-open')) closeThreadsExplorer(); });
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('#open-thread-explorer, [data-open-threads]');
+      if (trigger) { openThreadsExplorer(); return; }
+      const row = e.target.closest('.thread-row-card[data-thread-id]');
+      if (row && back.classList.contains('is-open')) {
+        expandThreadInExplorer(row.dataset.threadId);
+      }
+    });
+    $('threads-search')?.addEventListener('input', (e) => {
+      threadsState.query = (e.target.value || '').toLowerCase();
+      renderThreadsList();
+    });
+  }
+  function closeThreadsExplorer() {
+    const back = $('threads-backdrop');
+    if (!back) return;
+    back.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+  async function openThreadsExplorer() {
+    const back = $('threads-backdrop');
+    if (!back) return;
+    back.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    $('threads-list-host').innerHTML = '<div class="stats-loading"><div>Scanning your archive for every thread… (one-time per session)</div></div>';
+    $('threads-meta').textContent = '';
+    try {
+      const map = await patterns.fullThreadMap();
+      threadsState.all = map.roots;
+      // Fetch root tweet records for ALL roots in one batch (for text + date).
+      // For 1000+ threads this is a single getManyByIds — fast.
+      threadsState.rootDocs = await store.getManyByIds('tweets', map.roots.map(r => r.id));
+      const byId = new Map(threadsState.rootDocs.map(r => [r.id, r]));
+      threadsState.filtered = map.roots.map(r => {
+        const root = byId.get(r.id);
+        if (!root) return null;
+        return {
+          id: r.id, size: r.size,
+          text: (root.text || '').slice(0, 200),
+          date: root.created_at,
+          fav: root.favorite_count || 0, rt: root.retweet_count || 0
+        };
+      }).filter(Boolean);
+      renderThreadsList();
+    } catch (e) {
+      console.error('thread explorer failed:', e);
+      $('threads-list-host').innerHTML = '<div class="top-empty">Couldn’t load threads: ' + safe(e.message || String(e)) + '</div>';
+    }
+  }
+  function renderThreadsList() {
+    if (!threadsState.filtered) return;
+    const q = threadsState.query;
+    const list = q
+      ? threadsState.filtered.filter(t => t.text.toLowerCase().includes(q))
+      : threadsState.filtered;
+    $('threads-meta').textContent = `${list.length.toLocaleString()} thread${list.length === 1 ? '' : 's'}${q ? ' matching' : ''}`;
+    const cap = 200;
+    const visible = list.slice(0, cap);
+    const html = visible.map(t => {
+      const dt = t.date ? new Date(t.date).toISOString().slice(0, 10) : '—';
+      return `<div class="thread-row-card" data-thread-id="${safe(t.id)}">
+        <div class="trc-head">
+          <span class="trc-size">${t.size + 1} tweets</span>
+          <span>${dt}</span>
+          <span>♥ ${t.fav.toLocaleString()} · ↻ ${t.rt.toLocaleString()}</span>
+        </div>
+        <div class="trc-text">${safe(t.text)}</div>
+      </div>`;
+    }).join('');
+    const more = list.length > cap
+      ? `<div style="text-align:center;color:var(--muted);font-size:11px;padding:8px;">Showing ${cap} of ${list.length.toLocaleString()} — type to narrow.</div>`
+      : '';
+    $('threads-list-host').innerHTML = `<div class="threads-list">${html}${more}</div>`;
+  }
+  async function expandThreadInExplorer(rootId) {
+    const host = $('threads-list-host');
+    if (!host) return;
+    host.innerHTML = '<div class="stats-loading">Loading thread…</div>';
+    try {
+      const tree = await patterns.expandThread(rootId);
+      const root = tree.find(t => t.depth === 0);
+      const descendants = tree.filter(t => t.depth > 0);
+      const rootUrl = `https://twitter.com/i/web/status/${rootId}`;
+      const dt = root && root.date ? new Date(root.date).toISOString().slice(0, 10) : '—';
+      const descHTML = descendants.map(d => {
+        const url = `https://twitter.com/i/web/status/${d.id}`;
+        const ddt = d.date ? new Date(d.date).toISOString().slice(0, 10) : '';
+        return `<div class="tt-node" style="margin-left:${Math.min(d.depth, 6) * 18}px;">
+          <span class="tt-bullet">↳</span>
+          <span class="tt-text">${safe(d.text)}</span>
+          <span class="tt-meta">${ddt}${d.fav || d.rt ? ` · ♥${d.fav}/↻${d.rt}` : ''} · <a href="${url}" target="_blank" rel="noopener">↗</a></span>
+        </div>`;
+      }).join('');
+      host.innerHTML = `<div class="thread-expanded">
+        <button type="button" class="te-back" onclick="(function(){window.__bakBackThreads();})()">← Back to list</button>
+        <div class="tt-head">
+          <span class="tt-count">${descendants.length} replies</span>
+          <span>${dt}</span>
+          ${root ? `<span>♥ ${root.fav} · ↻ ${root.rt}</span>` : ''}
+          <a href="${rootUrl}" target="_blank" rel="noopener" class="tt-open">open on X →</a>
+        </div>
+        <div class="tt-node tt-root">${root ? safe(root.text) : '— root not found —'}</div>
+        ${descHTML}
+      </div>`;
+    } catch (e) {
+      host.innerHTML = '<div class="top-empty">Couldn’t expand thread: ' + safe(e.message || String(e)) + '</div>';
+    }
+  }
+  // Tiny helper exposed for the inline onclick on the 'back' button.
+  window.__bakBackThreads = () => renderThreadsList();
+
+  // ── Conversation modal — drill into your back-and-forth with one user ──
+  function bindConvoModal() {
+    const back = $('convo-backdrop');
+    if (!back) return;
+    $('convo-close')?.addEventListener('click', () => closeConvoModal());
+    back.addEventListener('click', (e) => { if (e.target === back) closeConvoModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && back.classList.contains('is-open')) closeConvoModal(); });
+    // Click delegation on best-friend cards (Patterns tab) and any data-convo-handle element.
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('.bf-card[data-handle]');
+      const trigger = e.target.closest('[data-convo-handle]');
+      const handle = (card && card.dataset.handle) || (trigger && trigger.dataset.convoHandle);
+      if (handle) { openConvoFor(handle); }
+    });
+  }
+  function closeConvoModal() {
+    const back = $('convo-backdrop');
+    if (!back) return;
+    back.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+  async function openConvoFor(handle) {
+    const back = $('convo-backdrop');
+    if (!back) return;
+    $('convo-title').textContent = `Conversation with @${handle}`;
+    $('convo-body').innerHTML = '<div class="stats-loading"><div>Scanning your archive for everything to or about <strong>@' + safe(handle) + '</strong>…</div></div>';
+    back.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    try {
+      const data = await patterns.conversationsWith(handle);
+      $('convo-body').innerHTML = convoModalHTML(data);
+    } catch (e) {
+      console.error('conversationsWith failed:', e);
+      $('convo-body').innerHTML = '<div class="top-empty">Couldn’t load conversation: ' + safe(e.message || String(e)) + '</div>';
+    }
+  }
+  function convoModalHTML(d) {
+    if (!d || !d.total) return '<div class="top-empty">No tweets to or about this user in your archive.</div>';
+    const first = d.first ? new Date(d.first).toISOString().slice(0, 10) : '—';
+    const last = d.last ? new Date(d.last).toISOString().slice(0, 10) : '—';
+    const peakLabel = d.peakMonth ? `${d.peakMonth.month} (${d.peakMonth.count} tweets)` : '—';
+    const tagPills = (d.topHashtags || []).map(([t, n]) => `<span class="convo-tag">#${safe(t)} <span style="color:var(--muted);">${n}</span></span>`).join('');
+    const stats = `<div class="convo-stats">
+      <div class="cs"><div class="cs-label">Total tweets</div><div class="cs-value">${d.total.toLocaleString()}</div><div class="cs-sub">${d.replies} replies · ${d.mentions} mentions</div></div>
+      <div class="cs"><div class="cs-label">First</div><div class="cs-value" style="font-size:14px;">${first}</div></div>
+      <div class="cs"><div class="cs-label">Last</div><div class="cs-value" style="font-size:14px;">${last}</div></div>
+      <div class="cs"><div class="cs-label">Peak month</div><div class="cs-value" style="font-size:14px;">${peakLabel}</div></div>
+      <div class="cs"><div class="cs-label">Avg engagement</div><div class="cs-value">${d.avgEng.toFixed(1)}</div><div class="cs-sub">on tweets to/about @${safe(d.handle)}</div></div>
+    </div>`;
+    const tags = tagPills ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.5px;">Top hashtags you used together</div><div class="convo-tags">${tagPills}</div>` : '';
+    const search = `<div style="margin:8px 0 12px;"><a class="bf-deep-search" data-convo-search="${safe(d.handle)}" style="font-size:12px;color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent);cursor:pointer;">→ Open this conversation in Search</a></div>`;
+    const cap = Math.min(d.timeline.length, 200);
+    const items = d.timeline.slice(-cap).reverse().map(m => {
+      const url = `https://twitter.com/i/web/status/${m.id}`;
+      const dt = m.date ? new Date(m.date).toISOString().slice(0, 10) : '—';
+      return `<div class="convo-msg${m.isReplyTo ? ' is-reply' : ''}">
+        <div class="convo-meta">
+          <span>${dt}</span>
+          <span>${m.isReplyTo ? 'reply' : 'mention'}</span>
+          <span>♥ ${m.fav.toLocaleString()} · ↻ ${m.rt.toLocaleString()}</span>
+          <a href="${url}" target="_blank" rel="noopener">open on X →</a>
+        </div>
+        <div class="convo-text">${safe(m.text)}</div>
+      </div>`;
+    }).join('');
+    const more = d.timeline.length > cap ? `<div style="text-align:center;color:var(--muted);font-size:11px;padding:8px;">Showing latest ${cap} of ${d.timeline.length}. Click "Open this conversation in Search" above to see all.</div>` : '';
+    return stats + tags + search + `<div class="convo-timeline">${items}${more}</div>`;
+  }
+
   // ── X API setup modal wiring ───────────────────────────────────────────
   function fmtTokenTail(s) { return s ? '…' + s.slice(-4) : '—'; }
   function setXapiStatus(msg, kind) {
@@ -5893,7 +6392,32 @@ const ui = (() => {
       if (minFavEl) minFavEl.value = '0';
       if (minRTEl) minRTEl.value = '0';
       if (langEl) langEl.value = '';
+      $('search-preset-bar')?.querySelectorAll('.preset.active').forEach(el => el.classList.remove('active'));
       scheduleRun();
+    });
+
+    // Quick-range presets
+    function applyPreset(name) {
+      const now = new Date();
+      const isoSlice = d => d.toISOString().slice(0, 10);
+      let s = '', u = '';
+      if (name === '7d') { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 7); s = isoSlice(d); u = isoSlice(now); }
+      else if (name === '30d') { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 30); s = isoSlice(d); u = isoSlice(now); }
+      else if (name === '90d') { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 90); s = isoSlice(d); u = isoSlice(now); }
+      else if (name === 'ytd') { s = `${now.getUTCFullYear()}-01-01`; u = isoSlice(now); }
+      else if (name === 'this-year') { const y = now.getUTCFullYear(); s = `${y}-01-01`; u = `${y}-12-31`; }
+      else if (name === 'last-year') { const y = now.getUTCFullYear() - 1; s = `${y}-01-01`; u = `${y}-12-31`; }
+      else if (name === 'all') { s = ''; u = ''; }
+      if (sinceEl) sinceEl.value = s;
+      if (untilEl) untilEl.value = u;
+      // Highlight the active preset
+      $('search-preset-bar')?.querySelectorAll('.preset').forEach(el => el.classList.toggle('active', el.dataset.preset === name));
+      scheduleRun();
+    }
+    $('search-preset-bar')?.addEventListener('click', (e) => {
+      const b = e.target.closest('.preset');
+      if (!b) return;
+      applyPreset(b.dataset.preset);
     });
 
     // Populate language dropdown + date min/max from stats cache (lazy, post-summary).
@@ -6139,7 +6663,7 @@ const ui = (() => {
   }
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
-           bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility };
+           bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -6238,6 +6762,24 @@ async function bootstrap() {
   ui.bindTrayControls();
   ui.bindXapiModal();
   ui.refreshXapiButtonVisibility();
+  ui.bindConvoModal();
+  ui.bindThreadsExplorer();
+  // Convo modal's 'Open in Search' link delegation
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-convo-search]');
+    if (!t) return;
+    e.preventDefault();
+    const h = t.dataset.convoSearch;
+    document.querySelector('#convo-backdrop')?.classList.remove('is-open');
+    document.body.style.overflow = '';
+    document.querySelector('#screen-summary .tab[data-tab="tab-search"]')?.click();
+    const inp = document.getElementById('search-input');
+    if (inp) {
+      inp.value = `from:${h}`;
+      inp.dispatchEvent(new Event('input'));
+      inp.focus();
+    }
+  });
   $('btn-new')?.addEventListener('click', async () => {
     search.invalidateCaches();
     await store.wipe();
