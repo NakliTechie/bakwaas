@@ -253,6 +253,15 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .filter-bar input[type=number] { width: 64px; }
 .filter-bar input:focus, .filter-bar select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.filter-bar .near-toggle {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 12px; text-transform: none; letter-spacing: 0; font-family: inherit;
+  color: var(--text); margin-left: 4px;
+}
+.filter-bar .near-toggle:hover { border-color: var(--accent); }
+.filter-bar .near-toggle input { margin: 0; cursor: pointer; }
+.filter-bar .near-toggle:has(input:checked) { background: var(--accent); color: #0d1117; border-color: var(--accent); }
 .filter-bar button {
   background: transparent; color: var(--muted);
   border: 1px solid var(--border); border-radius: 6px;
@@ -991,7 +1000,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.17 · explorer + to: + presets</span>
+      <span class="phase" id="phase-tag">v0.18 · engagement tab + near match</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1057,6 +1066,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <div class="tab-nav">
         <button class="tab active" data-tab="tab-stats" type="button">Stats</button>
         <button class="tab" data-tab="tab-search" type="button">Search</button>
+        <button class="tab" data-tab="tab-engagement" type="button">Engagement</button>
         <button class="tab" data-tab="tab-patterns" type="button">Patterns</button>
         <button class="tab" data-tab="tab-wrapped" type="button">Wrapped</button>
         <button class="tab" data-tab="tab-topics" type="button">Topics</button>
@@ -1080,6 +1090,12 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <div class="actions" style="margin-top:16px;">
           <button class="btn ghost" id="btn-new">Open another archive</button>
           <button class="btn ghost" id="btn-export">Export state JSON</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-engagement">
+        <div id="engagement-host">
+          <div class="stats-loading">Open this tab to render engagement insights.</div>
         </div>
       </div>
 
@@ -1137,6 +1153,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <label>Min ♥:</label><input type="number" id="search-min-fav" min="0" value="0" />
           <label>Min ↻:</label><input type="number" id="search-min-rt" min="0" value="0" />
           <label>Lang:</label><select id="search-lang"><option value="">any</option></select>
+          <label class="near-toggle" title="Catches edit-distance variants — 'amrika' picks up 'america' etc."><input type="checkbox" id="search-near"> Near match</label>
           <button type="button" id="search-filter-reset">Reset</button>
         </div>
         <div class="preset-bar" id="search-preset-bar">
@@ -3905,7 +3922,7 @@ const search = (() => {
     return true;
   }
 
-  async function query({ q, scope, chips, filters = {}, limit = 200, onProgress }) {
+  async function query({ q, scope, chips, filters = {}, limit = 200, onProgress, near = false }) {
     await ensureIndexes(onProgress);
     const parsed = parseQuery(q || '');
     // Merge parsed operators with visual filter-bar values.
@@ -3930,11 +3947,18 @@ const search = (() => {
     }
     let items = [];
     if (text) {
+      // Near-match mode: bump MiniSearch fuzziness from default ~0.15 to 0.4
+      // so 'amrika' picks up 'america', 'occurence' picks up 'occurrence', etc.
+      // Drastic spelling drifts (cross-script transliterations) need phonetic
+      // indexing — a follow-up if simple fuzzy isn't enough.
+      const searchOpts = near
+        ? { fuzzy: 0.4, prefix: false, combineWith: 'OR' }
+        : undefined;
       if (scope === 'tweets' || scope === 'both') {
-        for (const hit of tweetIndex.search(text)) items.push({ ...hit, __scope: 'tweet', __score: hit.score });
+        for (const hit of tweetIndex.search(text, searchOpts)) items.push({ ...hit, __scope: 'tweet', __score: hit.score });
       }
       if (scope === 'likes' || scope === 'both') {
-        for (const hit of likeIndex.search(text)) items.push({ ...hit, __scope: 'like', __score: hit.score });
+        for (const hit of likeIndex.search(text, searchOpts)) items.push({ ...hit, __scope: 'like', __score: hit.score });
       }
       items.sort((a, b) => b.__score - a.__score);
       const filtered = items.filter(it => applyFilters(it, eff, chips || {}));
@@ -4438,6 +4462,7 @@ const ui = (() => {
       const target = btn.dataset.tab;
       nav.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('#screen-summary .tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
+      if (target === 'tab-engagement') renderEngagement();
       if (target === 'tab-patterns') renderPatterns();
       if (target === 'tab-wrapped') renderWrapped();
       if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
@@ -4503,6 +4528,130 @@ const ui = (() => {
     }
   }
 
+  // ── Engagement tab — rich engagement-focused view ───────────────────────
+  let engagementRendering = false;
+  async function renderEngagement() {
+    if (engagementRendering) return;
+    engagementRendering = true;
+    const host = $('engagement-host');
+    if (!host) { engagementRendering = false; return; }
+    host.innerHTML = '<div class="stats-loading"><div>Computing engagement insights…</div><div id="engagement-progress" style="margin-top:6px;font-family:var(--mono);font-size:11px;opacity:.7;"></div></div>';
+    patterns.setProgressHandler((n) => {
+      const el = $('engagement-progress');
+      if (el) el.textContent = `processed ${n.toLocaleString()} tweets…`;
+    });
+    try {
+      const p = await patterns.aggregate();
+      patterns.setProgressHandler(null);
+      // Derive engagement KPIs
+      const monthsByAvgEng = (p.perMonth || []).slice().sort((a, b) => (b.avgFav + b.avgRT) - (a.avgFav + a.avgRT));
+      const bestMonth = monthsByAvgEng[0];
+      const bestYear = (p.perYearStats || []).slice().sort((a, b) => (b.avgFav + b.avgRT) - (a.avgFav + a.avgRT))[0];
+      const topTweet = (p.topViral || [])[0];
+      const totalEng = (p.perMonth || []).reduce((s, m) => s + (m.sumFav || (m.avgFav * m.count)) + (m.sumRT || (m.avgRT * m.count)), 0);
+      // Top-20 viral on a timeline — month bucketed
+      const viralMomentsByMonth = new Map();
+      for (const v of (p.topViral || [])) {
+        if (!v.date) continue;
+        const k = new Date(v.date).toISOString().slice(0, 7);
+        viralMomentsByMonth.set(k, (viralMomentsByMonth.get(k) || 0) + 1);
+      }
+      const viralTimeline = (p.perMonth || []).map(m => ({ x: m.month, y: viralMomentsByMonth.get(m.month) || 0 }));
+      // Engagement-over-time: avg per month
+      const engOverTime = (p.perMonth || []).map(m => ({ x: m.month, y: (m.avgFav || 0) + (m.avgRT || 0) }));
+
+      host.innerHTML = `
+        <div class="patterns-section">
+          <h2>Engagement at a glance</h2>
+          <div class="kpi-row">
+            <div class="kpi">
+              <div class="kpi-label">Most-engaged month</div>
+              <div class="kpi-value" style="font-size:18px;">${bestMonth ? monthLabel(bestMonth.month) : '—'}</div>
+              <div class="kpi-sub">${bestMonth ? `avg ♥ ${bestMonth.avgFav.toFixed(1)} · ↻ ${bestMonth.avgRT.toFixed(1)}` : ''}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Most-engaged year</div>
+              <div class="kpi-value">${bestYear ? bestYear.year : '—'}</div>
+              <div class="kpi-sub">${bestYear ? `avg ♥ ${bestYear.avgFav.toFixed(1)} · ↻ ${bestYear.avgRT.toFixed(1)}` : ''}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">All-time top tweet</div>
+              <div class="kpi-value">${topTweet ? `♥ ${topTweet.fav.toLocaleString()}` : '—'}</div>
+              <div class="kpi-sub">${topTweet ? `↻ ${topTweet.rt.toLocaleString()} · ${new Date(topTweet.date).toISOString().slice(0,10)}` : ''}</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Lifetime engagement</div>
+              <div class="kpi-value">${Math.round(totalEng).toLocaleString()}</div>
+              <div class="kpi-sub">sum of ♥ + ↻ across all tweets</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Top tweets — three lenses</h2>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Top by engagement (♥ + ↻)</h3>
+              <div class="compact-list">${(p.topViral || []).map(viralCardHTML).join('') || '<div class="top-empty">No engagement on any tweet yet.</div>'}</div>
+            </div>
+            <div class="chart-card">
+              <h3>Top by likes ♥</h3>
+              <div class="compact-list">${(p.topByFav || []).map(viralCardHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
+            </div>
+            <div class="chart-card">
+              <h3>Top by retweets ↻</h3>
+              <div class="compact-list">${(p.topByRT || []).map(viralCardHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Engagement over time</h2>
+          <div class="charts-grid">
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Avg engagement per month (♥ + ↻)</h3>
+              <div class="chart-wrap">${linechartHTML(engOverTime, 'eng')}</div>
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Viral moments — when did your top 20 happen?</h3>
+              <div class="chart-wrap">${linechartHTML(viralTimeline, 'count')}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Engagement by signal</h2>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Hashtags by avg engagement (min 5 uses)</h3>
+              ${topListHTML((p.hashtagByEng || []).map(h => [h.tag, Math.round(h.avgEng)]), null, (k) => '#' + safe(k))}
+            </div>
+            <div class="chart-card">
+              <h3>Source clients by avg engagement (min 20)</h3>
+              ${topListHTML((p.sourceByEng || []).map(s => [s.source, Math.round(s.avgEng)]))}
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Hour × Day-of-week — avg engagement per cell</h3>
+              <div class="chart-wrap">${hourDowEngHTML(p.hourDowEng)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>What's NOT in the archive</h2>
+          <div class="chart-card">
+            <div class="top-empty" style="text-align:left;font-style:italic;">Twitter doesn't include <strong>view / impression counts</strong> in archive exports — only ♥ and ↻ are preserved. If you want view data, you'd need to fetch it live via the v2 API after this index is built (the BYOK X API setup in Selection can host that integration too).</div>
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      console.error('engagement render failed:', e);
+      host.innerHTML = '<div class="topics-empty">Couldn’t render engagement: ' + safe(e.message || String(e)) + '</div>';
+    } finally {
+      engagementRendering = false;
+    }
+  }
+
   let patternsRendering = false;
   async function renderPatterns() {
     if (patternsRendering) return;
@@ -4556,40 +4705,6 @@ const ui = (() => {
             <div class="chart-card">
               <h3>Verbosity drift (avg chars / tweet, monthly)</h3>
               <div class="chart-wrap">${linechartHTML(p.perMonth.map(m => ({ x: m.month, y: m.avgLen })), 'chars')}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="patterns-section">
-          <h2>Engagement</h2>
-          <div class="charts-grid">
-            <div class="chart-card">
-              <h3>Top by engagement (♥ + ↻)</h3>
-              <div class="compact-list">${(p.topViral || []).map(viralCardHTML).join('') || '<div class="top-empty">No engagement on any tweet yet.</div>'}</div>
-            </div>
-            <div class="chart-card">
-              <h3>Top by likes ♥</h3>
-              <div class="compact-list">${(p.topByFav || []).map(viralCardHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
-            </div>
-            <div class="chart-card">
-              <h3>Top by retweets ↻</h3>
-              <div class="compact-list">${(p.topByRT || []).map(viralCardHTML).join('') || '<div class="top-empty">— none —</div>'}</div>
-            </div>
-            <div class="chart-card" style="grid-column: 1 / -1;">
-              <h3 style="margin-bottom:6px;">Views / impressions</h3>
-              <div class="top-empty" style="text-align:left;font-style:italic;">Twitter doesn't include view counts in archive exports — only ♥ and ↻ are preserved. If you want view data, you'd have to fetch it live via the v2 API after this index is built.</div>
-            </div>
-            <div class="chart-card">
-              <h3>Hashtags by avg engagement (min 5 uses)</h3>
-              ${topListHTML((p.hashtagByEng || []).map(h => [h.tag, Math.round(h.avgEng)]), null, (k) => '#' + safe(k))}
-            </div>
-            <div class="chart-card">
-              <h3>Source clients by avg engagement</h3>
-              ${topListHTML((p.sourceByEng || []).map(s => [s.source, Math.round(s.avgEng)]))}
-            </div>
-            <div class="chart-card" style="grid-column: 1 / -1;">
-              <h3>Hour × Day-of-week — avg engagement per cell</h3>
-              <div class="chart-wrap">${hourDowEngHTML(p.hourDowEng)}</div>
             </div>
           </div>
         </div>
@@ -6297,7 +6412,8 @@ const ui = (() => {
     const state = {
       q: '', scope: 'tweets',
       chips: { originals: false, replies: false, retweets: false, media: false },
-      filters: { since: null, until: null, minFav: 0, minRT: 0, lang: [], has: [], from: [], exclude: [] }
+      filters: { since: null, until: null, minFav: 0, minRT: 0, lang: [], has: [], from: [], exclude: [] },
+      near: false
     };
     let debounce = null;
 
@@ -6327,7 +6443,7 @@ const ui = (() => {
       setSearchMeta(`Searching ${state.scope}${activeChipsLabel()}…`);
       try {
         const result = await search.query({
-          q: state.q, scope: state.scope, chips: state.chips, filters: state.filters,
+          q: state.q, scope: state.scope, chips: state.chips, filters: state.filters, near: state.near,
           onProgress: (p) => {
             if (p.phase === 'reading') setSearchMeta(`Reading ${p.stage} from disk…`);
             else if (p.phase === 'indexing') setSearchMeta(`Building ${p.stage} index ${p.done.toLocaleString()} / ${p.total.toLocaleString()}…`);
@@ -6386,6 +6502,8 @@ const ui = (() => {
     minFavEl?.addEventListener('change', scheduleRun);
     minRTEl?.addEventListener('change', scheduleRun);
     langEl?.addEventListener('change', scheduleRun);
+    const nearEl = $('search-near');
+    nearEl?.addEventListener('change', () => { state.near = !!nearEl.checked; run(); });
     resetEl?.addEventListener('click', () => {
       if (sinceEl) sinceEl.value = '';
       if (untilEl) untilEl.value = '';
