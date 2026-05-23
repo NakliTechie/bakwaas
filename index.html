@@ -7037,7 +7037,7 @@ const ui = (() => {
 
   function safe(s) {
     return (s ?? '').toString()
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function cardStateClass(item) {
