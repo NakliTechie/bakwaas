@@ -238,6 +238,40 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .chips .chip:hover { color: var(--text); border-color: var(--text); }
 .chips .chip.active { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
 
+.filter-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+  font-size: 12px; color: var(--muted);
+}
+.filter-bar label { color: var(--muted); font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.5px; margin-left: 4px; }
+.filter-bar label:first-child { margin-left: 0; }
+.filter-bar input[type=date], .filter-bar input[type=number], .filter-bar select {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 8px; font-size: 12px; font-family: inherit;
+}
+.filter-bar input[type=number] { width: 64px; }
+.filter-bar input:focus, .filter-bar select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.filter-bar button {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 11px; font-family: var(--mono);
+}
+.filter-bar button:hover { color: var(--text); border-color: var(--text); }
+.filter-tips { margin-left: auto; font-size: 11px; }
+.filter-tips summary { cursor: pointer; color: var(--muted); list-style: none; }
+.filter-tips summary::-webkit-details-marker { display: none; }
+.filter-tips summary::before { content: '?'; display: inline-block; width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 50%; text-align: center; line-height: 14px; margin-right: 6px; font-family: var(--mono); }
+.filter-tips summary:hover { color: var(--text); }
+.filter-tips[open] summary { color: var(--accent); }
+.filter-tips p { margin: 8px 0 6px; color: var(--muted); font-size: 11px; }
+.filter-tips code {
+  display: block; background: var(--panel-2); padding: 8px 10px; border-radius: 6px;
+  font-size: 11px; color: var(--text); overflow-x: auto;
+  font-family: var(--mono);
+}
+
 .results-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; font-family: var(--mono); }
 
 .results-list { display: flex; flex-direction: column; gap: 10px; }
@@ -305,6 +339,26 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .hod-col-labels { display: grid; grid-template-columns: 24px repeat(24, 1fr); gap: 2px; margin-top: 4px; font-size: 9px; color: var(--muted); font-family: var(--mono); text-align: center; }
 
 .stats-loading { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; }
+.stats-range-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;
+  font-size: 12px; color: var(--muted);
+}
+.stats-range-label { color: var(--muted); font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+.stats-range-sep { color: var(--muted); font-family: var(--mono); }
+.stats-range-bar input[type=date] {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 12px; font-family: inherit;
+}
+.stats-range-bar input[type=date]:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.stats-range-bar button {
+  background: transparent; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 10px; font-size: 11px; font-family: var(--mono);
+}
+.stats-range-bar button:hover { color: var(--text); border-color: var(--text); }
+.stats-range-status { color: var(--accent); font-family: var(--mono); font-size: 11px; margin-left: auto; }
 
 /* Topics */
 .topics-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; color: var(--muted); }
@@ -709,7 +763,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.13 · big archives</span>
+      <span class="phase" id="phase-tag">v0.14 · advanced search</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -848,6 +902,19 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <button class="chip" data-chip="replies" type="button">Replies</button>
           <button class="chip" data-chip="retweets" type="button">Retweets</button>
           <button class="chip" data-chip="media" type="button">Media</button>
+        </div>
+        <div class="filter-bar" id="search-filter-bar">
+          <label>Since:</label><input type="date" id="search-since">
+          <label>Until:</label><input type="date" id="search-until">
+          <label>Min ♥:</label><input type="number" id="search-min-fav" min="0" value="0" />
+          <label>Min ↻:</label><input type="number" id="search-min-rt" min="0" value="0" />
+          <label>Lang:</label><select id="search-lang"><option value="">any</option></select>
+          <button type="button" id="search-filter-reset">Reset</button>
+          <details class="filter-tips">
+            <summary>Power syntax</summary>
+            <p>You can type operators directly in the search box. They compose with the controls above:</p>
+            <code>since:2018-01-01 until:2019-12-31 min_faves:10 has:media -crypto "exact phrase" from:elonmusk lang:en</code>
+          </details>
         </div>
         <div class="results-meta" id="search-meta">Type to search across <span id="search-scope-label">tweets</span>.</div>
         <div class="results-list" id="search-results"></div>
@@ -1975,7 +2042,53 @@ const stats = (() => {
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
   }
   function invalidate() { /* meta cache wiped automatically by store.wipe() */ }
-  return { aggregate, invalidate, setProgressHandler };
+
+  // Filtered top-N lists for a date range. Uses the created_at IndexedDB
+  // index for efficient range scanning. No cache — runs every call.
+  async function filteredTopLists({ since, until }) {
+    const lo = (typeof since === 'number') ? since : -Infinity;
+    const hi = (typeof until === 'number') ? until : Infinity;
+    const db = await store.open();
+    const hashtags = new Map(), mentions = new Map(), sources = new Map(), languages = new Map(), repliedTo = new Map();
+    let total = 0, originals = 0, replies = 0, retweets = 0;
+    const byDay = new Map();
+    await new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const idx = tx.objectStore('tweets').index('created_at');
+      const range = (lo === -Infinity && hi === Infinity) ? null : IDBKeyRange.bound(lo, hi);
+      const cur = range ? idx.openCursor(range) : idx.openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res();
+        const t = c.value;
+        total++;
+        if (t.is_reply) replies++;
+        if (t.is_retweet) retweets++;
+        if (t.lang) bumpMap(languages, t.lang);
+        if (t.source) bumpMap(sources, t.source);
+        if (t.in_reply_to_user_id) bumpMap(repliedTo, t.in_reply_to_user_id);
+        for (const h of (t.hashtags || [])) bumpMap(hashtags, h.toLowerCase());
+        for (const m of (t.mentions || [])) bumpMap(mentions, m);
+        if (typeof t.created_at === 'number' && !Number.isNaN(t.created_at)) {
+          const d = new Date(t.created_at).toISOString().slice(0, 10);
+          bumpMap(byDay, d);
+        }
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+    originals = total - replies - retweets;
+    return {
+      total, originals, replies, retweets,
+      topHashtags: topN(hashtags, 20),
+      topMentions: topN(mentions, 20),
+      topSources: topN(sources, 8),
+      topLanguages: topN(languages, 8),
+      topRepliedTo: topN(repliedTo, 20),
+      byDay: [...byDay.entries()]
+    };
+  }
+  return { aggregate, invalidate, setProgressHandler, filteredTopLists };
 })();
 
 // ── topics (hashtag co-occurrence clustering) ───────────────────────────────
@@ -3038,31 +3151,142 @@ const search = (() => {
     return buildPromise;
   }
 
-  function applyChips(item, chips) {
+  // Power query syntax: extract operators from the free-text query.
+  // Supports: since:YYYY-MM-DD, until:YYYY-MM-DD, from:user, min_faves:N,
+  // min_rts:N, has:media|link, lang:XX, -term (exclude), "exact phrase".
+  function parseQuery(raw) {
+    const out = {
+      text: '', since: null, until: null,
+      from: [], minFav: 0, minRT: 0,
+      has: new Set(), lang: new Set(),
+      exclude: [], phrases: []
+    };
+    if (!raw) return out;
+    // Extract quoted phrases first.
+    const phraseRE = /"([^"]+)"/g;
+    let m;
+    let stripped = raw;
+    while ((m = phraseRE.exec(raw))) {
+      out.phrases.push(m[1].toLowerCase());
+    }
+    stripped = stripped.replace(phraseRE, ' ');
+    const toks = stripped.split(/\s+/).filter(Boolean);
+    const remaining = [];
+    for (const tok of toks) {
+      let mm;
+      if ((mm = tok.match(/^since:(.+)$/i))) {
+        const t = Date.parse(mm[1]);
+        if (!Number.isNaN(t)) out.since = t;
+      } else if ((mm = tok.match(/^until:(.+)$/i))) {
+        const t = Date.parse(mm[1]);
+        if (!Number.isNaN(t)) out.until = t + 86400000 - 1;
+      } else if ((mm = tok.match(/^from:(.+)$/i))) {
+        out.from.push(mm[1].replace(/^@/, '').toLowerCase());
+      } else if ((mm = tok.match(/^min_faves?:(\d+)$/i))) {
+        out.minFav = parseInt(mm[1], 10);
+      } else if ((mm = tok.match(/^min_rts?:(\d+)$/i))) {
+        out.minRT = parseInt(mm[1], 10);
+      } else if ((mm = tok.match(/^has:(\w+)$/i))) {
+        out.has.add(mm[1].toLowerCase());
+      } else if ((mm = tok.match(/^lang:(\w+)$/i))) {
+        out.lang.add(mm[1].toLowerCase());
+      } else if (tok.startsWith('-') && tok.length > 1) {
+        out.exclude.push(tok.slice(1).toLowerCase());
+      } else {
+        remaining.push(tok);
+      }
+    }
+    out.text = remaining.join(' ');
+    return out;
+  }
+
+  function applyFilters(item, eff, chips) {
+    // Existing chip logic (kept identical semantics)
     if (item.__scope === 'tweet') {
       if (chips.originals && (item.is_reply || item.is_retweet)) return false;
       if (chips.replies && !item.is_reply) return false;
       if (chips.retweets && !item.is_retweet) return false;
       if (chips.media && !item.has_media) return false;
-      return true;
+    } else {
+      if (chips.replies || chips.retweets || chips.media || chips.originals) return false;
     }
-    // likes pass through filters that don't apply to them
-    if (chips.replies || chips.retweets || chips.media || chips.originals) return false;
+    // Date range (tweets have created_at; likes don't reliably)
+    if (eff.since !== null && (item.created_at == null || item.created_at < eff.since)) return false;
+    if (eff.until !== null && (item.created_at == null || item.created_at > eff.until)) return false;
+    // Engagement (tweets only)
+    if (eff.minFav > 0 && (item.favorite_count || 0) < eff.minFav) return false;
+    if (eff.minRT > 0 && (item.retweet_count || 0) < eff.minRT) return false;
+    // Language
+    if (eff.lang.size && (!item.lang || !eff.lang.has(String(item.lang).toLowerCase()))) return false;
+    // has: media / link
+    if (eff.has.has('media') && !item.has_media) return false;
+    if (eff.has.has('link') && !(item.urls && item.urls.length)) return false;
+    // from:user means tweet mentions that user (single-user archive context)
+    if (eff.from.length) {
+      const ms = (item.mentions || []).map(x => String(x).toLowerCase());
+      if (!eff.from.some(u => ms.includes(u))) return false;
+    }
+    // exclude
+    if (eff.exclude.length) {
+      const t = (item.text || '').toLowerCase();
+      if (eff.exclude.some(w => t.includes(w))) return false;
+    }
+    // phrases (substring match)
+    if (eff.phrases.length) {
+      const t = (item.text || '').toLowerCase();
+      if (!eff.phrases.every(p => t.includes(p))) return false;
+    }
     return true;
   }
 
-  async function query({ q, scope, chips, limit = 200, onProgress }) {
+  async function query({ q, scope, chips, filters = {}, limit = 200, onProgress }) {
     await ensureIndexes(onProgress);
-    if (!q || !q.trim()) return { items: [], totalTweets: tweetIndex.documentCount, totalLikes: likeIndex.documentCount };
-    const items = [];
-    if (scope === 'tweets' || scope === 'both') {
-      for (const hit of tweetIndex.search(q)) items.push({ ...hit, __scope: 'tweet', __score: hit.score });
+    const parsed = parseQuery(q || '');
+    // Merge parsed operators with visual filter-bar values.
+    const eff = {
+      since: parsed.since ?? filters.since ?? null,
+      until: parsed.until ?? filters.until ?? null,
+      from: parsed.from.length ? parsed.from : (filters.from || []),
+      minFav: Math.max(parsed.minFav || 0, filters.minFav || 0),
+      minRT: Math.max(parsed.minRT || 0, filters.minRT || 0),
+      has: new Set([...parsed.has, ...((filters.has || []))]),
+      lang: new Set([...parsed.lang, ...((filters.lang || []))]),
+      exclude: [...parsed.exclude, ...((filters.exclude || []))],
+      phrases: parsed.phrases
+    };
+    const hasFilters = (eff.since !== null || eff.until !== null || eff.from.length || eff.minFav || eff.minRT
+                     || eff.has.size || eff.lang.size || eff.exclude.length || eff.phrases.length
+                     || chips.originals || chips.replies || chips.retweets || chips.media);
+    const text = parsed.text.trim();
+    if (!text && !hasFilters) {
+      return { items: [], totalTweets: tweetIndex.documentCount, totalLikes: likeIndex.documentCount };
     }
-    if (scope === 'likes' || scope === 'both') {
-      for (const hit of likeIndex.search(q)) items.push({ ...hit, __scope: 'like', __score: hit.score });
+    let items = [];
+    if (text) {
+      if (scope === 'tweets' || scope === 'both') {
+        for (const hit of tweetIndex.search(text)) items.push({ ...hit, __scope: 'tweet', __score: hit.score });
+      }
+      if (scope === 'likes' || scope === 'both') {
+        for (const hit of likeIndex.search(text)) items.push({ ...hit, __scope: 'like', __score: hit.score });
+      }
+    } else {
+      // No text — pull every doc from MiniSearch's stored fields, let filters do the work.
+      if (scope === 'tweets' || scope === 'both') {
+        const all = tweetIndex.search(/./, { fuzzy: false, prefix: false }).slice(0, 0);
+        // MiniSearch needs a query — emulate "all" via match-all by enumerating its stored docs.
+        // It doesn't expose a public iterator, so we walk the IndexedDB cursor instead.
+        const recs = await cursorAll('tweets');
+        for (const t of recs) items.push({ ...t, __scope: 'tweet', __score: 0 });
+        void all;
+      }
+      if (scope === 'likes' || scope === 'both') {
+        const recs = await cursorAll('likes');
+        for (const t of recs) items.push({ ...t, __scope: 'like', __score: 0 });
+      }
     }
-    items.sort((a, b) => b.__score - a.__score);
-    const filtered = items.filter(it => applyChips(it, chips || {}));
+    if (text) items.sort((a, b) => b.__score - a.__score);
+    else items.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    const filtered = items.filter(it => applyFilters(it, eff, chips || {}));
     return { items: filtered.slice(0, limit), total: filtered.length };
   }
 
@@ -3370,24 +3594,36 @@ const ui = (() => {
     });
     const s = await stats.aggregate();
     stats.setProgressHandler(null);
+    const firstISO = s.firstDate ? new Date(s.firstDate).toISOString().slice(0, 10) : '';
+    const lastISO = s.lastDate ? new Date(s.lastDate).toISOString().slice(0, 10) : '';
     host.innerHTML = `
-      <div class="charts-grid">
+      <div class="stats-range-bar">
+        <span class="stats-range-label">Top-N range:</span>
+        <input type="date" id="stats-since" value="${firstISO}" min="${firstISO}" max="${lastISO}">
+        <span class="stats-range-sep">→</span>
+        <input type="date" id="stats-until" value="${lastISO}" min="${firstISO}" max="${lastISO}">
+        <button type="button" id="stats-range-reset">Reset</button>
+        <span class="stats-range-status" id="stats-range-status"></span>
+      </div>
+      <div class="charts-grid" id="stats-topn-grid">
         <div class="chart-card">
           <h3>Top hashtags</h3>
-          ${topListHTML(s.topHashtags, s.total, (k) => '#' + safe(k))}
+          <div id="stats-top-hashtags">${topListHTML(s.topHashtags, s.total, (k) => '#' + safe(k))}</div>
         </div>
         <div class="chart-card">
           <h3>Top mentions</h3>
-          ${topListHTML(s.topMentions, s.total, (k) => '@' + safe(k))}
+          <div id="stats-top-mentions">${topListHTML(s.topMentions, s.total, (k) => '@' + safe(k))}</div>
         </div>
         <div class="chart-card">
           <h3>Source clients</h3>
-          ${topListHTML(s.topSources, s.total)}
+          <div id="stats-top-sources">${topListHTML(s.topSources, s.total)}</div>
         </div>
         <div class="chart-card">
           <h3>Languages</h3>
-          ${topListHTML(s.topLanguages, s.total)}
+          <div id="stats-top-languages">${topListHTML(s.topLanguages, s.total)}</div>
         </div>
+      </div>
+      <div class="charts-grid" style="margin-top:14px;">
         <div class="chart-card" style="grid-column: 1 / -1;">
           <h3>Tweets per day (full archive)</h3>
           <div class="chart-wrap">${temporalHeatmapHTML(s.byDay, s.firstDate, s.lastDate)}</div>
@@ -3405,6 +3641,60 @@ const ui = (() => {
           ${engHistHTML(s.engBuckets.rt)}
         </div>
       </div>`;
+    bindStatsRangePicker(s);
+  }
+
+  let statsRangeDebounce = null;
+  function bindStatsRangePicker(fullStats) {
+    const since = $('stats-since');
+    const until = $('stats-until');
+    const reset = $('stats-range-reset');
+    const status = $('stats-range-status');
+    if (!since || !until) return;
+
+    const firstISO = fullStats.firstDate ? new Date(fullStats.firstDate).toISOString().slice(0, 10) : '';
+    const lastISO = fullStats.lastDate ? new Date(fullStats.lastDate).toISOString().slice(0, 10) : '';
+
+    async function refilter() {
+      const sv = since.value || firstISO;
+      const uv = until.value || lastISO;
+      const lo = sv ? Date.parse(sv + 'T00:00:00Z') : null;
+      const hi = uv ? Date.parse(uv + 'T23:59:59Z') : null;
+      const isFull = sv === firstISO && uv === lastISO;
+      if (isFull) {
+        // Restore from cache directly
+        $('stats-top-hashtags').innerHTML = topListHTML(fullStats.topHashtags, fullStats.total, (k) => '#' + safe(k));
+        $('stats-top-mentions').innerHTML = topListHTML(fullStats.topMentions, fullStats.total, (k) => '@' + safe(k));
+        $('stats-top-sources').innerHTML = topListHTML(fullStats.topSources, fullStats.total);
+        $('stats-top-languages').innerHTML = topListHTML(fullStats.topLanguages, fullStats.total);
+        if (status) status.textContent = '';
+        return;
+      }
+      if (status) status.textContent = 'filtering…';
+      try {
+        const filt = await stats.filteredTopLists({ since: lo, until: hi });
+        $('stats-top-hashtags').innerHTML = topListHTML(filt.topHashtags, filt.total, (k) => '#' + safe(k));
+        $('stats-top-mentions').innerHTML = topListHTML(filt.topMentions, filt.total, (k) => '@' + safe(k));
+        $('stats-top-sources').innerHTML = topListHTML(filt.topSources, filt.total);
+        $('stats-top-languages').innerHTML = topListHTML(filt.topLanguages, filt.total);
+        if (status) status.textContent = `${filt.total.toLocaleString()} tweets · ${sv} → ${uv}`;
+      } catch (e) {
+        console.error('filteredTopLists failed:', e);
+        if (status) status.textContent = 'filter failed';
+      }
+    }
+
+    function schedule() {
+      clearTimeout(statsRangeDebounce);
+      statsRangeDebounce = setTimeout(refilter, 250);
+    }
+    since.addEventListener('change', schedule);
+    until.addEventListener('change', schedule);
+    reset?.addEventListener('click', () => {
+      since.value = firstISO;
+      until.value = lastISO;
+      refilter();
+    });
   }
   function showError(msg, detail) {
     $('error-msg').textContent = msg;
@@ -4784,16 +5074,32 @@ const ui = (() => {
     const scopeEl = document.querySelector('#tab-search .scope');
     if (!input || !chipsEl || !scopeEl) return;
 
-    const state = { q: '', scope: 'tweets', chips: { originals: false, replies: false, retweets: false, media: false } };
+    const state = {
+      q: '', scope: 'tweets',
+      chips: { originals: false, replies: false, retweets: false, media: false },
+      filters: { since: null, until: null, minFav: 0, minRT: 0, lang: [], has: [], from: [], exclude: [] }
+    };
     let debounce = null;
 
     function activeChipsLabel() {
       const on = Object.entries(state.chips).filter(([_, v]) => v).map(([k]) => k);
-      return on.length ? ` · filters: ${on.join(', ')}` : '';
+      const f = [];
+      if (state.filters.since !== null) f.push(`since ${new Date(state.filters.since).toISOString().slice(0,10)}`);
+      if (state.filters.until !== null) f.push(`until ${new Date(state.filters.until).toISOString().slice(0,10)}`);
+      if (state.filters.minFav > 0) f.push(`♥≥${state.filters.minFav}`);
+      if (state.filters.minRT > 0) f.push(`↻≥${state.filters.minRT}`);
+      if (state.filters.lang.length) f.push(`lang:${state.filters.lang.join('|')}`);
+      const parts = [...on, ...f];
+      return parts.length ? ` · filters: ${parts.join(', ')}` : '';
     }
 
     async function run() {
-      if (!state.q.trim()) {
+      const hasText = !!(state.q && state.q.trim());
+      const hasAnyFilter = Object.values(state.chips).some(Boolean)
+        || state.filters.since !== null || state.filters.until !== null
+        || state.filters.minFav > 0 || state.filters.minRT > 0
+        || state.filters.lang.length;
+      if (!hasText && !hasAnyFilter) {
         $('search-results').innerHTML = '';
         setSearchMeta(`Type to search across ${state.scope}${activeChipsLabel()}.`);
         return;
@@ -4801,7 +5107,7 @@ const ui = (() => {
       setSearchMeta(`Searching ${state.scope}${activeChipsLabel()}…`);
       try {
         const result = await search.query({
-          q: state.q, scope: state.scope, chips: state.chips,
+          q: state.q, scope: state.scope, chips: state.chips, filters: state.filters,
           onProgress: (p) => {
             if (p.phase === 'reading') setSearchMeta(`Reading ${p.stage} from disk…`);
             else if (p.phase === 'indexing') setSearchMeta(`Building ${p.stage} index ${p.done.toLocaleString()} / ${p.total.toLocaleString()}…`);
@@ -4835,6 +5141,59 @@ const ui = (() => {
       c.classList.toggle('active', state.chips[k]);
       run();
     });
+
+    // Wire visual filter bar
+    const sinceEl = $('search-since'), untilEl = $('search-until');
+    const minFavEl = $('search-min-fav'), minRTEl = $('search-min-rt');
+    const langEl = $('search-lang');
+    const resetEl = $('search-filter-reset');
+
+    function syncFiltersFromInputs() {
+      const s = sinceEl?.value, u = untilEl?.value;
+      state.filters.since = s ? Date.parse(s + 'T00:00:00Z') : null;
+      state.filters.until = u ? Date.parse(u + 'T23:59:59Z') : null;
+      state.filters.minFav = parseInt(minFavEl?.value || '0', 10) || 0;
+      state.filters.minRT = parseInt(minRTEl?.value || '0', 10) || 0;
+      state.filters.lang = (langEl?.value ? [langEl.value] : []);
+    }
+    function scheduleRun() {
+      syncFiltersFromInputs();
+      clearTimeout(debounce);
+      debounce = setTimeout(run, 220);
+    }
+    sinceEl?.addEventListener('change', scheduleRun);
+    untilEl?.addEventListener('change', scheduleRun);
+    minFavEl?.addEventListener('change', scheduleRun);
+    minRTEl?.addEventListener('change', scheduleRun);
+    langEl?.addEventListener('change', scheduleRun);
+    resetEl?.addEventListener('click', () => {
+      if (sinceEl) sinceEl.value = '';
+      if (untilEl) untilEl.value = '';
+      if (minFavEl) minFavEl.value = '0';
+      if (minRTEl) minRTEl.value = '0';
+      if (langEl) langEl.value = '';
+      scheduleRun();
+    });
+
+    // Populate language dropdown + date min/max from stats cache (lazy, post-summary).
+    (async () => {
+      try {
+        const s = await stats.aggregate();
+        if (s && s.firstDate && sinceEl) {
+          const f = new Date(s.firstDate).toISOString().slice(0, 10);
+          const l = s.lastDate ? new Date(s.lastDate).toISOString().slice(0, 10) : f;
+          sinceEl.min = f; sinceEl.max = l;
+          untilEl.min = f; untilEl.max = l;
+        }
+        if (s && s.topLanguages && langEl) {
+          for (const [lang] of s.topLanguages) {
+            const opt = document.createElement('option');
+            opt.value = lang; opt.textContent = lang;
+            langEl.appendChild(opt);
+          }
+        }
+      } catch { /* stats not ready yet — filter bar still works without min/max hints */ }
+    })();
   }
 
   function bindHelp() {
