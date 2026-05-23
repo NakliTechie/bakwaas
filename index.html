@@ -11,7 +11,7 @@
   script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://*.twimg.com;
-  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://public.api.bsky.app;
+  connect-src 'self' https://cdn.jsdelivr.net https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://public.api.bsky.app https://api.x.com https://api.twitter.com;
   base-uri 'none';
   form-action 'none';
   frame-src 'none';
@@ -553,6 +553,50 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .help-card .help-foot a { color: var(--accent); text-decoration: none; }
 .help-card .help-foot a:hover { text-decoration: underline; }
 
+/* X API setup modal — reuses .help-backdrop + .help-card with a form skin. */
+.xapi-form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.xapi-form label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted);
+}
+.xapi-form input {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; font-family: var(--mono);
+}
+.xapi-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.xapi-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.xapi-actions button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 14px; font-size: 13px;
+}
+.xapi-actions button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.xapi-actions button.primary:hover { filter: brightness(1.08); }
+.xapi-actions button.danger:hover { border-color: var(--danger); color: var(--danger); }
+.xapi-actions button:hover { border-color: var(--text); }
+.xapi-status {
+  margin-left: auto; font-size: 11px; color: var(--muted); font-family: var(--mono); flex-basis: 100%;
+}
+.xapi-status.is-ok { color: var(--ok); }
+.xapi-status.is-err { color: var(--danger); }
+
+/* Selection-bar X-API setup button hint */
+.selection-bar .xapi-setup-btn { color: var(--muted); }
+.selection-bar .xapi-setup-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Progress modal for bulk delete via API — reuses modal-card */
+.xapi-progress {
+  font-family: var(--mono); font-size: 13px; color: var(--text);
+  background: var(--panel-2); border-radius: 8px; padding: 12px 14px;
+}
+.xapi-progress .xp-bar-wrap { background: var(--panel); height: 8px; border-radius: 4px; margin: 8px 0; overflow: hidden; }
+.xapi-progress .xp-bar { background: var(--accent); height: 100%; width: 0%; transition: width .2s; }
+.xapi-progress .xp-counts { display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
+.xapi-progress .xp-counts .ok { color: var(--ok); }
+.xapi-progress .xp-counts .fail { color: var(--danger); }
+.xapi-progress .xp-rate { color: var(--warn); font-size: 11px; margin-top: 4px; }
+
 /* Selection tab */
 #tab-selection .empty-sel { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 16px; }
 #tab-selection .sel-header {
@@ -844,7 +888,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.15.1 · social circles</span>
+      <span class="phase" id="phase-tag">v0.16 · BYOK X delete</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1011,6 +1055,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <span class="sel-spacer"></span>
           <button type="button" id="sel-select-all-matches">Select all matches</button>
           <button type="button" id="sel-clear">Clear</button>
+          <button type="button" id="sel-xapi-setup" class="xapi-setup-btn" title="Bulk delete via your own X API keys">⚙ X API</button>
+          <button type="button" id="sel-xapi-delete" class="danger" style="display:none;">Delete via X API</button>
           <button type="button" id="sel-open" class="primary">Open all tabs</button>
           <button type="button" id="sel-mark" class="danger">Mark deleted</button>
         </div>
@@ -1083,6 +1129,50 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <a href="https://github.com/NakliTechie/bakwaas" target="_blank" rel="noopener">⌬ Source on GitHub</a>
         <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">⬅ More NakliTechie projects</a>
       </div>
+    </div>
+  </div>
+
+  <div class="help-backdrop" id="xapi-backdrop" role="dialog" aria-modal="true" aria-labelledby="xapi-title">
+    <div class="help-card">
+      <button class="help-close" id="xapi-close" type="button" aria-label="Close">×</button>
+      <h2 id="xapi-title">X API — bulk delete setup</h2>
+      <p class="muted">
+        Bring your own keys. Bakwaas uses your X developer credentials to delete tweets directly via the v2 API. Nothing leaves your tab except to <code>api.x.com</code>, signed with your keys.
+      </p>
+
+      <h3>How to get the four values</h3>
+      <ol style="font-size:13px; line-height:1.7; color: var(--text); padding-left: 22px;">
+        <li>Go to <a href="https://developer.x.com/en/portal/dashboard" target="_blank" rel="noopener">developer.x.com/en/portal/dashboard</a> and create a Project + App if you don't have one.</li>
+        <li>In your App's <strong>User authentication settings</strong> turn on <strong>OAuth 1.0a</strong> with <strong>Read and write</strong> permissions.</li>
+        <li>In <strong>Keys and tokens</strong>, generate your <strong>API Key &amp; Secret</strong> (a.k.a. Consumer Keys).</li>
+        <li>Also generate an <strong>Access Token &amp; Secret</strong> with the read-and-write permission. Tap "Regenerate" if older tokens are read-only.</li>
+        <li>Paste all four below.</li>
+      </ol>
+
+      <h3>Credentials</h3>
+      <div class="xapi-form">
+        <label>API Key (Consumer Key)<input type="text" id="xapi-apiKey" autocomplete="off" spellcheck="false"></label>
+        <label>API Secret (Consumer Secret)<input type="password" id="xapi-apiSecret" autocomplete="off" spellcheck="false"></label>
+        <label>Access Token<input type="text" id="xapi-accessToken" autocomplete="off" spellcheck="false"></label>
+        <label>Access Token Secret<input type="password" id="xapi-accessTokenSecret" autocomplete="off" spellcheck="false"></label>
+        <div class="xapi-actions">
+          <button type="button" id="xapi-save" class="primary">Save</button>
+          <button type="button" id="xapi-test">Test connection</button>
+          <button type="button" id="xapi-clear" class="danger">Clear</button>
+          <span id="xapi-status" class="xapi-status">—</span>
+        </div>
+      </div>
+
+      <h3>Cost &amp; rate limits — read this first</h3>
+      <p class="muted">
+        X's v2 DELETE endpoint costs money these days. As of 2026 the Basic tier (~$200/month) gets you a couple of hundred deletes per 15-minute window. The Free tier may not support writes at all. <strong>Bakwaas can't tell you what your tier allows</strong> — try the test connection above; if it returns your user, deletes will probably work.
+      </p>
+      <p class="muted">
+        Bakwaas paces requests politely (≈12/sec) and backs off automatically when the API returns 429. Hitting your tier's window means a wait until the reset timestamp.
+      </p>
+      <p class="muted">
+        <strong>Nothing leaves your machine except to api.x.com.</strong> Keys are stored in IndexedDB only (never the FSA sidecar, never any NakliTechie server).
+      </p>
     </div>
   </div>
 
@@ -1424,6 +1514,154 @@ const deletion = (() => {
     };
   }
   return { tweetDeleteUrl, likeDeleteUrl, markOpened, markDeleted, undo, listPending, listDeleted, status };
+})();
+
+// ── xapi (BYOK X v2 API delete via OAuth 1.0a) ──────────────────────────────
+// User pastes 4 credentials from their own developer.x.com app:
+//   apiKey (consumer key), apiSecret (consumer secret),
+//   accessToken (user token), accessTokenSecret.
+// Stored in IndexedDB meta only — never transmitted anywhere except api.x.com.
+// Never written to the FSA sidecar (sidecar travels with archive; keys must not).
+const xapi = (() => {
+  const ENDPOINT_BASE = 'https://api.x.com';
+  // RFC-3986 percent-encoder — encodeURIComponent doesn't cover all required chars.
+  function pe(s) {
+    return encodeURIComponent(String(s))
+      .replace(/!/g, '%21')
+      .replace(/'/g, '%27')
+      .replace(/\(/g, '%28')
+      .replace(/\)/g, '%29')
+      .replace(/\*/g, '%2A');
+  }
+  function nonce() {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  async function hmacSha1(keyStr, msgStr) {
+    const enc = new TextEncoder();
+    const ck = await crypto.subtle.importKey(
+      'raw', enc.encode(keyStr), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', ck, enc.encode(msgStr));
+    let bin = '';
+    for (const v of new Uint8Array(sig)) bin += String.fromCharCode(v);
+    return btoa(bin);
+  }
+  async function buildAuthHeader(method, url, queryParams, creds) {
+    const oauth = {
+      oauth_consumer_key: creds.apiKey,
+      oauth_nonce: nonce(),
+      oauth_signature_method: 'HMAC-SHA1',
+      oauth_timestamp: String(Math.floor(Date.now() / 1000)),
+      oauth_token: creds.accessToken,
+      oauth_version: '1.0'
+    };
+    const all = { ...(queryParams || {}), ...oauth };
+    const keys = Object.keys(all).sort();
+    const paramStr = keys.map(k => pe(k) + '=' + pe(all[k])).join('&');
+    const baseStr = method.toUpperCase() + '&' + pe(url) + '&' + pe(paramStr);
+    const signKey = pe(creds.apiSecret) + '&' + pe(creds.accessTokenSecret);
+    oauth.oauth_signature = await hmacSha1(signKey, baseStr);
+    const parts = Object.keys(oauth).sort().map(k => `${pe(k)}="${pe(oauth[k])}"`);
+    return 'OAuth ' + parts.join(', ');
+  }
+
+  async function loadCreds() { return await store.metaGet('x_api_creds') || null; }
+  async function saveCreds(c) {
+    const trimmed = {
+      apiKey: (c.apiKey || '').trim(),
+      apiSecret: (c.apiSecret || '').trim(),
+      accessToken: (c.accessToken || '').trim(),
+      accessTokenSecret: (c.accessTokenSecret || '').trim()
+    };
+    if (!trimmed.apiKey || !trimmed.apiSecret || !trimmed.accessToken || !trimmed.accessTokenSecret) {
+      throw new Error('All four fields are required.');
+    }
+    await store.metaSet('x_api_creds', trimmed);
+    return trimmed;
+  }
+  async function clearCreds() { await store.metaSet('x_api_creds', null); }
+
+  // Connectivity test — calls GET /2/users/me to verify auth works.
+  async function testConnection(creds) {
+    const url = ENDPOINT_BASE + '/2/users/me';
+    const auth = await buildAuthHeader('GET', url, {}, creds);
+    const r = await fetch(url, { headers: { 'Authorization': auth } });
+    if (!r.ok) {
+      const t = await r.text().catch(() => '');
+      throw new Error(`HTTP ${r.status}${t ? ': ' + t.slice(0, 200) : ''}`);
+    }
+    const data = await r.json();
+    return data.data || null;
+  }
+
+  async function deleteTweet(id, creds) {
+    const url = `${ENDPOINT_BASE}/2/tweets/${encodeURIComponent(id)}`;
+    const auth = await buildAuthHeader('DELETE', url, {}, creds);
+    const r = await fetch(url, { method: 'DELETE', headers: { 'Authorization': auth } });
+    if (r.status === 429) {
+      const reset = r.headers.get('x-rate-limit-reset');
+      const e = new Error('Rate limited');
+      e.rateLimit = true;
+      e.resetAt = reset ? parseInt(reset, 10) * 1000 : null;
+      throw e;
+    }
+    if (r.status === 404) return false; // already gone — treat as success
+    if (!r.ok) {
+      const t = await r.text().catch(() => '');
+      throw new Error(`HTTP ${r.status}${t ? ': ' + t.slice(0, 200) : ''}`);
+    }
+    const data = await r.json();
+    return !!(data && data.data && data.data.deleted);
+  }
+
+  // Bulk delete with rate-limit-aware backoff.
+  // items = [{ scope: 'tweet', id }]. Likes (unlike) not supported here.
+  async function bulkDelete(items, creds, { onProgress, onRateLimit, signal } = {}) {
+    const out = { ok: [], failed: [], stopped: false };
+    for (let i = 0; i < items.length; i++) {
+      if (signal && signal.aborted) { out.stopped = true; break; }
+      const it = items[i];
+      if (it.scope !== 'tweet') {
+        out.failed.push({ id: it.id, reason: 'X delete supports tweets only (unlikes via API not implemented yet)' });
+        onProgress?.({ done: i + 1, total: items.length, ok: out.ok.length, failed: out.failed.length });
+        continue;
+      }
+      let attempt = 0, success = null, lastError = null;
+      while (attempt < 2) {
+        try {
+          success = await deleteTweet(it.id, creds);
+          break;
+        } catch (e) {
+          lastError = e;
+          if (e.rateLimit) {
+            onRateLimit?.({ resetAt: e.resetAt, queued: items.length - i });
+            const waitMs = e.resetAt
+              ? Math.max(1000, Math.min(900000, e.resetAt - Date.now() + 1500))
+              : 60000;
+            await new Promise(r => setTimeout(r, waitMs));
+            attempt++;
+            continue;
+          }
+          break;
+        }
+      }
+      if (success === true) out.ok.push(it.id);
+      else if (success === false) out.ok.push(it.id); // 404 = already gone
+      else out.failed.push({ id: it.id, reason: lastError ? lastError.message : 'unknown' });
+      onProgress?.({ done: i + 1, total: items.length, ok: out.ok.length, failed: out.failed.length });
+      // tiny politeness pause
+      await new Promise(r => setTimeout(r, 80));
+    }
+    // Reflect successes in the local store so the UI updates.
+    if (out.ok.length) {
+      try { await deletion.markDeleted(out.ok.map(id => ({ scope: 'tweet', id }))); } catch {}
+    }
+    return out;
+  }
+
+  return { loadCreds, saveCreds, clearCreds, testConnection, deleteTweet, bulkDelete };
 })();
 
 // ── persist (FSA sidecar + OPFS mirror) ─────────────────────────────────────
@@ -5305,6 +5543,168 @@ const ui = (() => {
     });
   }
 
+  // ── X API setup modal wiring ───────────────────────────────────────────
+  function fmtTokenTail(s) { return s ? '…' + s.slice(-4) : '—'; }
+  function setXapiStatus(msg, kind) {
+    const el = $('xapi-status');
+    if (!el) return;
+    el.className = 'xapi-status' + (kind === 'ok' ? ' is-ok' : kind === 'err' ? ' is-err' : '');
+    el.textContent = msg;
+  }
+  async function openXapiModal() {
+    const back = $('xapi-backdrop');
+    if (!back) return;
+    const cur = await xapi.loadCreds();
+    if (cur) {
+      $('xapi-apiKey').value = cur.apiKey || '';
+      $('xapi-apiSecret').value = cur.apiSecret || '';
+      $('xapi-accessToken').value = cur.accessToken || '';
+      $('xapi-accessTokenSecret').value = cur.accessTokenSecret || '';
+      setXapiStatus(`Stored. Access token ${fmtTokenTail(cur.accessToken)}.`, 'ok');
+    } else {
+      setXapiStatus('No credentials saved yet.');
+    }
+    back.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeXapiModal() {
+    const back = $('xapi-backdrop');
+    if (!back) return;
+    back.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+  function bindXapiModal() {
+    const back = $('xapi-backdrop');
+    if (!back) return;
+    $('xapi-close')?.addEventListener('click', closeXapiModal);
+    back.addEventListener('click', (e) => { if (e.target === back) closeXapiModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && back.classList.contains('is-open')) closeXapiModal(); });
+    $('xapi-save')?.addEventListener('click', async () => {
+      try {
+        const c = {
+          apiKey: $('xapi-apiKey').value,
+          apiSecret: $('xapi-apiSecret').value,
+          accessToken: $('xapi-accessToken').value,
+          accessTokenSecret: $('xapi-accessTokenSecret').value
+        };
+        await xapi.saveCreds(c);
+        setXapiStatus('Saved.', 'ok');
+        await refreshXapiButtonVisibility();
+      } catch (e) {
+        setXapiStatus(e.message || String(e), 'err');
+      }
+    });
+    $('xapi-test')?.addEventListener('click', async () => {
+      const cur = await xapi.loadCreds();
+      if (!cur) { setXapiStatus('Save credentials first.', 'err'); return; }
+      setXapiStatus('Testing…');
+      try {
+        const user = await xapi.testConnection(cur);
+        setXapiStatus(user ? `Connected as @${user.username}. Ready to bulk-delete.` : 'Connected (but no user returned).', 'ok');
+      } catch (e) {
+        setXapiStatus(`Test failed: ${e.message || e}`, 'err');
+      }
+    });
+    $('xapi-clear')?.addEventListener('click', async () => {
+      await xapi.clearCreds();
+      $('xapi-apiKey').value = '';
+      $('xapi-apiSecret').value = '';
+      $('xapi-accessToken').value = '';
+      $('xapi-accessTokenSecret').value = '';
+      setXapiStatus('Cleared.');
+      await refreshXapiButtonVisibility();
+    });
+  }
+
+  async function refreshXapiButtonVisibility() {
+    const btn = $('sel-xapi-delete');
+    if (!btn) return;
+    const c = await xapi.loadCreds();
+    btn.style.display = c ? '' : 'none';
+  }
+
+  async function bulkDeleteViaXapi() {
+    const items = [...selectionSet].map(k => {
+      const [scope, id] = k.split(':');
+      return { scope, id };
+    });
+    const tweets = items.filter(i => i.scope === 'tweet');
+    if (!tweets.length) {
+      await showModal({ title: 'No tweets selected', body: 'X API delete supports tweets only — likes via API are not implemented yet. Select some tweets and try again.', okLabel: 'OK', cancelLabel: '' });
+      return;
+    }
+    const creds = await xapi.loadCreds();
+    if (!creds) { await openXapiModal(); return; }
+    const ok = await showModal({
+      title: `Delete ${tweets.length} tweets via X API?`,
+      body: `This calls DELETE /2/tweets on api.x.com for each tweet using your stored credentials. It's irreversible and consumes your X API quota. Bakwaas paces requests and backs off on rate limits.`,
+      okLabel: `Delete ${tweets.length}`,
+      cancelLabel: 'Cancel'
+    });
+    if (!ok) return;
+
+    // Show progress modal — repurpose the confirm modal in a richer form.
+    const back = $('modal-backdrop');
+    $('modal-title').textContent = 'Deleting via X API…';
+    $('modal-body').innerHTML = `<div class="xapi-progress">
+      <div>Bakwaas is making real DELETE calls to api.x.com. You can leave this open and watch it work.</div>
+      <div class="xp-bar-wrap"><div class="xp-bar" id="xp-bar"></div></div>
+      <div class="xp-counts"><span>Progress: <strong id="xp-done">0</strong> / <strong id="xp-total">${tweets.length}</strong></span><span class="ok">✓ <strong id="xp-ok">0</strong></span><span class="fail">✗ <strong id="xp-fail">0</strong></span></div>
+      <div class="xp-rate" id="xp-rate" style="display:none;"></div>
+    </div>`;
+    $('modal-ok').textContent = 'Stop';
+    $('modal-cancel').style.display = 'none';
+    back.classList.add('is-open');
+    const ac = new AbortController();
+    const onStop = () => { ac.abort(); back.classList.remove('is-open'); $('modal-cancel').style.display = ''; };
+    $('modal-ok').addEventListener('click', onStop, { once: true });
+
+    try {
+      const result = await xapi.bulkDelete(tweets, creds, {
+        signal: ac.signal,
+        onProgress: ({ done, total, ok, failed }) => {
+          $('xp-done').textContent = done;
+          $('xp-ok').textContent = ok;
+          $('xp-fail').textContent = failed;
+          $('xp-bar').style.width = Math.round((done / total) * 100) + '%';
+          const rate = $('xp-rate'); if (rate) rate.style.display = 'none';
+        },
+        onRateLimit: ({ resetAt, queued }) => {
+          const rate = $('xp-rate');
+          if (rate) {
+            rate.style.display = '';
+            const seconds = resetAt ? Math.max(0, Math.round((resetAt - Date.now()) / 1000)) : '?';
+            rate.textContent = `Rate-limited. Waiting ${seconds}s for the window to reset. ${queued} tweet(s) still queued.`;
+          }
+        }
+      });
+      // Done — show summary and let user close.
+      $('modal-title').textContent = result.stopped ? 'Stopped' : 'Done';
+      $('modal-body').innerHTML = `<div class="xapi-progress">
+        <div><strong>${result.ok.length}</strong> deleted via X API. <span style="color:var(--danger);">${result.failed.length} failed</span>.</div>
+        ${result.failed.length ? `<details style="margin-top:8px;font-size:11px;color:var(--muted);"><summary>Failure details</summary><pre style="overflow:auto;max-height:200px;">${safe(JSON.stringify(result.failed.slice(0,20), null, 2))}</pre></details>` : ''}
+        <div style="margin-top:8px;color:var(--muted);font-size:11px;">Successful deletes are marked deleted in your local Bakwaas state automatically.</div>
+      </div>`;
+      $('modal-ok').textContent = 'Close';
+      $('modal-cancel').style.display = '';
+      $('modal-ok').addEventListener('click', () => back.classList.remove('is-open'), { once: true });
+
+      // Refresh search results to reflect deletion state.
+      const keys = result.ok.map(id => 'tweet:' + id);
+      if (keys.length) {
+        for (const k of keys) selectionSet.delete(k);
+        refreshSelectionBar();
+        await refreshCardsAfterUpdate(keys);
+      }
+    } catch (e) {
+      $('modal-title').textContent = 'Error';
+      $('modal-body').innerHTML = `<div class="xapi-progress" style="color:var(--danger);">${safe(e.message || String(e))}</div>`;
+      $('modal-ok').textContent = 'Close';
+      $('modal-cancel').style.display = '';
+      $('modal-ok').addEventListener('click', () => back.classList.remove('is-open'), { once: true });
+    }
+  }
+
   function bindSelectionBar() {
     const bar = $('selection-bar');
     if (!bar) return;
@@ -5315,6 +5715,8 @@ const ui = (() => {
     });
     $('sel-select-all-matches')?.addEventListener('click', selectAllMatches);
     $('sel-add-all')?.addEventListener('click', selectAllMatches);
+    $('sel-xapi-setup')?.addEventListener('click', openXapiModal);
+    $('sel-xapi-delete')?.addEventListener('click', bulkDeleteViaXapi);
     $('sel-open').addEventListener('click', async () => {
       const n = selectionSet.size;
       if (!n) return;
@@ -5737,7 +6139,7 @@ const ui = (() => {
   }
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
-           bindHelp, bindWrappedControls };
+           bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -5834,6 +6236,8 @@ async function bootstrap() {
   ui.bindResultsActions();
   ui.bindSelectionBar();
   ui.bindTrayControls();
+  ui.bindXapiModal();
+  ui.refreshXapiButtonVisibility();
   $('btn-new')?.addEventListener('click', async () => {
     search.invalidateCaches();
     await store.wipe();
@@ -5924,11 +6328,21 @@ window.bakwaas = {
       likes: deleted.filter(d => d.__scope === 'like').map(l => ({ tweet_id: l.tweet_id, expanded_url: l.expanded_url, confirmed_unliked_at: l.confirmed_unliked_at }))
     };
   },
+  // BYOK X API for bulk delete
+  async setXApiCreds(creds) { return xapi.saveCreds(creds); },
+  async clearXApiCreds() { return xapi.clearCreds(); },
+  async testXApi() { const c = await xapi.loadCreds(); if (!c) throw new Error('No credentials saved'); return xapi.testConnection(c); },
+  async bulkDeleteViaXApi(ids, opts = {}) {
+    const creds = await xapi.loadCreds();
+    if (!creds) throw new Error('No X API credentials saved');
+    const items = ids.map(id => ({ scope: 'tweet', id }));
+    return xapi.bulkDelete(items, creds, opts);
+  },
   // deferred — selections store + named saved selections are a later refinement
   select: notImpl('select'),
   getSelection: notImpl('getSelection'),
   clearSelection: notImpl('clearSelection'),
-  // deferred to Phase 7
+  // deferred to a later phase
   setLLMKey: notImpl('setLLMKey'),
   clearLLMKey: notImpl('clearLLMKey'),
   llmLabel: notImpl('llmLabel'),
