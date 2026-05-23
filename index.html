@@ -31,30 +31,54 @@
 </script>
 <title>Bakwaas — explore your Twitter archive</title>
 <style>
+/* ── Dark mode (default) ─────────────────────────────────── */
 :root {
-  --bg: #1a0e08;
-  --panel: #261408;
-  --panel-2: #2a1a0a;
-  --border: #3e2814;
-  --text: #f0d090;
-  --muted: #9a8060;
-  --accent: #4a6aa0;
-  --accent-2: #d8482a;
-  --danger: #e05838;
-  --ok: #8a9a3a;
-  --warn: #d89030;
+  --bg: #0e1015;
+  --panel: #16181f;
+  --panel-2: #1d2030;
+  --border: #2c3050;
+  --text: #d8dff0;
+  --muted: #6878a8;
+  --accent: #6b8ef5;
+  --accent-2: #f0845a;
+  --danger: #e05858;
+  --ok: #50bb80;
+  --warn: #e0a038;
   --radius: 12px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
 }
+/* ── Light mode ──────────────────────────────────────────── */
+:root.theme-light {
+  --bg: #f5f6fb;
+  --panel: #ffffff;
+  --panel-2: #eceff8;
+  --border: #d0d5e8;
+  --text: #1a1c2e;
+  --muted: #5a6282;
+  --accent: #3450d0;
+  --accent-2: #c84828;
+  --danger: #c03030;
+  --ok: #2a7a50;
+  --warn: #9a6818;
+  color-scheme: light;
+}
+/* Auto-switch to light when OS prefers it (unless user forced dark) */
 @media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f9f4ee;
+  :root:not(.theme-dark) {
+    --bg: #f5f6fb;
     --panel: #ffffff;
-    --panel-2: #f2ebe0;
-    --border: #d8c8b0;
-    --text: #2a1808;
-    --muted: #7a6050;
+    --panel-2: #eceff8;
+    --border: #d0d5e8;
+    --text: #1a1c2e;
+    --muted: #5a6282;
+    --accent: #3450d0;
+    --accent-2: #c84828;
+    --danger: #c03030;
+    --ok: #2a7a50;
+    --warn: #9a6818;
+    color-scheme: light;
   }
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -691,6 +715,13 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
 /* Selection tab */
 #tab-selection .empty-sel { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 16px; }
+.sel-pane-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.sel-pane-row:last-child { border-bottom: none; }
+.sel-pane-text { flex: 1; min-width: 0; font-size: 13px; color: var(--text); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.sel-pane-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.sel-pane-remove { flex-shrink: 0; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 11px; padding: 3px 8px; cursor: pointer; white-space: nowrap; margin-top: 1px; }
+.sel-pane-remove:hover { border-color: var(--danger); color: var(--danger); }
+.sel-section-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 #tab-selection .sel-header {
   display: flex; align-items: baseline; gap: 12px;
   margin-bottom: 14px; flex-wrap: wrap;
@@ -1121,7 +1152,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.27 · worker + semantic search</span>
+      <span class="phase" id="phase-tag">v0.28 · theme + selection</span>
+      <button class="help-btn" id="theme-toggle" type="button" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">☀</button>
       <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
@@ -1341,6 +1373,14 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       </div>
 
       <div class="tab-panel" id="tab-selection">
+        <div id="sel-pane-current" style="display:none;">
+          <div class="sel-header">
+            <h3>Selected <span id="sel-pane-count">0</span></h3>
+            <button type="button" id="sel-pane-clear">Clear all</button>
+          </div>
+          <div id="sel-pane-host"></div>
+        </div>
+        <hr class="sel-section-divider" id="sel-section-divider" style="display:none;">
         <div class="sel-header">
           <h3>Confirmation tray</h3>
           <span class="sel-h-stats" id="tray-stats">— pending · — deleted</span>
@@ -5440,7 +5480,7 @@ const ui = (() => {
       if (target === 'tab-memory') renderMemory();
       if (target === 'tab-wrapped') renderWrapped();
       if (target === 'tab-topics') renderTopics(currentTopicsThreshold);
-      if (target === 'tab-selection') renderTray();
+      if (target === 'tab-selection') { renderTray(); renderSelectionPane(); }
       // Fire a coarse-grain analytics event (no archive content, just the tab id).
       try { if (typeof gtag === 'function') gtag('event', 'tab_open', { tab: target }); } catch {}
     });
@@ -6966,6 +7006,10 @@ const ui = (() => {
       const btn = $('sel-xapi-delete');
       if (btn) btn.style.display = (creds && n > 0) ? '' : 'none';
     });
+    // Keep selection pane in sync if it's currently visible
+    if ($('sel-pane-current')?.style.display !== 'none' || n === 0) {
+      renderSelectionPane();
+    }
   }
 
   // ── Unified chart hover tooltip ────────────────────────────────────────
@@ -7853,7 +7897,70 @@ const ui = (() => {
     host.innerHTML = '<div class="results-list">' + allItems.map(renderCard).join('') + '</div>';
   }
 
+  async function renderSelectionPane() {
+    const pane = $('sel-pane-current');
+    const host = $('sel-pane-host');
+    const countEl = $('sel-pane-count');
+    const divider = $('sel-section-divider');
+    if (!pane || !host) return;
+    const keys = [...selectionSet];
+    if (!keys.length) {
+      pane.style.display = 'none';
+      if (divider) divider.style.display = 'none';
+      return;
+    }
+    pane.style.display = '';
+    if (divider) divider.style.display = '';
+    if (countEl) countEl.textContent = keys.length.toLocaleString();
+    const LIMIT = 300;
+    const shown = keys.slice(0, LIMIT);
+    const tweetIds = shown.filter(k => k.startsWith('tweet:')).map(k => k.slice(6));
+    const likeIds  = shown.filter(k => k.startsWith('like:')).map(k => k.slice(5));
+    const [tweets, likes] = await Promise.all([
+      store.getManyByIds('tweets', tweetIds),
+      store.getManyByIds('likes', likeIds)
+    ]);
+    const recMap = new Map();
+    for (const t of tweets) recMap.set('tweet:' + t.id, { text: t.text || '', date: t.created_at });
+    for (const l of likes) recMap.set('like:' + l.tweet_id, { text: l.text || l.expanded_url || '', date: null });
+    const fmt = ts => ts ? new Date(ts).toISOString().slice(0, 10) : '';
+    host.innerHTML = shown.map(k => {
+      const rec = recMap.get(k);
+      const text = rec ? rec.text.slice(0, 160) || '(no text)' : k;
+      const date = rec && rec.date ? `<div class="sel-pane-meta">${fmt(rec.date)}</div>` : '';
+      return `<div class="sel-pane-row">
+        <div style="flex:1;min-width:0;"><div class="sel-pane-text">${safe(text)}</div>${date}</div>
+        <button class="sel-pane-remove" data-key="${safe(k)}" type="button">✕ Remove</button>
+      </div>`;
+    }).join('') + (keys.length > LIMIT ? `<div class="sel-pane-meta" style="padding:8px 0;">Showing ${LIMIT} of ${keys.length} — use "Clear all" or uncheck from search results to manage the rest.</div>` : '');
+  }
+
   function bindTrayControls() {
+    // Selection pane: clear all
+    $('sel-pane-clear')?.addEventListener('click', () => {
+      selectionSet.clear();
+      refreshSelectionBar();
+      syncCheckboxes(document.body);
+      renderSelectionPane();
+    });
+    // Selection pane: remove individual item
+    $('sel-pane-host')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.sel-pane-remove');
+      if (!btn) return;
+      const key = btn.dataset.key;
+      if (!key) return;
+      selectionSet.delete(key);
+      btn.closest('.sel-pane-row')?.remove();
+      const countEl = $('sel-pane-count');
+      if (countEl) countEl.textContent = selectionSet.size.toLocaleString();
+      if (!selectionSet.size) {
+        $('sel-pane-current').style.display = 'none';
+        $('sel-section-divider').style.display = 'none';
+      }
+      refreshSelectionBar();
+      syncCheckboxes(document.body);
+    });
+
     $('tray-clear-confirmed')?.addEventListener('click', async () => {
       const ok = await showModal({
         title: 'Clear deleted from view?',
@@ -8334,6 +8441,34 @@ const ui = (() => {
     untilEl?.addEventListener('change', syncFromInputs);
   }
 
+  function bindThemeToggle() {
+    const btn = $('theme-toggle');
+    if (!btn) return;
+    const root = document.documentElement;
+    const saved = localStorage.getItem('bakwaas-theme');
+    if (saved === 'light') { root.classList.add('theme-light'); root.classList.remove('theme-dark'); }
+    else if (saved === 'dark') { root.classList.add('theme-dark'); root.classList.remove('theme-light'); }
+    function updateIcon() {
+      const isLight = root.classList.contains('theme-light') ||
+        (!root.classList.contains('theme-dark') && window.matchMedia('(prefers-color-scheme: light)').matches);
+      btn.textContent = isLight ? '☾' : '☀';
+      btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+    }
+    updateIcon();
+    btn.addEventListener('click', () => {
+      const isLight = root.classList.contains('theme-light') ||
+        (!root.classList.contains('theme-dark') && window.matchMedia('(prefers-color-scheme: light)').matches);
+      if (isLight) {
+        root.classList.remove('theme-light'); root.classList.add('theme-dark');
+        localStorage.setItem('bakwaas-theme', 'dark');
+      } else {
+        root.classList.remove('theme-dark'); root.classList.add('theme-light');
+        localStorage.setItem('bakwaas-theme', 'light');
+      }
+      updateIcon();
+    });
+  }
+
   function bindHelp() {
     const back = $('help-backdrop');
     const btn = $('help-btn');
@@ -8379,7 +8514,7 @@ const ui = (() => {
   }
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
-           bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer,
+           bindHelp, bindThemeToggle, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer,
            bindMarkButtons, bindChartTooltips, bindTagPopup, renderMemory };
 })();
 
@@ -8451,8 +8586,9 @@ async function startWithFolder(dirHandle) {
 }
 
 async function bootstrap() {
-  // Wire help first — it must work even if the DB hangs or the browser is unsupported.
+  // Wire help and theme first — must work even if the DB hangs or the browser is unsupported.
   ui.bindHelp();
+  ui.bindThemeToggle();
   if (!supported) {
     show('screen-unsupported');
     return;
