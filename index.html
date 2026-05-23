@@ -1116,7 +1116,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.25 · memory tab</span>
+      <span class="phase" id="phase-tag">v0.26 · cjk + cluster similar + tag sync</span>
       <button class="help-btn" id="settings-btn" type="button" aria-label="Settings — X API + more" title="Settings">⚙</button>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
@@ -1889,6 +1889,7 @@ const tags = (() => {
     // Invalidate known-tags cache; rebuild lazily.
     knownTagsCache = null;
     try { await store.metaSet('known_tags', null); } catch {}
+    document.dispatchEvent(new CustomEvent('tags:changed'));
   }
 
   return { getDistinct, setTags };
@@ -4200,6 +4201,164 @@ const search = (() => {
   };
   const GREEK_RE = /[Ͱ-Ͽ]/;
 
+  // ── CJK: Korean Hangul, Japanese Kana, CJK Ideographs ────────────────────
+  const CJK_RE = /[぀-ヿ一-鿿가-힣豈-﫿]/;
+
+  // Korean Hangul syllable → Revised Romanization (algorithmic, no table).
+  const CHO  = ['g','kk','n','d','tt','r','m','b','pp','s','ss','','j','jj','ch','k','t','p','h'];
+  const JUNG = ['a','ae','ya','yae','eo','e','yeo','ye','o','wa','wae','oe','yo','u','wo','we','wi','yu','eu','ui','i'];
+  const JONG = ['','g','kk','gs','n','nj','nh','d','l','lg','lm','lb','ls','lt','lp','lh','m','b','bs','s','ss','ng','j','ch','k','t','p','h'];
+  function hangulToRomaja(c) {
+    const n = c.codePointAt(0) - 0xAC00;
+    if (n < 0 || n > 11171) return c;
+    const jong = n % 28, jung = ((n - jong) / 28) % 21, cho = Math.floor(n / 28 / 21);
+    return CHO[cho] + JUNG[jung] + JONG[jong];
+  }
+
+  // Hiragana → romaji. Katakana auto-derived at +0x60 codepoint offset.
+  const HIRAGANA_ROMAJI = {
+    'ぁ':'a','あ':'a','ぃ':'i','い':'i','ぅ':'u','う':'u','ぇ':'e','え':'e','ぉ':'o','お':'o',
+    'か':'ka','が':'ga','き':'ki','ぎ':'gi','く':'ku','ぐ':'gu','け':'ke','げ':'ge','こ':'ko','ご':'go',
+    'さ':'sa','ざ':'za','し':'shi','じ':'ji','す':'su','ず':'zu','せ':'se','ぜ':'ze','そ':'so','ぞ':'zo',
+    'た':'ta','だ':'da','ち':'chi','ぢ':'ji','っ':'','つ':'tsu','づ':'zu','て':'te','で':'de','と':'to','ど':'do',
+    'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
+    'は':'ha','ば':'ba','ぱ':'pa','ひ':'hi','び':'bi','ぴ':'pi','ふ':'fu','ぶ':'bu','ぷ':'pu',
+    'へ':'he','べ':'be','ぺ':'pe','ほ':'ho','ぼ':'bo','ぽ':'po',
+    'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
+    'ゃ':'ya','や':'ya','ゅ':'yu','ゆ':'yu','ょ':'yo','よ':'yo',
+    'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
+    'ゎ':'wa','わ':'wa','ゐ':'i','ゑ':'e','を':'o','ん':'n','ゔ':'v','ゕ':'ka','ゖ':'ke'
+  };
+  const KANA_MAP = { ...HIRAGANA_ROMAJI };
+  for (const [h, r] of Object.entries(HIRAGANA_ROMAJI)) {
+    const cp = h.codePointAt(0);
+    if (cp >= 0x3041 && cp <= 0x3096) KANA_MAP[String.fromCodePoint(cp + 0x60)] = r;
+  }
+  KANA_MAP['ー'] = ''; // ー prolonged sound mark → skip
+
+  // CJK Unified Ideographs → pinyin. Top ~650 by social-media frequency.
+  // Covers Simplified Chinese + common Traditional + shared Japanese kanji.
+  const CJK_MAP = {
+    // Numerals
+    '一':'yi','二':'er','三':'san','四':'si','五':'wu','六':'liu','七':'qi','八':'ba','九':'jiu','十':'shi',
+    '百':'bai','千':'qian','万':'wan','亿':'yi','零':'ling','两':'liang','半':'ban','倍':'bei','第':'di',
+    '种':'zhong','层':'ceng','双':'shuang','件':'jian','张':'zhang','次':'ci','些':'xie','份':'fen',
+    // Function words / particles
+    '的':'de','了':'le','在':'zai','是':'shi','和':'he','有':'you','不':'bu','也':'ye','都':'dou',
+    '就':'jiu','以':'yi','而':'er','对':'dui','从':'cong','没':'mei','为':'wei','地':'di','那':'na',
+    '可':'ke','要':'yao','过':'guo','又':'you','前':'qian','后':'hou','上':'shang','下':'xia',
+    '多':'duo','少':'shao','把':'ba','被':'bei','向':'xiang','使':'shi','让':'rang','由':'you',
+    '于':'yu','与':'yu','之':'zhi','其':'qi','此':'ci','则':'ze','若':'ruo','当':'dang','但':'dan',
+    '虽':'sui','因':'yin','如':'ru','所':'suo','且':'qie','即':'ji','仍':'reng','再':'zai','已':'yi',
+    '还':'hai','只':'zhi','更':'geng','越':'yue','最':'zui','很':'hen','太':'tai','非':'fei',
+    '真':'zhen','才':'cai','将':'jiang','该':'gai','各':'ge','某':'mou','每':'mei','别':'bie',
+    '等':'deng','自':'zi','既':'ji','另':'ling','虽':'sui','除':'chu','仅':'jin',
+    // Pronouns
+    '我':'wo','你':'ni','他':'ta','她':'ta','它':'ta','们':'men','您':'nin','谁':'shei','哪':'na',
+    // High-frequency verbs
+    '做':'zuo','用':'yong','给':'gei','到':'dao','得':'de','能':'neng','会':'hui','知':'zhi',
+    '认':'ren','开':'kai','走':'zou','找':'zhao','需':'xu','帮':'bang','带':'dai','写':'xie',
+    '读':'du','学':'xue','教':'jiao','买':'mai','卖':'mai','送':'song','接':'jie','出':'chu',
+    '进':'jin','回':'hui','见':'jian','叫':'jiao','问':'wen','答':'da','告':'gao','想':'xiang',
+    '看':'kan','听':'ting','说':'shuo','去':'qu','吃':'chi','喝':'he','睡':'shui','起':'qi',
+    '坐':'zuo','站':'zhan','跑':'pao','跳':'tiao','玩':'wan','爱':'ai','喜':'xi','欢':'huan',
+    '发':'fa','变':'bian','增':'zeng','加':'jia','减':'jian','改':'gai','保':'bao','持':'chi',
+    '继':'ji','续':'xu','结':'jie','完':'wan','希':'xi','望':'wang','信':'xin','支':'zhi',
+    '建':'jian','创':'chuang','提':'ti','善':'shan','解':'jie','决':'jue','处':'chu','管':'guan',
+    '控':'kong','调':'tiao','协':'xie','合':'he','联':'lian','沟':'gou','交':'jiao','流':'liu',
+    '表':'biao','达':'da','记':'ji','忘':'wang','觉':'jue','感':'gan','扫':'sao','删':'shan',
+    '测':'ce','传':'chuan','推':'tui','拉':'la','拿':'na','放':'fang','拍':'pai','按':'an',
+    '选':'xuan','设':'she','置':'zhi','打':'da','成':'cheng','来':'lai','生':'sheng','行':'xing',
+    '停':'ting','存':'cun','查':'cha','搜':'sou','展':'zhan','赢':'ying','输':'shu','收':'shou',
+    '分':'fen','享':'xiang','入':'ru','出':'chu','用':'yong','回':'hui','关':'guan','注':'zhu',
+    // People / relations
+    '人':'ren','男':'nan','女':'nv','孩':'hai','子':'zi','父':'fu','母':'mu','爸':'ba','妈':'ma',
+    '哥':'ge','弟':'di','姐':'jie','妹':'mei','朋':'peng','友':'you','老':'lao','师':'shi',
+    '医':'yi','警':'jing','察':'cha','领':'ling','导':'dao','总':'zong','经':'jing','理':'li',
+    '员':'yuan','组':'zu','队':'dui','个':'ge','家':'jia',
+    // Body
+    '手':'shou','脚':'jiao','头':'tou','眼':'yan','耳':'er','鼻':'bi','嘴':'zui','口':'kou',
+    '心':'xin','脑':'nao','脸':'lian','身':'shen','体':'ti','背':'bei','肩':'jian','腿':'tui',
+    '血':'xue','骨':'gu','皮':'pi',
+    // Nature / environment
+    '天':'tian','水':'shui','火':'huo','山':'shan','海':'hai','河':'he','树':'shu','花':'hua',
+    '草':'cao','风':'feng','雨':'yu','雪':'xue','太':'tai','阳':'yang','月':'yue','星':'xing',
+    '云':'yun','空':'kong','气':'qi','土':'tu','石':'shi','沙':'sha','冰':'bing',
+    // Time
+    '年':'nian','日':'ri','时':'shi','秒':'miao','今':'jin','明':'ming','昨':'zuo','早':'zao',
+    '晚':'wan','夜':'ye','周':'zhou','季':'ji','节':'jie','春':'chun','夏':'xia','秋':'qiu',
+    '冬':'dong','午':'wu','刻':'ke','代':'dai',
+    // Places / geography
+    '中':'zhong','国':'guo','北':'bei','京':'jing','广':'guang','州':'zhou','深':'shen',
+    '圳':'zhen','杭':'hang','武':'wu','汉':'han','南':'nan','西':'xi','安':'an','重':'chong',
+    '庆':'qing','津':'jin','青':'qing','连':'lian','英':'ying','法':'fa','德':'de','俄':'e',
+    '罗':'luo','斯':'si','拿':'na','澳':'ao','亚':'ya','省':'sheng','市':'shi','区':'qu',
+    '县':'xian','镇':'zhen','村':'cun','路':'lu','街':'jie','道':'dao','号':'hao','东':'dong',
+    '港':'gang','台':'tai','湾':'wan','洲':'zhou','界':'jie','岛':'dao',
+    // Technology / digital
+    '车':'che','电':'dian','话':'hua','软':'ruan','程':'cheng','序':'xu','据':'ju','系':'xi',
+    '统':'tong','平':'ping','视':'shi','频':'pin','音':'yin','图':'tu','文':'wen','字':'zi',
+    '息':'xi','通':'tong','讯':'xun','科':'ke','技':'ji','智':'zhi','器':'qi','习':'xi',
+    '网':'wang','络':'luo','服':'fu','屏':'ping','键':'jian','鼠':'shu','板':'ban','储':'chu',
+    '数':'shu','码':'ma','件':'jian',
+    // Social media
+    '微':'wei','博':'bo','帖':'tie','粉':'fen','丝':'si','转':'zhuan','评':'ping','论':'lun',
+    '赞':'zan','藏':'cang','标':'biao','签':'qian','截':'jie','直':'zhi','播':'bo','短':'duan',
+    '复':'fu','私':'si','聊':'liao','群':'qun',
+    // Adjectives
+    '好':'hao','坏':'huai','高':'gao','低':'di','长':'chang','新':'xin','旧':'jiu','快':'kuai',
+    '慢':'man','热':'re','冷':'leng','美':'mei','丑':'chou','错':'cuo','重':'zhong','轻':'qing',
+    '厚':'hou','薄':'bao','硬':'ying','干':'gan','湿':'shi','亮':'liang','暗':'an','假':'jia',
+    '强':'qiang','弱':'ruo','富':'fu','穷':'qiong','难':'nan','容':'rong','易':'yi','杂':'za',
+    '简':'jian','单':'dan','特':'te','明':'ming','确':'que','清':'qing','楚':'chu','显':'xian',
+    '公':'gong','正':'zheng','准':'zhun','严':'yan','格':'ge','纯':'chun','大':'da','小':'xiao',
+    // Abstract nouns
+    '事':'shi','情':'qing','原':'yuan','式':'shi','划':'hua','目':'mu','任':'ren','务':'wu',
+    '职':'zhi','业':'ye','专':'zhuan','验':'yan','力':'li','质':'zhi','量':'liang','效':'xiao',
+    '率':'lv','利':'li','润':'run','钱':'qian','投':'tou','资':'zi','借':'jie','贷':'dai',
+    '债':'zhai','意':'yi','义':'yi','值':'zhi','观':'guan','念':'nian','思':'si','态':'tai',
+    '度':'du','题':'ti','方':'fang','法':'fa','计':'ji','段':'duan',
+    // Healthcare
+    '健':'jian','康':'kang','病':'bing','药':'yao','治':'zhi','疗':'liao','术':'shu','检':'jian',
+    '化':'hua','压':'ya','温':'wen','肺':'fei','糖':'tang','尿':'niao',
+    // Education
+    '考':'kao','课':'ke','作':'zuo','绩':'ji','毕':'bi','研':'yan','究':'jiu','硕':'shuo','卷':'juan',
+    // Politics / society
+    '政':'zheng','府':'fu','党':'dang','举':'ju','票':'piao','民':'min','权':'quan','律':'lv',
+    '制':'zhi','社':'she','史':'shi','本':'ben',
+    // Shopping
+    '购':'gou','物':'wu','商':'shang','品':'pin','折':'zhe','扣':'kou','优':'you','惠':'hui',
+    '免':'mian','费':'fei','递':'di','外':'wai','订':'ding','退':'tui','换':'huan','售':'shou',
+    '付':'fu','款':'kuan',
+    // Travel
+    '旅':'lv','游':'you','客':'ke','场':'chang','铁':'tie','租':'zu','动':'dong','船':'chuan',
+    '飞':'fei','景':'jing','名':'ming',
+    // Food
+    '饭':'fan','菜':'cai','面':'mian','肉':'rou','鱼':'yu','蛋':'dan','奶':'nai','茶':'cha',
+    '咖':'ka','啡':'fei','饿':'e','饱':'bao','甜':'tian','苦':'ku','辣':'la','咸':'xian',
+    '酸':'suan','油':'you',
+    // Colors
+    '红':'hong','橙':'cheng','黄':'huang','绿':'lv','蓝':'lan','紫':'zi','白':'bai',
+    '黑':'hei','灰':'hui','棕':'zong',
+    // Buildings / common objects
+    '楼':'lou','店':'dian','馆':'guan','校':'xiao','院':'yuan','银':'yin','行':'hang',
+    '厂':'chang','超':'chao','餐':'can','厅':'ting','房':'fang','门':'men','窗':'chuang',
+    '书':'shu','纸':'zhi','笔':'bi','桌':'zhuo','椅':'yi','碗':'wan','杯':'bei','锅':'guo',
+    '刀':'dao','衣':'yi','裤':'ku','鞋':'xie','帽':'mao','包':'bao','卡':'ka',
+    // Weather
+    '晴':'qing','阴':'yin','雾':'wu','霾':'mai','暖':'nuan','潮':'chao',
+    // Entertainment / sports
+    '影':'ying','乐':'yue','戏':'xi','育':'yu','运':'yun','赛':'sai','足':'zu','篮':'lan',
+    '泳':'yong','棋':'qi','牌':'pai','步':'bu',
+    // Traditional Chinese equivalents (common in TW/HK Twitter)
+    '書':'shu','愛':'ai','國':'guo','來':'lai','時':'shi','發':'fa','說':'shuo','為':'wei',
+    '對':'dui','電':'dian','話':'hua','當':'dang','關':'guan','機':'ji','們':'men',
+    '這':'zhe','點':'dian','還':'hai','讓':'rang','會':'hui','無':'wu','體':'ti',
+    '學':'xue','開':'kai','問':'wen','從':'cong','誰':'shei','圖':'tu','語':'yu',
+    '個':'ge','後':'hou','沒':'mei','進':'jin','讀':'du','歡':'huan','選':'xuan',
+    '長':'chang','種':'zhong','數':'shu','樂':'yue','讚':'zan','網':'wang',
+  };
+
   // Walk a Brahmic-script string, applying the inherent-'a' / halant /
   // matra rules. Same algorithm for every script — only the table differs.
   function brahmicToLatin(text, cfg) {
@@ -4242,7 +4401,7 @@ const search = (() => {
     for (const k of Object.keys(BRAHMIC)) {
       if (BRAHMIC[k].range.test(text)) { hasNonLatin = true; break; }
     }
-    if (!hasNonLatin && !CYRILLIC_RE.test(text) && !GREEK_RE.test(text)) return text;
+    if (!hasNonLatin && !CYRILLIC_RE.test(text) && !GREEK_RE.test(text) && !CJK_RE.test(text)) return text;
     let out = '';
     const chars = [...text];
     for (let i = 0; i < chars.length; i++) {
@@ -4271,8 +4430,13 @@ const search = (() => {
         out += CYRILLIC_MAP[c.toLowerCase()];
       } else if (GREEK_MAP[c.toLowerCase()] !== undefined) {
         out += GREEK_MAP[c.toLowerCase()];
+      } else if (KANA_MAP[c] !== undefined) {
+        out += KANA_MAP[c];
       } else {
-        out += c;
+        const cp = c.codePointAt(0);
+        if (cp >= 0xAC00 && cp <= 0xD7A3) out += hangulToRomaja(c);
+        else if (CJK_MAP[c]) out += CJK_MAP[c];
+        else out += c; // pass-through (digit, space, unknown CJK, etc.)
       }
     }
     return out;
@@ -5251,6 +5415,7 @@ const ui = (() => {
           <div class="cluster-samples">${sampleHtml}</div>
           <div class="cluster-actions">
             <button type="button" data-cluster-search="#${safe(lead)}">Search this cluster</button>
+            <button type="button" data-cluster-similar="${safe(c.tags.slice(0,8).join(','))}">Similar tweets →</button>
           </div>
         </div>`;
       }));
@@ -5290,6 +5455,29 @@ const ui = (() => {
           input.dispatchEvent(new Event('input'));
           input.focus();
         }
+      });
+    });
+    host.querySelectorAll('[data-cluster-similar]').forEach(el => {
+      el.addEventListener('click', async () => {
+        const hashtags = el.dataset.clusterSimilar.split(',').filter(Boolean);
+        const lead = hashtags[0] || '';
+        // Switch to Search tab
+        document.querySelector('#screen-summary .tab[data-tab="tab-search"]')?.click();
+        // Show similar banner
+        const banner = $('similar-banner'), bannerText = $('similar-banner-text');
+        if (banner && bannerText) {
+          bannerText.textContent = `Similar to cluster: #${lead}`;
+          banner.style.display = 'flex';
+        }
+        setSearchMeta('Finding tweets similar to this cluster…');
+        const results = await search.getSimilar({ hashtags, mentions: [], text: hashtags.join(' ') });
+        if (!results.length) {
+          $('search-results').innerHTML = '<div class="results-empty">No similar tweets found — cluster may have too few hashtags.</div>';
+          setSearchMeta('No similar tweets found.');
+          return;
+        }
+        displayLimit = PAGE_SIZE;
+        await renderResults({ items: results, total: results.length });
       });
     });
   }
@@ -6601,7 +6789,7 @@ const ui = (() => {
       `<span class="card-tag" data-remove-tag="${safe(tag)}" title="Click to remove tag">${safe(tag)}</span>`
     ).join('');
     return `<div class="card-item ${cardStateClass({ ...t, __scope: 'tweet' })}" data-key="${key}" data-scope="tweet" data-id="${safe(t.id)}">
-      <label class="card-select"><input type="checkbox" data-role="select" /></label>
+      <label class="card-select"><input type="checkbox" data-role="select"${selectionSet.has(key) ? ' checked' : ''} /></label>
       <div class="card-text">${safe(t.text)}</div>
       <div class="card-meta">${meta}</div>
       ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
@@ -6625,7 +6813,7 @@ const ui = (() => {
       `<span class="card-tag" data-remove-tag="${safe(tag)}" title="Click to remove tag">${safe(tag)}</span>`
     ).join('');
     return `<div class="card-item ${cardStateClass({ ...l, __scope: 'like' })}" data-key="${key}" data-scope="like" data-id="${safe(l.tweet_id)}">
-      <label class="card-select"><input type="checkbox" data-role="select" /></label>
+      <label class="card-select"><input type="checkbox" data-role="select"${selectionSet.has(key) ? ' checked' : ''} /></label>
       <div class="card-text">${text}</div>
       <div class="card-meta"><span class="badge is-like-marker">like</span> · <span>${safe(l.tweet_id)}</span></div>
       ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
@@ -6872,6 +7060,13 @@ const ui = (() => {
     });
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); });
+
+    // Keep the search-tab datalist in sync whenever any tag write happens.
+    document.addEventListener('tags:changed', async () => {
+      const allTags = await tags.getDistinct();
+      const dl = $('search-tag-datalist');
+      if (dl) dl.innerHTML = allTags.map(t => `<option value="${safe(t)}">`).join('');
+    });
   }
 
   // ── Named saved selections ──────────────────────────────────────────────────
