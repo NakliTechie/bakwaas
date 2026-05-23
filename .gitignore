@@ -5,6 +5,8 @@
 !.gitignore
 !guide/
 !guide/**
+!scripts/
+!scripts/**
 
 # wrangler files
 .wrangler
