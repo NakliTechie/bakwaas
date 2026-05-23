@@ -5,114 +5,130 @@
 **A browser-native explorer for your social-media archives.** Started as a click-to-delete tool for Twitter/X — turned out the harder problem isn't deleting, it's *finding* what's worth deleting in 200,000 posts. So mostly it's now an explorer that happens to make deletion easy at the end.
 
 Supported sources:
-- **Twitter / X** — full surface (ZIP or unzipped folder via FSA)
-- **Mastodon** — full surface except engagement-driven cards (their export doesn't include fav/boost totals)
-- **Bluesky** — live API fetch by handle, no auth needed, engagement counts come back, full surface
-- **Reddit** — posts + comments from the GDPR export ZIP, no engagement counts
+- **Twitter / X** — full surface (ZIP or unzipped folder via the File System Access API)
+- **Mastodon** — full surface except engagement-driven cards (their export doesn't preserve fav/boost totals)
+- **Bluesky** — live AppView API fetch by handle, no auth, engagement counts intact, full surface
+- **Reddit** — posts + comments from the GDPR-export ZIP, no engagement counts
 
 **[→ Try it live](https://bakwaas.naklitechie.com)**
 
+---
+
 ## What it does
 
-Drop your archive (Twitter/X ZIP, Twitter/X folder, or Mastodon ZIP), wait for the one-time index pass, and explore:
+Drop your archive (or paste a Bluesky handle), wait for the one-time index pass, and explore through seven tabs:
 
-- **Stats** — counts, top hashtags / mentions / sources / languages, GitHub-contributions-style temporal heatmap spanning your full archive, hour × day-of-week heatmap, engagement distributions
-- **Search** — MiniSearch full-text over tweets and likes, filter chips for originals / replies / retweets / media, scope toggle between tweets / likes / both
-- **Patterns** — algorithmic deep analysis with no AI in the loop:
-  - **Engagement**: top 20 viral tweets, hashtag & source ROI (which themes worked, which client lands), hour × DOW colored by *avg engagement* per cell
-  - **Era detection**: burst hashtags (≥50% of uses in one month) — your `#nft` 2022 era, your `#covid` Mar 2020
-  - **Activity rhythm**: longest streak & longest silence, monthly tweets line chart, activity change-points (≥2σ from rolling baseline), verbosity drift
-  - **Mood, voice & rhythm**: emoji mood timeline + word-list polarity drift (pos − neg per month, both signals), style fingerprint with derived archetype ('Long-form · Asker · Emoji-heavy'), sleep / quiet-hours window per year
-  - **What you talk about**: top phrases (bigrams), recurring themes (bigrams in ≥3 different years), hashtag-lifecycle sparklines (top 30 hashtags as monthly inline sparklines), top link hosts you share
-  - **Threads & relationships**: self-reply thread roots, top co-mention pairs, force-directed conversation graph
-  - **Eras compared**: chronological-thirds cohort cards side-by-side (mix, avg eng, era hashtag, top hashtag, top mention, source, top tweet)
-  - **First, last, best**: first & last original tweet of each year side-by-side; top tweet per year
-  - **On this day**: today's-date anniversaries across years, plus a "what were you doing then?" date picker with ±N day window
-  - **Cleanup candidates**: zero-engagement counts per year + sample list of 50 oldest + PII audit (regex-flagged email/phone/SSN-shape candidates)
-- **Wrapped** — pick a year or all-time, get a poster-style summary card with top tweet, top hashtag, peak month, era, posting personality. Download as standalone HTML (hostable anywhere) or PNG (postable to social). All composed locally, nothing uploaded
-- **Topics** — hashtag co-occurrence clusters with an adjustable threshold; pick a theme, drill into it via "Search this cluster"
-- **Selection** — confirmation tray for the click-to-delete workflow: everything you've opened or marked deleted lives here
+### Stats
+Counts, top hashtags / mentions / sources / languages, GitHub-contributions-style temporal heatmap spanning your full archive, hour × day-of-week heatmap, engagement distributions. Top-N panels accept a **date-range filter** at the top; **click any heatmap day** to drill into that single day's tweets in Search.
 
-**Click-to-delete is honest.** Bakwaas never calls X's API. To delete a tweet you click it open in X's real UI, do it there, come back, confirm. The hard part — knowing *what* to delete — happens here. The actual delete happens in X's own UI.
+### Search
+Fast full-text over tweets and likes via MiniSearch with a rich filter surface:
+
+- **Power query syntax** in the search box: `since:2018-01-01 until:2019-12-31 from:elonmusk to:dril min_faves:10 min_rts:5 has:media has:link lang:en -crypto "exact phrase" cricket OR football`
+- **Visual filter bar**: Since / Until / Min ♥ / Min ↻ / Language dropdown / Near match toggle / Reset
+- **Filter chips**: Originals / Replies / Retweets / Media / Links
+- **Quick-range presets**: 7d / 30d / 90d / YTD / This year / Last year / All
+- **Date-range scrubber** — SVG dual-thumb range picker over a tweets-per-month histogram. Drag thumbs or the highlighted band; two-way sync with the date inputs
+- **Scope toggle**: Tweets / Likes / Both
+- **Near match** toggle — folds in phonetic-encoded variants so `amrika`/`umrika` find `america`, and Latin `chirag` finds Devanagari `चिराग` (phonetic indexing runs at MiniSearch-build time)
+- **Filters-only searches** — leave the text box empty, set `min_faves:100 since:2018`, get tweets streamed via IndexedDB cursor with the `created_at` index
+- **Select-all matches** + per-result selection — adds to the global selection set
+
+### Engagement
+KPI cards (most-engaged month, most-engaged year, all-time top tweet, lifetime engagement), three side-by-side top-tweets lenses (combined / likes / RTs), engagement-over-time monthly line chart, viral-moments timeline, hashtags by avg engagement, sources by avg engagement, hour × DOW colored by avg engagement. Honest "views aren't in the archive" disclaimer.
+
+### Patterns
+Algorithmic deep analysis (no AI in the loop):
+
+- **Activity rhythm**: longest streak, longest silence, monthly tweets line chart, activity change-points (≥2σ from rolling baseline), verbosity drift
+- **Eras compared**: chronological-thirds cohort cards side-by-side (mix, avg eng, era hashtag, top hashtag, top mention, source, top tweet)
+- **Era detection**: burst hashtags (≥50% of uses in one month) — `#nft Mar 2022`, `#covid Mar 2020`
+- **Mood, voice & rhythm**: emoji mood timeline + word-list polarity drift (both `pos − neg` per month), style fingerprint with derived archetype ('Long-form · Asker · Emoji-heavy'), sleep / quiet-hours window per year
+- **What you talk about**: top phrases (bigrams), recurring themes (bigrams in ≥3 years), hashtag-lifecycle sparklines, top link hosts you share
+- **Relationships**: best friends (top 12 bubble cards with colour-coded initials — **click to drill into a "Conversation with @user"** view), distance circles (top 24 connections placed at radii inverse to interaction count, with Inner/Trusted/Acquaintances rings), top co-mention pairs, force-directed conversation graph, longest self-reply threads + a **"Browse all threads →" thread explorer modal** with text search and click-to-expand trees
+- **First, last, best**: first & last original tweet of each year; top tweet per year
+- **On this day**: today's-date anniversaries across years + "what were you doing then?" date picker with ±N day window
+- **Cleanup candidates**: zero-engagement counts per year + sample list of 50 oldest + PII audit (regex-flagged emails / phones / SSN-shape)
+
+### Wrapped
+Pick a year or all-time, get a poster-style summary card with top tweet, top hashtag, peak month, era hashtag, posting personality. Download as **standalone HTML** (hostable anywhere) or **PNG** (postable to social). All composed locally; nothing uploaded.
+
+### Topics
+Hashtag co-occurrence clusters with an adjustable threshold. Pick a theme, drill into it via "Search this cluster".
+
+### Selection
+The deletion confirmation tray:
+
+- **Per-card actions**: open in X, mark deleted, undo
+- **Bulk actions**: "Open N tabs" (modal guard at >10, hard cap at 50), "Mark N deleted"
+- **BYOK Twitter / X API delete** — paste your own 4 OAuth 1.0a credentials, Bakwaas signs DELETE /2/tweets/:id with HMAC-SHA1, handles 429 rate limits with reset-aware backoff, marks deleted in the local store automatically
+- **Site-wide select buttons** — every tweet card in every tab has a small `+ select` button. Counts roll up into a floating chip visible from any tab
+
+---
+
+## How deletion works
+
+**Click-to-delete is honest** *(the default)*. Bakwaas opens the tweet on X in a new tab; you delete it there in the real UI; you come back and confirm. The hard part — knowing *what* to delete — happens in Bakwaas. The actual delete happens in X's own UI.
+
+**BYOK X API delete** *(optional)*. If you have your own X developer credentials (OAuth 1.0a Read+Write), Bakwaas can bulk-delete via `DELETE /2/tweets/:id` directly. Keys live in IndexedDB only — never the FSA sidecar, never anywhere except `api.x.com`. Honest about cost: X v2 DELETE is a paid endpoint these days.
 
 No X API. No OAuth. No accounts. No server. No telemetry. Every export is a download from your browser, not an upload from it.
 
-## How to use
+---
 
-1. Go to [x.com/settings/download_your_data](https://x.com/settings/download_your_data) and request your archive
-2. Wait ~24 hours for the email with the download link
-3. Open Bakwaas, drop the ZIP (or the unzipped folder) onto the page
-4. Wait for indexing (one-time, resumable; ~5 minutes for 200k tweets)
-5. Explore. Find the regrettable bits. Click through to delete in X.
+## Twitter Advanced Search parity
+
+| Twitter Advanced Search | Bakwaas equivalent |
+|---|---|
+| All of these words | Free-text search (MiniSearch AND default) |
+| Exact phrase | `"quoted phrase"` |
+| Any of these words | `term1 OR term2 OR term3` (uppercase) |
+| None of these words | `-term` |
+| Hashtags | `#tag` in text or hashtag filter |
+| From these accounts | `from:user` (matches tweet mentions) |
+| To these accounts | `to:user` (uses `in_reply_to_screen_name`) |
+| Mentioning these accounts | `@user` in text |
+| Min replies / faves / RTs | `min_faves:N`, `min_rts:N` (min replies isn't in the archive) |
+| Date range | `since:` / `until:` + visual inputs + scrubber + presets |
+| Replies filter | Replies / Originals chips |
+| Links filter | Links chip + `has:link` |
+| (none) | **Near match** — phonetic + cross-script fuzziness |
+| (none) | Lang filter, has:media, full power-syntax composition |
+
+---
 
 ## Privacy posture
 
-| | Bakwaas | SaaS bulk-delete tools |
-|---|---|---|
-| Your archive leaves your machine | Never | Yes — uploaded to their server |
-| Account / billing | None | Required |
-| Where state lives | Your archive folder (FSA) + browser OPFS | Their database |
-| BYOK LLM key (if you bring one) | Stored locally in IndexedDB only, sent directly to provider | N/A |
+Everything runs locally. The archive never leaves your tab. The Bluesky path makes only the API calls you'd make yourself. The X API delete path only ever calls `api.x.com`. No NakliTechie server; no telemetry; no logging.
 
-## Browser support
+Where state lives:
+- **IndexedDB** (origin: `bakwaas.naklitechie.com`) — the parsed index, MiniSearch serialized, all aggregation caches, BYOK X credentials, deletion state
+- **OPFS** mirror at `bakwaas-state.json` — backup of phase / fingerprint state
+- **FSA sidecar** at `<archive>/bakwaas-state.json` — folder-mode only, never carries BYOK keys (sidecar travels with the archive)
 
-| Browser | Mode |
-|---|---|
-| Chrome / Edge 120+ | Full — folder ingest with sidecar persistence, plus ZIP mode |
-| Safari 17+ | ZIP mode only — state lives in OPFS |
-| Firefox 125+ | ZIP mode only — state lives in OPFS |
+---
 
-## BYOK LLM (coming in Phase 8)
+## Tech notes
 
-The Patterns and Topics views already produce a lot without any model in the loop. A future BYOK layer will optionally add cluster labels, semantic search, and bulk classification — your key, stored locally in IndexedDB, sent only directly to the provider you chose, never to NakliTechie infrastructure, never written to the FSA sidecar.
+- **Single-file HTML**, vanilla JS, no build step. Open with `python3 -m http.server` or any static host.
+- **MiniSearch** for full-text (CDN ESM @ 7.1.2). Indexes serialised to IndexedDB. Lazy rebuild on first search.
+- **JSZip** for ZIP ingestion (CDN ESM). FSA folder mode skips it entirely.
+- **Phonetic indexing**: per-tweet `phonetic_text` field generated at index time. Devanagari → Latin (inherent-a-aware mapper) → consonant skeleton with `c/ch/ck → k`, `ph → f`, vowel + `h` strip, dedupe. Result: `chirag`, `chiraag`, and `चिराग` all hash to `krg`. Same field for `america`/`amrika`/`umrika` → `mrk`.
+- **OAuth 1.0a signing** for the X API delete path: HMAC-SHA1 via SubtleCrypto, RFC-3986 percent-encoded base-string assembly.
+- **CSP** pinned: `default-src 'self'`, `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net`, `connect-src` extended for the BYOK provider hosts.
 
-Providers planned:
-- **Claude** via [console.anthropic.com](https://console.anthropic.com/)
-- **OpenAI** via [platform.openai.com](https://platform.openai.com/api-keys)
-- **Gemini** via [aistudio.google.com](https://aistudio.google.com/app/apikey)
+---
 
-The whole CSP is already pinned so this slots in without a policy change.
+## Roadmap
 
-## What Bakwaas doesn't do (and why)
+What's in `PENDING.md` (local-only) — the next-session work:
 
-- **Auto-delete / scheduled deletion / disappearing mode** — would require a server running background jobs on your behalf. That's the SaaS pattern Bakwaas exists in opposition to. If you want continuous automated deletion, use Redact, TweetDelete, or TweetEraser; that's their shape.
-- **Multi-platform support (Reddit, Discord, Facebook, etc.)** — Bakwaas is Twitter-specific by name and design.
-- **DM deletion** — different threat model. DM archives contain the other party's messages too; excluded.
-- **Unfollow everyone / delete followers** — out of scope. Bakwaas is about *what you've said*, not *who you're connected to*.
-- **Account or login system, server-side sync** — would require a server. Out of scope forever.
-
-## Known limitations
-
-- Index build on a 200k-tweet archive takes ~5 minutes on an M-class machine, longer elsewhere. Resumable if interrupted.
-- Click-to-delete is manual by design. Bulk mode opens up to 50 tabs at once; you work through them.
-- v1.0 has no X API path. v1.1 will add a BYOK X-API mode for users with their own dev app and credit balance.
-
-## Status
-
-v1.0 is in active build. The current shipped capability is documented in [CHANGELOG.md] *(coming soon)*. Full v1.0 spec and roadmap live in `docs/` alongside the source.
-
-## Tech stack
-
-| Concern | Solution |
-|---|---|
-| Archive ingest | File System Access API (folder mode), JSZip (zip mode) |
-| Persistence | IndexedDB for the parsed index; FSA sidecar + OPFS mirror for state |
-| Full-text search | MiniSearch |
-| Topic clustering | Local TF-IDF + co-occurrence; optional BYOK LLM layer |
-| Build tooling | None — one HTML file |
-
-## Part of the NakliTechie series
-
-| Tool | What it does |
-|------|--------------|
-| [**VaultMind**](https://github.com/NakliTechie/VaultMind) | Obsidian vault explorer + builder — graph, ingest, RAG chat, editor |
-| [**Tijori**](https://github.com/NakliTechie/Tijori) | Password vault — single-file, hardware-key-aware, multi-vault |
-| [**LocalMind**](https://github.com/NakliTechie/LocalMind) | Private AI research agent — 9 tools, RAG, web search, multimodal |
-| [**KoLocal**](https://github.com/NakliTechie/KoLocal) | Go (Baduk) vs MCTS AI — 9×9 / 13×13 / 19×19 |
-| [**BabelLocal**](https://github.com/NakliTechie/BabelLocal) | Offline translation — 200 languages, NLLB model |
+- **Web Worker refactor** — move `JSON.parse(100MB)` + `patterns.aggregate()` + `stats.aggregate()` off the main thread so the tab never freezes during a parse pass
+- **Semantic search** — Transformers.js + `all-MiniLM-L6-v2` (or similar). Embed every tweet to 384-dim vectors, query by cosine similarity. "Find more like this" on every result; Topics gets free LLM-less cluster labels from centroid embeddings
+- **More cross-script tables** — Bengali, Tamil, Gurmukhi, Arabic, Cyrillic for the phonetic indexing pipeline
+- **Instagram archive** as a fifth provider
 
 ---
 
 **Built by [Chirag Patnaik](https://github.com/NakliTechie)**
-
 *Built with [Claude](https://claude.ai).*

@@ -841,6 +841,35 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .cohort-q-meta { margin-top: 4px; font-family: var(--mono); font-size: 11px; }
 
+/* Compact per-tweet 'mark for deletion' button — used everywhere a tweet shows */
+.tweet-mark-btn {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  width: 22px; height: 22px; padding: 0; font-size: 13px; font-weight: 700; line-height: 1;
+  cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 4px;
+}
+.tweet-mark-btn:hover { color: var(--accent); border-color: var(--accent); }
+.tweet-mark-btn.is-selected {
+  background: var(--accent); color: #0d1117; border-color: var(--accent);
+}
+.tweet-mark-btn.is-selected:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* Floating 'N selected' chip — visible in any tab when selection is non-empty */
+.global-sel-chip {
+  position: fixed; bottom: 60px; right: 16px;
+  background: var(--accent); color: #0d1117;
+  border-radius: 999px; padding: 8px 16px;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  box-shadow: 0 6px 20px rgba(125,138,239,0.4);
+  display: none; align-items: center; gap: 10px;
+  z-index: 20; cursor: pointer;
+}
+.global-sel-chip.is-active { display: flex; }
+.global-sel-chip:hover { filter: brightness(1.08); }
+.global-sel-chip .gs-arrow { font-size: 14px; }
+
 /* Best friends — bubble cards */
 .best-friends { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .bf-card {
@@ -1000,7 +1029,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.18 · engagement tab + near match</span>
+      <span class="phase" id="phase-tag">v0.19 · phonetic + cross-script</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1146,6 +1175,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <button class="chip" data-chip="replies" type="button">Replies</button>
           <button class="chip" data-chip="retweets" type="button">Retweets</button>
           <button class="chip" data-chip="media" type="button">Media</button>
+          <button class="chip" data-chip="link" type="button">Links</button>
         </div>
         <div class="filter-bar" id="search-filter-bar">
           <label>Since:</label><input type="date" id="search-since">
@@ -1168,8 +1198,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <details class="filter-tips">
             <summary>Power syntax</summary>
             <p>You can type operators directly in the search box. They compose with the controls above:</p>
-            <code>since:2018-01-01 until:2019-12-31 min_faves:10 has:media -crypto "exact phrase"<br>from:elonmusk lang:en to:dril</code>
-            <p style="margin-top:6px;"><strong>from:</strong> — tweet mentions @user. <strong>to:</strong> — tweet is a reply to @user (uses in_reply_to_screen_name). <strong>has:</strong> media or link. <strong>-term</strong> excludes.</p>
+            <code>since:2018-01-01 until:2019-12-31 min_faves:10 has:media -crypto "exact phrase"<br>from:elonmusk lang:en to:dril<br>cricket OR football OR tennis</code>
+            <p style="margin-top:6px;"><strong>from:</strong> — tweet mentions @user. <strong>to:</strong> — tweet is a reply to @user (uses in_reply_to_screen_name). <strong>has:</strong> media or link. <strong>-term</strong> excludes. <strong>OR</strong> (uppercase) — match any of the listed terms instead of all.</p>
           </details>
         </div>
         <div class="scrubber-wrap" id="search-scrubber-wrap" style="display:none;">
@@ -1351,6 +1381,10 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <div class="footer-nav">
     <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">⬅ More Projects</a>
     <a href="https://github.com/NakliTechie/bakwaas" target="_blank" rel="noopener">⌬ Source</a>
+  </div>
+  <div class="global-sel-chip" id="global-sel-chip" role="button" aria-label="Go to Selection tab">
+    <span id="global-sel-count">0</span> selected
+    <span class="gs-arrow">→</span>
   </div>
 
 <script type="module">
@@ -3719,10 +3753,96 @@ const search = (() => {
     MS = mod.default || mod.MiniSearch || mod;
     return MS;
   }
-  const TWEET_FIELDS = ['text', 'hashtags_joined', 'mentions_joined'];
+  const TWEET_FIELDS = ['text', 'hashtags_joined', 'mentions_joined', 'phonetic_text'];
   const TWEET_STORED = ['id', 'created_at', 'text', 'is_reply', 'is_retweet', 'favorite_count', 'retweet_count', 'has_media', 'hashtags', 'mentions'];
-  const LIKE_FIELDS = ['text'];
+  const LIKE_FIELDS = ['text', 'phonetic_text'];
   const LIKE_STORED = ['tweet_id', 'expanded_url', 'text', 'has_text'];
+  const MS_CACHE_VERSION = 2; // bump when fields change to force one-time re-index
+
+  // ── Phonetic + cross-script encoding (Devanagari → Latin → phonetic) ──
+  // Devanagari support is the first cross-script implementation; the same
+  // pattern (per-script table + inherent-vowel rules) extends to Bengali,
+  // Tamil, Gurmukhi etc. as follow-ups.
+  const DEV_VOWELS_INDEP = {
+    'अ':'a','आ':'aa','इ':'i','ई':'ii','उ':'u','ऊ':'uu','ऋ':'ri','ऌ':'li',
+    'ए':'e','ऐ':'ai','ओ':'o','औ':'au','ॲ':'a','ऍ':'e','ऑ':'o'
+  };
+  const DEV_VOWELS_DEP = {
+    'ा':'aa','ि':'i','ी':'ii','ु':'u','ू':'uu','ृ':'ri','ॢ':'li',
+    'े':'e','ै':'ai','ो':'o','ौ':'au','ॅ':'e','ॉ':'o'
+  };
+  const DEV_CONS = {
+    'क':'k','ख':'kh','ग':'g','घ':'gh','ङ':'ng',
+    'च':'ch','छ':'chh','ज':'j','झ':'jh','ञ':'ny',
+    'ट':'t','ठ':'th','ड':'d','ढ':'dh','ण':'n',
+    'त':'t','थ':'th','द':'d','ध':'dh','न':'n',
+    'प':'p','फ':'ph','ब':'b','भ':'bh','म':'m',
+    'य':'y','र':'r','ल':'l','व':'v',
+    'श':'sh','ष':'sh','स':'s','ह':'h',
+    'क़':'q','ख़':'kh','ग़':'g','ज़':'z','ड़':'r','ढ़':'rh','फ़':'f','य़':'y'
+  };
+  const DEV_HALANT = '्';
+  const DEV_ANUSVARA = 'ं';
+  const DEV_VISARGA = 'ः';
+  const DEV_NUKTA = '़';
+  const DEV_RE = /[ऀ-ॿ]/;
+
+  function devanagariToLatin(text) {
+    if (!text || !DEV_RE.test(text)) return text;
+    let out = '';
+    const chars = [...text];
+    for (let i = 0; i < chars.length; i++) {
+      const c = chars[i];
+      const next = chars[i + 1];
+      if (DEV_CONS[c]) {
+        out += DEV_CONS[c];
+        if (next === DEV_HALANT) {
+          i++; // suppresses inherent 'a'
+        } else if (DEV_VOWELS_DEP[next]) {
+          out += DEV_VOWELS_DEP[next];
+          i++;
+        } else {
+          out += 'a'; // inherent
+        }
+      } else if (DEV_VOWELS_INDEP[c]) {
+        out += DEV_VOWELS_INDEP[c];
+      } else if (c === DEV_ANUSVARA) {
+        out += 'n';
+      } else if (c === DEV_VISARGA) {
+        out += 'h';
+      } else if (c === DEV_NUKTA || c === DEV_HALANT) {
+        // skip — already handled or no Latin equivalent in isolation
+      } else {
+        out += c;
+      }
+    }
+    return out;
+  }
+
+  // Consonant-skeleton phonetic: removes vowels, normalises common digraphs
+  // and homophone substitutions. End result is a fuzzy hash where
+  // america / amrika / umrika → 'mrk', chirag / chiraag / चिराग → 'krg'.
+  function phoneticEncode(text) {
+    if (!text) return '';
+    const latinized = devanagariToLatin(text);
+    return latinized.toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .split(/\s+/)
+      .map(w => {
+        if (!w || w.length < 2) return '';
+        let p = w
+          .replace(/ph/g, 'f')
+          .replace(/ck|ch|c/g, 'k')
+          .replace(/qu|q/g, 'k')
+          .replace(/x/g, 'ks')
+          .replace(/wh/g, 'w')
+          .replace(/[aeiouyh]/g, '')
+          .replace(/(.)\1+/g, '$1');
+        return p;
+      })
+      .filter(Boolean)
+      .join(' ');
+  }
 
   function makeTweetMS(C) {
     return new C({ idField: 'id', fields: TWEET_FIELDS, storeFields: TWEET_STORED,
@@ -3734,17 +3854,24 @@ const search = (() => {
   }
 
   function tweetForIndex(t) {
+    const text = t.text || '';
     return {
-      id: t.id, created_at: t.created_at, text: t.text,
+      id: t.id, created_at: t.created_at, text,
       is_reply: t.is_reply, is_retweet: t.is_retweet,
       favorite_count: t.favorite_count, retweet_count: t.retweet_count,
       has_media: t.has_media, hashtags: t.hashtags || [], mentions: t.mentions || [],
       hashtags_joined: (t.hashtags || []).join(' '),
-      mentions_joined: (t.mentions || []).join(' ')
+      mentions_joined: (t.mentions || []).join(' '),
+      phonetic_text: phoneticEncode(text)
     };
   }
   function likeForIndex(l) {
-    return { tweet_id: l.tweet_id, expanded_url: l.expanded_url, text: l.text || l.full_text || '', has_text: !!l.has_text };
+    const text = l.text || l.full_text || '';
+    return {
+      tweet_id: l.tweet_id, expanded_url: l.expanded_url,
+      text, has_text: !!l.has_text,
+      phonetic_text: phoneticEncode(text)
+    };
   }
 
   async function cursorAll(storeName) {
@@ -3767,9 +3894,13 @@ const search = (() => {
   async function buildIndexes(onProgress) {
     const C = await getMS();
 
-    // Try cached.
-    const sTweets = await store.metaGet('minisearch_tweets');
-    const sLikes = await store.metaGet('minisearch_likes');
+    // Try cached — but only if the serialized index was built with the
+    // current field schema. Bumped MS_CACHE_VERSION forces a one-time rebuild
+    // when we add a field (e.g. phonetic_text in v0.19).
+    const cachedVer = await store.metaGet('minisearch_version');
+    const versionMatches = cachedVer === MS_CACHE_VERSION;
+    const sTweets = versionMatches ? await store.metaGet('minisearch_tweets') : null;
+    const sLikes = versionMatches ? await store.metaGet('minisearch_likes') : null;
 
     if (sTweets) {
       try {
@@ -3815,6 +3946,8 @@ const search = (() => {
         await store.metaSet('minisearch_likes', JSON.stringify(likeIndex.toJSON()));
       } catch (e) { console.warn('persist like index failed', e); }
     }
+    // Record the version so we can detect schema changes on next load.
+    try { await store.metaSet('minisearch_version', MS_CACHE_VERSION); } catch {}
   }
 
   async function ensureIndexes(onProgress) {
@@ -3881,8 +4014,9 @@ const search = (() => {
       if (chips.replies && !item.is_reply) return false;
       if (chips.retweets && !item.is_retweet) return false;
       if (chips.media && !item.has_media) return false;
+      if (chips.link && !(item.urls && item.urls.length)) return false;
     } else {
-      if (chips.replies || chips.retweets || chips.media || chips.originals) return false;
+      if (chips.replies || chips.retweets || chips.media || chips.originals || chips.link) return false;
     }
     // Date range (tweets have created_at; likes don't reliably)
     if (eff.since !== null && (item.created_at == null || item.created_at < eff.since)) return false;
@@ -3940,25 +4074,42 @@ const search = (() => {
     };
     const hasFilters = (eff.since !== null || eff.until !== null || eff.from.length || eff.to.length || eff.minFav || eff.minRT
                      || eff.has.size || eff.lang.size || eff.exclude.length || eff.phrases.length
-                     || chips.originals || chips.replies || chips.retweets || chips.media);
+                     || chips.originals || chips.replies || chips.retweets || chips.media || chips.link);
     const text = parsed.text.trim();
     if (!text && !hasFilters) {
       return { items: [], totalTweets: tweetIndex.documentCount, totalLikes: likeIndex.documentCount };
     }
     let items = [];
     if (text) {
-      // Near-match mode: bump MiniSearch fuzziness from default ~0.15 to 0.4
-      // so 'amrika' picks up 'america', 'occurence' picks up 'occurrence', etc.
-      // Drastic spelling drifts (cross-script transliterations) need phonetic
-      // indexing — a follow-up if simple fuzzy isn't enough.
-      const searchOpts = near
-        ? { fuzzy: 0.4, prefix: false, combineWith: 'OR' }
-        : undefined;
+      // Uppercase OR (Twitter-style 'any of these words') flips combineWith.
+      // 'a OR b c' currently treats OR as a noise word + the rest with OR;
+      // the alternation is intentional: shorter to type for the common case.
+      const isOR = /\bOR\b/.test(text);
+      const cleanText = isOR ? text.replace(/\bOR\b/g, ' ').replace(/\s+/g, ' ').trim() : text;
+      // Near-match mode: bump MiniSearch fuzziness AND fold a phonetic-encoded
+      // copy of the query into the search string. The phonetic-encoded copy
+      // matches against the phonetic_text field that every tweet/like was
+      // indexed with — that's how chirag finds चिराग, amrika finds america.
+      let queryStr = cleanText;
+      let searchOpts;
+      if (near) {
+        const phQuery = phoneticEncode(cleanText);
+        if (phQuery && phQuery !== cleanText.toLowerCase()) {
+          queryStr = `${cleanText} ${phQuery}`;
+        }
+        searchOpts = { fuzzy: 0.4, prefix: false, combineWith: 'OR' };
+      } else {
+        // Strict search ignores phonetic_text — only the text/hashtag/mention fields.
+        searchOpts = { fields: ['text', 'hashtags_joined', 'mentions_joined'] };
+        if (isOR) searchOpts.combineWith = 'OR';
+      }
       if (scope === 'tweets' || scope === 'both') {
-        for (const hit of tweetIndex.search(text, searchOpts)) items.push({ ...hit, __scope: 'tweet', __score: hit.score });
+        for (const hit of tweetIndex.search(queryStr, searchOpts)) items.push({ ...hit, __scope: 'tweet', __score: hit.score });
       }
       if (scope === 'likes' || scope === 'both') {
-        for (const hit of likeIndex.search(text, searchOpts)) items.push({ ...hit, __scope: 'like', __score: hit.score });
+        // Likes don't have hashtags_joined / mentions_joined; restrict fields.
+        const likeOpts = near ? searchOpts : { fields: ['text'], combineWith: isOR ? 'OR' : 'AND' };
+        for (const hit of likeIndex.search(queryStr, likeOpts)) items.push({ ...hit, __scope: 'like', __score: hit.score });
       }
       items.sort((a, b) => b.__score - a.__score);
       const filtered = items.filter(it => applyFilters(it, eff, chips || {}));
@@ -4903,6 +5054,7 @@ const ui = (() => {
       <div class="ct-meta">
         <span>${dt}</span><span>♥ ${(t.fav || 0).toLocaleString()}</span><span>↻ ${(t.rt || 0).toLocaleString()}</span>
         <a href="${url}" target="_blank" rel="noopener">open →</a>
+        ${markBtnHTML(t.id)}
       </div>
     </div>`;
   }
@@ -4915,6 +5067,7 @@ const ui = (() => {
       <div class="ct-meta">
         <span>${dt}</span><span>0 engagement</span>
         <a href="${url}" target="_blank" rel="noopener">open →</a>
+        ${markBtnHTML(t.id)}
       </div>
     </div>`;
   }
@@ -4927,6 +5080,7 @@ const ui = (() => {
         <span>${dt}</span>
         <span>♥ ${t.fav} · ↻ ${t.rt}</span>
         <a href="${url}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a>
+        ${markBtnHTML(t.rootId)}
       </div>
       <div class="th-text">${safe(t.text)}</div>
     </div>`;
@@ -5197,8 +5351,8 @@ const ui = (() => {
       const lUrl = l ? `https://twitter.com/i/web/status/${l.id}` : null;
       return `<div class="thread-row">
         <div class="th-head"><strong style="color:var(--accent);font-size:12px;">${y}</strong></div>
-        ${f ? `<div class="th-text" style="margin-bottom:6px;"><span style="font-family:var(--mono);font-size:10px;color:var(--muted);">first · ${new Date(f.created_at).toISOString().slice(0,10)}</span><br>${safe(f.text)} <a href="${fUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a></div>` : ''}
-        ${l ? `<div class="th-text"><span style="font-family:var(--mono);font-size:10px;color:var(--muted);">last · ${new Date(l.created_at).toISOString().slice(0,10)}</span><br>${safe(l.text)} <a href="${lUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a></div>` : ''}
+        ${f ? `<div class="th-text" style="margin-bottom:6px;"><span style="font-family:var(--mono);font-size:10px;color:var(--muted);">first · ${new Date(f.created_at).toISOString().slice(0,10)}</span><br>${safe(f.text)} <a href="${fUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a> ${markBtnHTML(f.id)}</div>` : ''}
+        ${l ? `<div class="th-text"><span style="font-family:var(--mono);font-size:10px;color:var(--muted);">last · ${new Date(l.created_at).toISOString().slice(0,10)}</span><br>${safe(l.text)} <a href="${lUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted);">open →</a> ${markBtnHTML(l.id)}</div>` : ''}
       </div>`;
     }).join('');
   }
@@ -5215,6 +5369,7 @@ const ui = (() => {
         <div class="ct-meta">
           <span>${dt}</span><span>♥ ${t.fav.toLocaleString()}</span><span>↻ ${t.rt.toLocaleString()}</span>
           <a href="${url}" target="_blank" rel="noopener">open →</a>
+          ${markBtnHTML(t.id)}
         </div>
       </div>`;
     }).join('');
@@ -5324,7 +5479,7 @@ const ui = (() => {
         return `<div class="tt-node" style="margin-left:${Math.min(d.depth, 6) * 18}px;">
           <span class="tt-bullet">↳</span>
           <span class="tt-text">${safe(d.text)}</span>
-          <span class="tt-meta">${dt}${d.fav || d.rt ? ` · ♥${d.fav}/↻${d.rt}` : ''} · <a href="${url}" target="_blank" rel="noopener">↗</a></span>
+          <span class="tt-meta">${dt}${d.fav || d.rt ? ` · ♥${d.fav}/↻${d.rt}` : ''} · <a href="${url}" target="_blank" rel="noopener">↗</a> ${markBtnHTML(d.id)}</span>
         </div>`;
       }).join('');
       return `<div class="thread-tree">${head}${rootHTML}${descHTML}</div>`;
@@ -5780,6 +5935,12 @@ const ui = (() => {
   // In-memory selection set keyed by 'scope:id'.
   const selectionSet = new Set();
 
+  // Compact 'mark for deletion' button used on every tweet card site-wide.
+  function markBtnHTML(tweetId) {
+    const isSel = selectionSet.has('tweet:' + tweetId);
+    return `<button type="button" class="tweet-mark-btn${isSel ? ' is-selected' : ''}" data-mark-tweet-id="${safe(tweetId)}" title="${isSel ? 'Unmark' : 'Mark for deletion'}">${isSel ? '✓' : '+'}</button>`;
+  }
+
   function syncCheckboxes(container) {
     container.querySelectorAll('.card-item').forEach(card => {
       const key = card.dataset.key;
@@ -5791,15 +5952,53 @@ const ui = (() => {
   }
   function refreshSelectionBar() {
     const bar = $('selection-bar');
-    if (!bar) return;
     const n = selectionSet.size;
-    bar.classList.toggle('is-active', n > 0);
-    const counter = $('sel-count-n');
-    if (counter) counter.textContent = n.toLocaleString();
-    const openBtn = $('sel-open');
-    if (openBtn) openBtn.textContent = n === 1 ? 'Open 1 tab' : `Open ${n} tabs`;
-    const markBtn = $('sel-mark');
-    if (markBtn) markBtn.textContent = n === 1 ? 'Mark 1 deleted' : `Mark ${n} deleted`;
+    if (bar) {
+      bar.classList.toggle('is-active', n > 0);
+      const counter = $('sel-count-n');
+      if (counter) counter.textContent = n.toLocaleString();
+      const openBtn = $('sel-open');
+      if (openBtn) openBtn.textContent = n === 1 ? 'Open 1 tab' : `Open ${n} tabs`;
+      const markBtn = $('sel-mark');
+      if (markBtn) markBtn.textContent = n === 1 ? 'Mark 1 deleted' : `Mark ${n} deleted`;
+    }
+    // Update the global floating chip too
+    const gchip = $('global-sel-chip');
+    const gcnt = $('global-sel-count');
+    if (gchip) gchip.classList.toggle('is-active', n > 0);
+    if (gcnt) gcnt.textContent = n.toLocaleString();
+  }
+
+  // Document-level handler for the small mark-for-deletion button used
+  // on every tweet rendering across the app.
+  function bindMarkButtons() {
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-mark-tweet-id]');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.markTweetId;
+      const key = 'tweet:' + id;
+      if (selectionSet.has(key)) selectionSet.delete(key);
+      else selectionSet.add(key);
+      // Reflect on every instance of this button across the DOM
+      document.querySelectorAll(`[data-mark-tweet-id="${CSS.escape(id)}"]`).forEach(b => {
+        const sel = selectionSet.has(key);
+        b.classList.toggle('is-selected', sel);
+        b.textContent = sel ? '✓' : '+';
+        b.title = sel ? 'Unmark' : 'Mark for deletion';
+      });
+      // Sync the full-blown search-result cards if visible
+      const sr = $('search-results');
+      if (sr) syncCheckboxes(sr);
+      refreshSelectionBar();
+    });
+    // Global chip → jump to Selection tab
+    $('global-sel-chip')?.addEventListener('click', () => {
+      // Only valid when summary screen is up (post-indexing).
+      if (!document.getElementById('screen-summary').classList.contains('active')) return;
+      document.querySelector('#screen-summary .tab[data-tab="tab-selection"]')?.click();
+    });
   }
   function selectionFromKeys() {
     const items = [];
@@ -6067,7 +6266,7 @@ const ui = (() => {
         return `<div class="tt-node" style="margin-left:${Math.min(d.depth, 6) * 18}px;">
           <span class="tt-bullet">↳</span>
           <span class="tt-text">${safe(d.text)}</span>
-          <span class="tt-meta">${ddt}${d.fav || d.rt ? ` · ♥${d.fav}/↻${d.rt}` : ''} · <a href="${url}" target="_blank" rel="noopener">↗</a></span>
+          <span class="tt-meta">${ddt}${d.fav || d.rt ? ` · ♥${d.fav}/↻${d.rt}` : ''} · <a href="${url}" target="_blank" rel="noopener">↗</a> ${markBtnHTML(d.id)}</span>
         </div>`;
       }).join('');
       host.innerHTML = `<div class="thread-expanded">
@@ -6077,6 +6276,7 @@ const ui = (() => {
           <span>${dt}</span>
           ${root ? `<span>♥ ${root.fav} · ↻ ${root.rt}</span>` : ''}
           <a href="${rootUrl}" target="_blank" rel="noopener" class="tt-open">open on X →</a>
+          ${markBtnHTML(rootId)}
         </div>
         <div class="tt-node tt-root">${root ? safe(root.text) : '— root not found —'}</div>
         ${descHTML}
@@ -6149,6 +6349,7 @@ const ui = (() => {
           <span>${m.isReplyTo ? 'reply' : 'mention'}</span>
           <span>♥ ${m.fav.toLocaleString()} · ↻ ${m.rt.toLocaleString()}</span>
           <a href="${url}" target="_blank" rel="noopener">open on X →</a>
+          ${markBtnHTML(m.id)}
         </div>
         <div class="convo-text">${safe(m.text)}</div>
       </div>`;
@@ -6411,7 +6612,7 @@ const ui = (() => {
 
     const state = {
       q: '', scope: 'tweets',
-      chips: { originals: false, replies: false, retweets: false, media: false },
+      chips: { originals: false, replies: false, retweets: false, media: false, link: false },
       filters: { since: null, until: null, minFav: 0, minRT: 0, lang: [], has: [], from: [], exclude: [] },
       near: false
     };
@@ -6781,7 +6982,8 @@ const ui = (() => {
   }
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
-           bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer };
+           bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer,
+           bindMarkButtons };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -6882,6 +7084,7 @@ async function bootstrap() {
   ui.refreshXapiButtonVisibility();
   ui.bindConvoModal();
   ui.bindThreadsExplorer();
+  ui.bindMarkButtons();
   // Convo modal's 'Open in Search' link delegation
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-convo-search]');
