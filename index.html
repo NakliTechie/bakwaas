@@ -3269,25 +3269,44 @@ const search = (() => {
       if (scope === 'likes' || scope === 'both') {
         for (const hit of likeIndex.search(text)) items.push({ ...hit, __scope: 'like', __score: hit.score });
       }
-    } else {
-      // No text — pull every doc from MiniSearch's stored fields, let filters do the work.
-      if (scope === 'tweets' || scope === 'both') {
-        const all = tweetIndex.search(/./, { fuzzy: false, prefix: false }).slice(0, 0);
-        // MiniSearch needs a query — emulate "all" via match-all by enumerating its stored docs.
-        // It doesn't expose a public iterator, so we walk the IndexedDB cursor instead.
-        const recs = await cursorAll('tweets');
-        for (const t of recs) items.push({ ...t, __scope: 'tweet', __score: 0 });
-        void all;
-      }
-      if (scope === 'likes' || scope === 'both') {
-        const recs = await cursorAll('likes');
-        for (const t of recs) items.push({ ...t, __scope: 'like', __score: 0 });
-      }
+      items.sort((a, b) => b.__score - a.__score);
+      const filtered = items.filter(it => applyFilters(it, eff, chips || {}));
+      return { items: filtered.slice(0, limit), total: filtered.length };
     }
-    if (text) items.sort((a, b) => b.__score - a.__score);
-    else items.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-    const filtered = items.filter(it => applyFilters(it, eff, chips || {}));
-    return { items: filtered.slice(0, limit), total: filtered.length };
+    // No text — stream the IndexedDB cursor and apply filters in-flight so we
+    // don't load 200k records into memory. Uses created_at index + bounded range
+    // when a date filter is set; full scan otherwise. Caps to a generous-but-bounded
+    // pool, then sorts by recency.
+    const SCAN_POOL = Math.max(limit * 5, 1000);
+    const matched = [];
+    const scanStore = async (storeName, scopeTag) => {
+      const db = await store.open();
+      await new Promise((res, rej) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const obj = tx.objectStore(storeName);
+        let cursorSrc;
+        if (storeName === 'tweets' && (eff.since !== null || eff.until !== null)) {
+          const lo = eff.since ?? -Infinity, hi = eff.until ?? Infinity;
+          const range = (lo === -Infinity && hi === Infinity) ? null : IDBKeyRange.bound(lo, hi);
+          cursorSrc = range ? obj.index('created_at').openCursor(range) : obj.openCursor();
+        } else {
+          cursorSrc = obj.openCursor();
+        }
+        cursorSrc.onsuccess = (e) => {
+          const c = e.target.result;
+          if (!c) return res();
+          const tagged = { ...c.value, __scope: scopeTag, __score: 0 };
+          if (applyFilters(tagged, eff, chips || {})) matched.push(tagged);
+          if (matched.length >= SCAN_POOL) return res();
+          c.continue();
+        };
+        cursorSrc.onerror = () => rej(cursorSrc.error);
+      });
+    };
+    if (scope === 'tweets' || scope === 'both') await scanStore('tweets', 'tweet');
+    if (scope === 'likes' || scope === 'both') await scanStore('likes', 'like');
+    matched.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    return { items: matched.slice(0, limit), total: matched.length };
   }
 
   function invalidateCaches() {
