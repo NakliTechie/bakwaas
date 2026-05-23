@@ -693,7 +693,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.12 · 4 providers</span>
+      <span class="phase" id="phase-tag">v0.13 · big archives</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -1860,6 +1860,8 @@ const archive = (() => {
 // ── stats (aggregates + cache) ──────────────────────────────────────────────
 const stats = (() => {
   let inflightAgg = null;
+  let progressFn = null;
+  function setProgressHandler(fn) { progressFn = fn; }
 
   function bumpMap(map, key, n = 1) {
     if (!key) return;
@@ -1883,6 +1885,8 @@ const stats = (() => {
         hourDow: new Array(7 * 24).fill(0),
         engBuckets: { fav: new Array(8).fill(0), rt: new Array(8).fill(0) }
       };
+      let scanCount = 0;
+      const PROGRESS_EVERY = 5000;
       await new Promise((res, rej) => {
         const tx = db.transaction('tweets', 'readonly');
         const cur = tx.objectStore('tweets').openCursor();
@@ -1891,6 +1895,9 @@ const stats = (() => {
           if (!c) return res();
           const t = c.value;
           acc.total++;
+          if (++scanCount % PROGRESS_EVERY === 0 && progressFn) {
+            try { progressFn(scanCount); } catch {}
+          }
           if (t.is_reply) acc.replies++;
           if (t.is_retweet) acc.retweets++;
           if (t.in_reply_to_user_id) bumpMap(acc.repliedTo, t.in_reply_to_user_id);
@@ -1949,7 +1956,7 @@ const stats = (() => {
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
   }
   function invalidate() { /* meta cache wiped automatically by store.wipe() */ }
-  return { aggregate, invalidate };
+  return { aggregate, invalidate, setProgressHandler };
 })();
 
 // ── topics (hashtag co-occurrence clustering) ───────────────────────────────
@@ -2140,6 +2147,8 @@ const patterns = (() => {
 
   let inflight = null;
 
+  let progressFn = null; // patterns.setProgressHandler(fn)
+  function setProgressHandler(fn) { progressFn = fn; }
   async function aggregate() {
     if (inflight) return inflight;
     inflight = (async () => {
@@ -2200,6 +2209,8 @@ const patterns = (() => {
       const piiCandidates = [];                // [{ id, text, types, date }] — capped
       const PII_CAP = 50;
 
+      let scanCount = 0;
+      const PROGRESS_EVERY = 5000;
       await new Promise((res, rej) => {
         const tx = db.transaction('tweets', 'readonly');
         const cur = tx.objectStore('tweets').openCursor();
@@ -2208,6 +2219,9 @@ const patterns = (() => {
           if (!c) return res();
           const t = c.value;
           ownIds.add(t.id);
+          if (++scanCount % PROGRESS_EVERY === 0 && progressFn) {
+            try { progressFn(scanCount); } catch {}
+          }
 
           // self-replies (will be resolved against ownIds after pass)
           if (t.in_reply_to_status_id) {
@@ -2882,7 +2896,7 @@ const patterns = (() => {
     });
   }
 
-  return { aggregate, anniversary, byDate };
+  return { aggregate, anniversary, byDate, setProgressHandler };
 })();
 
 // ── search (MiniSearch) ─────────────────────────────────────────────────────
@@ -3117,8 +3131,12 @@ const indexer = (() => {
       for (let i = startFileIdx; i < tweetFiles.length; i++) {
         const { path, read, providerOverride } = tweetFiles[i];
         const fileProvider = providerOverride || provider;
-        onPhase?.(`Parsing ${path}…`);
+        onPhase?.(`Reading ${path}…`);
         const text = await read();
+        const sizeMB = (text.length / (1024 * 1024)).toFixed(1);
+        onPhase?.(`Parsing ${path} (${sizeMB} MB) — this may freeze for a moment…`);
+        // Yield to give the phase label a paint cycle before the synchronous parse blocks.
+        await new Promise(r => setTimeout(r, 16));
         let arr;
         try { arr = parser.parseTweetsBatch(fileProvider, text); }
         catch (e) { console.error(`Parse failed for ${path}:`, e); continue; }
@@ -3143,8 +3161,11 @@ const indexer = (() => {
     // ── likes phase ─────────────────────────────────────────────────────────
     let likesIndexed = startLikeOffset || 0;
     if (likeFile) {
-      onPhase?.(`Parsing ${likeFile.path}…`);
+      onPhase?.(`Reading ${likeFile.path}…`);
       const text = await likeFile.read();
+      const sizeMB = (text.length / (1024 * 1024)).toFixed(1);
+      onPhase?.(`Parsing ${likeFile.path} (${sizeMB} MB)…`);
+      await new Promise(r => setTimeout(r, 16));
       let arr = [];
       try { arr = parser.parseLikesBatch(provider, text, 0); }
       catch (e) { console.warn('likes parse failed:', e); arr = []; }
@@ -3320,8 +3341,13 @@ const ui = (() => {
   async function renderCharts() {
     const host = $('stats-charts');
     if (!host) return;
-    host.innerHTML = '<div class="stats-loading">Computing detailed stats — one-time pass over the index…</div>';
+    host.innerHTML = '<div class="stats-loading"><div>Computing detailed stats — one-time pass over the index…</div><div id="stats-progress" style="margin-top:6px;font-family:var(--mono);font-size:11px;opacity:.7;"></div></div>';
+    stats.setProgressHandler((n) => {
+      const el = $('stats-progress');
+      if (el) el.textContent = `processed ${n.toLocaleString()} tweets…`;
+    });
     const s = await stats.aggregate();
+    stats.setProgressHandler(null);
     host.innerHTML = `
       <div class="charts-grid">
         <div class="chart-card">
@@ -3461,9 +3487,14 @@ const ui = (() => {
     patternsRendering = true;
     const host = $('patterns-host');
     if (!host) { patternsRendering = false; return; }
-    host.innerHTML = '<div class="stats-loading">Computing patterns — one-time pass over your archive…</div>';
+    host.innerHTML = '<div class="stats-loading"><div>Computing patterns — one-time pass over your archive…</div><div id="patterns-progress" style="margin-top:6px;font-family:var(--mono);font-size:11px;opacity:.7;"></div></div>';
+    patterns.setProgressHandler((n) => {
+      const el = $('patterns-progress');
+      if (el) el.textContent = `processed ${n.toLocaleString()} tweets…`;
+    });
     try {
       const p = await patterns.aggregate();
+      patterns.setProgressHandler(null);
       host.innerHTML = `
         <div class="patterns-section">
           <h2>Activity rhythm</h2>
