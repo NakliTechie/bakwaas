@@ -18,7 +18,7 @@
   frame-ancestors 'none';
   object-src 'none';
 ">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%237d8aef'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='system-ui,sans-serif' font-weight='700' font-size='14' fill='%230d1117'%3EBK%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d8482a'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='system-ui,sans-serif' font-weight='700' font-size='14' fill='%23f0d090'%3EBK%3C/text%3E%3C/svg%3E">
 <!-- Google Analytics 4 — only telemetry in the app. Counts page visits + tab
      opens; never your archive content. See README + help modal for details. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-E5XCNWFXNC"></script>
@@ -31,29 +31,29 @@
 <title>Bakwaas — explore your Twitter archive</title>
 <style>
 :root {
-  --bg: #0d1117;
-  --panel: #161b22;
-  --panel-2: #1c232c;
-  --border: #2a323d;
-  --text: #e6e8eb;
-  --muted: #8b95a6;
-  --accent: #7d8aef;
-  --accent-2: #5566d8;
-  --danger: #ef6b6b;
-  --ok: #6bdc8e;
-  --warn: #ffc857;
+  --bg: #1a0e08;
+  --panel: #261408;
+  --panel-2: #2a1a0a;
+  --border: #3e2814;
+  --text: #f0d090;
+  --muted: #9a8060;
+  --accent: #4a6aa0;
+  --accent-2: #d8482a;
+  --danger: #e05838;
+  --ok: #8a9a3a;
+  --warn: #d89030;
   --radius: 12px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f5f6fa;
+    --bg: #f9f4ee;
     --panel: #ffffff;
-    --panel-2: #eef0f5;
-    --border: #d6dae3;
-    --text: #14181d;
-    --muted: #5a6473;
+    --panel-2: #f2ebe0;
+    --border: #d8c8b0;
+    --text: #2a1808;
+    --muted: #7a6050;
   }
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -95,7 +95,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 #screen-drop .drop h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
 #screen-drop .drop p { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.6; }
 #screen-drop .drop .file-btn {
-  display: inline-block; background: var(--accent); color: #0d1117;
+  display: inline-block; background: var(--accent); color: #fff;
   border: none; border-radius: 8px; padding: 10px 18px; font-weight: 600;
 }
 #screen-drop .drop .file-btn:hover { filter: brightness(1.08); }
@@ -172,7 +172,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 #screen-summary .stat .value { font-size: 22px; font-weight: 700; font-family: var(--mono); }
 #screen-summary .actions { display: flex; gap: 12px; flex-wrap: wrap; }
 #screen-summary .actions .btn {
-  background: var(--accent); color: #0d1117; border: none; border-radius: 8px;
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
   padding: 10px 18px; font-weight: 600; font-size: 14px;
 }
 #screen-summary .actions .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
@@ -228,7 +228,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   padding: 6px 14px; font-size: 12px; border-radius: 999px;
   transition: background .15s, color .15s;
 }
-.search-row .scope button.active { background: var(--accent); color: #0d1117; font-weight: 600; }
+.search-row .scope button.active { background: var(--accent); color: #fff; font-weight: 600; }
 .search-row input[type=search] {
   flex: 1; min-width: 240px;
   background: var(--panel-2); color: var(--text);
@@ -245,7 +245,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   transition: background .15s, color .15s, border-color .15s;
 }
 .chips .chip:hover { color: var(--text); border-color: var(--text); }
-.chips .chip.active { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.chips .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
 
 .filter-bar {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -270,7 +270,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .filter-bar .near-toggle:hover { border-color: var(--accent); }
 .filter-bar .near-toggle input { margin: 0; cursor: pointer; }
-.filter-bar .near-toggle:has(input:checked) { background: var(--accent); color: #0d1117; border-color: var(--accent); }
+.filter-bar .near-toggle:has(input:checked) { background: var(--accent); color: #fff; border-color: var(--accent); }
 .filter-bar button {
   background: transparent; color: var(--muted);
   border: 1px solid var(--border); border-radius: 6px;
@@ -303,7 +303,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   transition: color .15s, border-color .15s, background .15s;
 }
 .preset-bar .preset:hover { color: var(--text); border-color: var(--text); }
-.preset-bar .preset.active { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.preset-bar .preset.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
 
 /* Scrubber — dual-thumb range picker over a tweets-per-month histogram. */
 .scrubber-wrap {
@@ -358,6 +358,39 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .card-item .card-actions a:hover { border-color: var(--accent); color: var(--accent); }
 .results-empty { padding: 32px 12px; text-align: center; color: var(--muted); font-size: 13px; }
 .results-more-wrap { display: flex; justify-content: center; margin-top: 14px; padding: 8px 0; }
+/* card tags */
+.card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.card-tag { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px; font-size: 11px; color: var(--muted); font-family: var(--mono); cursor: pointer; }
+.card-tag:hover { border-color: var(--danger); color: var(--danger); }
+.btn-tag { background: transparent; border: 1px dashed var(--border); border-radius: 6px; padding: 3px 7px; font-size: 11px; color: var(--muted); cursor: pointer; }
+.btn-tag:hover { border-color: var(--accent); color: var(--accent); }
+/* tag popup */
+.tag-popup { position: fixed; z-index: 900; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.4); min-width: 220px; display: none; }
+.tag-popup.is-open { display: block; }
+.tag-popup-heading { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.tag-popup-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 4px; }
+.tag-popup-pill { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; font-size: 11px; cursor: pointer; color: var(--text); }
+.tag-popup-pill:hover { border-color: var(--accent); color: var(--accent); }
+.tag-popup-pill.is-applied { border-color: var(--ok); color: var(--ok); }
+.tag-popup-row { display: flex; gap: 4px; }
+.tag-popup-row input { flex: 1; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--text); outline: none; font-family: inherit; }
+.tag-popup-row input:focus { border-color: var(--accent); }
+.tag-popup-row button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+/* saved selections */
+.saved-selections { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 14px; }
+.saved-sel-heading { font-size: 13px; font-weight: 600; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; }
+.saved-sel-empty { font-size: 13px; color: var(--muted); padding: 8px 0; }
+.saved-sel-list { display: flex; flex-direction: column; gap: 6px; }
+.saved-sel-row { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.saved-sel-name { font-weight: 600; font-size: 13px; flex: 1; }
+.saved-sel-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.saved-sel-actions { display: flex; gap: 6px; }
+.saved-sel-actions button { font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text); }
+.saved-sel-actions button:hover { border-color: var(--accent); }
+.saved-sel-actions .btn-del-sel:hover { border-color: var(--danger); color: var(--danger); }
+/* top list drill */
+.top-row[data-drill-q], .top-row[data-drill-min-fav], .top-row[data-drill-min-rt] { cursor: pointer; transition: background .1s; }
+.top-row[data-drill-q]:hover, .top-row[data-drill-min-fav]:hover, .top-row[data-drill-min-rt]:hover { background: var(--panel-2); border-radius: 4px; }
 .results-more-btn {
   background: var(--panel-2); color: var(--accent);
   border: 1px solid var(--border); border-radius: 999px;
@@ -442,7 +475,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   border: 1px solid var(--border); border-radius: 999px;
   padding: 2px 10px; font-size: 11px; font-family: var(--mono);
 }
-.cluster-card .tag-pill.is-lead { background: var(--accent); color: #0d1117; border-color: var(--accent); }
+.cluster-card .tag-pill.is-lead { background: var(--accent); color: #fff; border-color: var(--accent); }
 .cluster-card .cluster-samples { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
 .cluster-card .cluster-sample {
   font-size: 12px; color: var(--muted); line-height: 1.45;
@@ -471,7 +504,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .card-item .card-select input { position: absolute; opacity: 0; cursor: pointer; }
 .card-item .card-select:hover { border-color: var(--accent); }
 .card-item.is-selected .card-select { background: var(--accent); border-color: var(--accent); }
-.card-item.is-selected .card-select::after { content: '✓'; color: #0d1117; font-size: 13px; font-weight: 700; line-height: 1; }
+.card-item.is-selected .card-select::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 700; line-height: 1; }
 .card-item.is-opened { border-color: var(--warn); }
 .card-item.is-opened .card-text::after {
   content: ' · awaiting confirmation';
@@ -505,7 +538,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   border: 1px solid var(--border); border-radius: 6px;
   padding: 6px 12px; font-size: 12px;
 }
-.selection-bar button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.selection-bar button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
 .selection-bar button.primary:hover { filter: brightness(1.08); }
 .selection-bar button.danger:hover { border-color: var(--danger); color: var(--danger); }
 .selection-bar button:hover { border-color: var(--text); }
@@ -542,7 +575,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   border: 1px solid var(--border); border-radius: 8px;
   padding: 8px 16px; font-size: 14px;
 }
-.modal-card button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.modal-card button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
 .modal-card button.primary:hover { filter: brightness(1.08); }
 
 /* Help modal — richer than the confirm modal, holds copy + a tour. */
@@ -615,7 +648,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   border: 1px solid var(--border); border-radius: 8px;
   padding: 8px 14px; font-size: 13px;
 }
-.xapi-actions button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.xapi-actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
 .xapi-actions button.primary:hover { filter: brightness(1.08); }
 .xapi-actions button.danger:hover { border-color: var(--danger); color: var(--danger); }
 .xapi-actions button:hover { border-color: var(--text); }
@@ -745,7 +778,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .wrapped-controls button:hover { border-color: var(--accent); color: var(--accent); }
 
 .wrapped-card {
-  background: linear-gradient(160deg, #0d1117 0%, #1a1f3a 60%, #2a2050 100%);
+  background: linear-gradient(160deg, #1a0e08 0%, #2a1208 60%, #3a1c0a 100%);
   border: 1px solid var(--border); border-radius: 18px;
   padding: 36px 40px;
   position: relative; overflow: hidden;
@@ -753,13 +786,13 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 .wrapped-card::before {
   content: ''; position: absolute; top: -120px; right: -120px;
   width: 300px; height: 300px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(125,138,239,0.35), transparent 70%);
+  background: radial-gradient(circle, rgba(216,72,42,0.25), transparent 70%);
   pointer-events: none;
 }
 .wrapped-card::after {
   content: ''; position: absolute; bottom: -100px; left: -100px;
   width: 260px; height: 260px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(108,123,191,0.22), transparent 70%);
+  background: radial-gradient(circle, rgba(74,106,160,0.18), transparent 70%);
   pointer-events: none;
 }
 .wrapped-card .wr-header {
@@ -788,7 +821,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .wrapped-card .wr-tile.wr-era .wr-value { color: var(--accent); }
 .wrapped-card .wr-archetype {
-  background: rgba(125,138,239,0.18); border: 1px solid rgba(125,138,239,0.3);
+  background: rgba(74,106,160,0.25); border: 1px solid rgba(74,106,160,0.4);
   color: #fff; border-radius: 999px; padding: 4px 12px; font-size: 12px;
   display: inline-block; margin-top: 6px; font-family: var(--mono);
 }
@@ -872,17 +905,17 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .tweet-mark-btn:hover { color: var(--accent); border-color: var(--accent); }
 .tweet-mark-btn.is-selected {
-  background: var(--accent); color: #0d1117; border-color: var(--accent);
+  background: var(--accent); color: #fff; border-color: var(--accent);
 }
 .tweet-mark-btn.is-selected:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
 /* Floating 'N selected' chip — visible in any tab when selection is non-empty */
 .global-sel-chip {
   position: fixed; bottom: 60px; right: 16px;
-  background: var(--accent); color: #0d1117;
+  background: var(--accent); color: #fff;
   border-radius: 999px; padding: 8px 16px;
   font-family: var(--mono); font-size: 12px; font-weight: 700;
-  box-shadow: 0 6px 20px rgba(125,138,239,0.4);
+  box-shadow: 0 6px 20px rgba(74,106,160,0.4);
   display: none; align-items: center; gap: 10px;
   z-index: 20; cursor: pointer;
 }
@@ -1005,7 +1038,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   padding: 6px 16px; font-size: 12px; font-family: var(--mono);
   transition: background .15s;
 }
-.thread-explorer-btn:hover { background: var(--accent); color: #0d1117; }
+.thread-explorer-btn:hover { background: var(--accent); color: #fff; }
 
 .threads-explorer-controls {
   display: flex; align-items: center; gap: 12px;
@@ -1199,6 +1232,9 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
             <label for="topics-threshold">Min co-occurrences:</label>
             <input type="range" id="topics-threshold" min="2" max="20" step="1" value="3" />
             <span id="topics-threshold-val" style="font-family:var(--mono);">3</span>
+            <label style="margin-left:14px;" title="Also scan hashtags found in liked-tweet text">
+              <input type="checkbox" id="topics-include-likes"> Include likes text
+            </label>
           </div>
         </div>
         <div id="topics-host">
@@ -1228,6 +1264,8 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <label>Min ♥:</label><input type="number" id="search-min-fav" min="0" value="0" />
           <label>Min ↻:</label><input type="number" id="search-min-rt" min="0" value="0" />
           <label>Lang:</label><select id="search-lang"><option value="">any</option></select>
+          <label>Tag:</label><input type="text" id="search-tag-filter" placeholder="any" autocomplete="off" list="search-tag-datalist" style="width:90px;" />
+          <datalist id="search-tag-datalist"></datalist>
           <label class="near-toggle" title="Catches edit-distance variants — 'amrika' picks up 'america' etc."><input type="checkbox" id="search-near"> Near match</label>
           <button type="button" id="search-filter-reset">Reset</button>
         </div>
@@ -1260,6 +1298,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <span class="sel-count"><span id="sel-count-n">0</span> selected</span>
           <span class="sel-spacer"></span>
           <button type="button" id="sel-select-all-matches">Select all matches</button>
+          <button type="button" id="sel-save">Save as…</button>
           <button type="button" id="sel-clear">Clear</button>
           <button type="button" id="sel-xapi-delete" class="danger" style="display:none;">Delete via X API</button>
           <button type="button" id="sel-open" class="primary">Open all tabs</button>
@@ -1279,6 +1318,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <div id="tray-host">
           <div class="empty-sel">Items you've opened for deletion show up here, plus everything you've marked deleted. Use the Search tab to add things.</div>
         </div>
+        <div class="saved-selections" id="saved-selections-host" style="display:none;"></div>
       </div>
     </div>
   </section>
@@ -1336,6 +1376,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
       <div class="help-foot">
         <a href="https://github.com/NakliTechie/bakwaas" target="_blank" rel="noopener">⌬ Source on GitHub</a>
         <a href="https://naklitechie.github.io/" target="_blank" rel="noopener">⬅ More NakliTechie projects</a>
+        <a href="https://github.com/NakliTechie/rangrez" target="_blank" rel="noopener">Palette: Rangrez / SHEESHAM</a>
       </div>
     </div>
   </div>
@@ -1412,6 +1453,16 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
         <button type="button" id="modal-cancel">Cancel</button>
         <button type="button" id="modal-ok" class="primary">OK</button>
       </div>
+    </div>
+  </div>
+
+  <!-- tag popup — singleton, positioned by JS -->
+  <div class="tag-popup" id="tag-popup" role="dialog" aria-label="Add tags">
+    <div class="tag-popup-heading">Tags — click to toggle, type to add new</div>
+    <div class="tag-popup-pills" id="tag-popup-pills"></div>
+    <div class="tag-popup-row">
+      <input type="text" id="tag-popup-input" placeholder="New tag…" autocomplete="off" maxlength="40" />
+      <button type="button" id="tag-popup-add">Add</button>
     </div>
   </div>
 
@@ -1747,6 +1798,60 @@ const deletion = (() => {
     };
   }
   return { tweetDeleteUrl, likeDeleteUrl, markOpened, markDeleted, undo, listPending, listDeleted, status };
+})();
+
+// ── tags (per-card labels stored on tweet/like records) ─────────────────────
+const tags = (() => {
+  let knownTagsCache = null;
+
+  async function getDistinct() {
+    if (knownTagsCache) return knownTagsCache;
+    const cached = await store.metaGet('known_tags');
+    if (cached && Array.isArray(cached)) { knownTagsCache = cached; return cached; }
+    return await _rebuild();
+  }
+
+  async function _rebuild() {
+    const seen = new Set();
+    const db = await store.open();
+    const scanStore = (name) => new Promise((res, rej) => {
+      const tx = db.transaction(name, 'readonly');
+      const cur = tx.objectStore(name).openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res();
+        for (const t of (c.value.tags || [])) seen.add(t);
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+    await scanStore('tweets');
+    await scanStore('likes');
+    const list = [...seen].sort();
+    knownTagsCache = list;
+    try { await store.metaSet('known_tags', list); } catch {}
+    return list;
+  }
+
+  async function setTags(scope, id, newTags) {
+    const storeName = scope === 'tweet' ? 'tweets' : 'likes';
+    const keyField = scope === 'tweet' ? 'id' : 'tweet_id';
+    const rec = await store.getById(storeName, id);
+    if (!rec) return;
+    rec.tags = [...new Set(newTags.map(t => t.trim()).filter(Boolean))];
+    const db = await store.open();
+    await new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).put(rec);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+    // Invalidate known-tags cache; rebuild lazily.
+    knownTagsCache = null;
+    try { await store.metaSet('known_tags', null); } catch {}
+  }
+
+  return { getDistinct, setTags };
 })();
 
 // ── xapi (BYOK X v2 API delete via OAuth 1.0a) ──────────────────────────────
@@ -2550,7 +2655,7 @@ const stats = (() => {
           }
           if (t.is_reply) acc.replies++;
           if (t.is_retweet) acc.retweets++;
-          if (t.in_reply_to_user_id) bumpMap(acc.repliedTo, t.in_reply_to_user_id);
+          if (t.in_reply_to_screen_name) bumpMap(acc.repliedTo, t.in_reply_to_screen_name);
           if (t.lang) bumpMap(acc.languages, t.lang);
           if (t.source) bumpMap(acc.sources, t.source);
           for (const h of (t.hashtags || [])) bumpMap(acc.hashtags, h.toLowerCase());
@@ -2573,6 +2678,24 @@ const stats = (() => {
 
       acc.originals = acc.total - acc.replies - acc.retweets;
 
+      // Scan likes for topLikedFrom: parse author handle from expanded_url.
+      const likedFrom = new Map();
+      await new Promise((res, rej) => {
+        const tx2 = db.transaction('likes', 'readonly');
+        const cur2 = tx2.objectStore('likes').openCursor();
+        cur2.onsuccess = (e) => {
+          const c = e.target.result;
+          if (!c) return res();
+          const l = c.value;
+          if (l.expanded_url) {
+            const m = l.expanded_url.match(/(?:twitter|x)\.com\/([^/?#]+)\/status\//);
+            if (m && m[1] && m[1] !== 'i') bumpMap(likedFrom, m[1]);
+          }
+          c.continue();
+        };
+        cur2.onerror = () => rej(cur2.error);
+      });
+
       const out = {
         version: SCHEMA_VERSION,
         total: acc.total, originals: acc.originals, replies: acc.replies, retweets: acc.retweets,
@@ -2582,6 +2705,7 @@ const stats = (() => {
         topSources: topN(acc.sources, 8),
         topLanguages: topN(acc.languages, 8),
         topRepliedTo: topN(acc.repliedTo, 20),
+        topLikedFrom: topN(likedFrom, 20),
         byDay: [...acc.byDay.entries()],
         hourDow: acc.hourDow,
         engBuckets: acc.engBuckets,
@@ -2630,7 +2754,7 @@ const stats = (() => {
         if (t.is_retweet) retweets++;
         if (t.lang) bumpMap(languages, t.lang);
         if (t.source) bumpMap(sources, t.source);
-        if (t.in_reply_to_user_id) bumpMap(repliedTo, t.in_reply_to_user_id);
+        if (t.in_reply_to_screen_name) bumpMap(repliedTo, t.in_reply_to_screen_name);
         for (const h of (t.hashtags || [])) bumpMap(hashtags, h.toLowerCase());
         for (const m of (t.mentions || [])) bumpMap(mentions, m);
         if (typeof t.created_at === 'number' && !Number.isNaN(t.created_at)) {
@@ -2663,19 +2787,50 @@ const topics = (() => {
   let cooccCache = null; // raw co-occurrence + tag counts, keyed by SCHEMA_VERSION
   let inflight = null;
 
-  async function buildCoocc() {
-    if (cooccCache) return cooccCache;
+  // English stopwords for TF-IDF fallback.
+  const STOPS = new Set(['a','an','the','is','are','was','were','be','been','being',
+    'have','has','had','do','does','did','will','would','could','should','may','might',
+    'shall','must','can','i','you','he','she','it','we','they','me','him','her','us','them',
+    'my','your','his','its','our','their','this','that','these','those','what','which',
+    'who','when','where','why','how','all','each','every','both','few','more','most',
+    'no','not','or','and','but','if','then','so','as','at','by','for','from','in',
+    'into','of','on','to','with','about','after','before','between','through','during',
+    'without','up','out','down','off','over','just','than','too','very','now','here',
+    'there','go','get','got','make','made','want','like','know','think','say','said',
+    'see','come','back','rt','via','re','amp','gt','lt','de','la','en','el','und','im',
+    'das','http','https','t','s','m','co','new','one','time','way','day','good','people',
+    'year','use','man','look','feel','need','thing','take','world','try','even','still',
+    'great','really','much','also','well','never','ever','only','another','every','always']);
+
+  function tokenizeText(text) {
+    return (text || '').toLowerCase()
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/@\w+/g, '')
+      .replace(/#\w+/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length >= 3 && !STOPS.has(t) && !/^\d+$/.test(t));
+  }
+
+  function invalidateCache() {
+    cooccCache = null;
+    inflight = null;
+  }
+
+  async function buildCoocc({ includeLikes = false } = {}) {
+    const cacheKey = includeLikes ? 'topics_coocc_likes' : 'topics_coocc';
+    if (cooccCache && cooccCache._key === cacheKey) return cooccCache;
     if (inflight) return inflight;
     inflight = (async () => {
-      const cached = await store.metaGet('topics_coocc');
+      const cached = await store.metaGet(cacheKey);
       if (cached && cached.version === SCHEMA_VERSION) {
-        cooccCache = cached;
-        return cached;
+        cooccCache = { ...cached, _key: cacheKey };
+        return cooccCache;
       }
       const db = await store.open();
       const tagCount = new Map();
-      const coocc = new Map();              // tag -> Map<otherTag, count>
-      const tagToTweetIds = new Map();      // tag -> array of tweet ids (capped at 50 for sampling)
+      const coocc = new Map();
+      const tagToTweetIds = new Map();
       const CAP = 50;
       await new Promise((res, rej) => {
         const tx = db.transaction('tweets', 'readonly');
@@ -2706,15 +2861,42 @@ const topics = (() => {
         };
         cur.onerror = () => rej(cur.error);
       });
-      // Reduce to plain arrays for storage.
+      // Optionally include hashtags extracted from liked-tweet text.
+      if (includeLikes) {
+        await new Promise((res, rej) => {
+          const tx = db.transaction('likes', 'readonly');
+          const cur = tx.objectStore('likes').openCursor();
+          cur.onsuccess = (e) => {
+            const c = e.target.result;
+            if (!c) return res();
+            const l = c.value;
+            const raw = l.text || l.full_text || '';
+            const tags = [];
+            for (const m of raw.matchAll(/#(\w+)/g)) tags.push(m[1].toLowerCase());
+            if (tags.length) {
+              const uniq = [...new Set(tags)];
+              for (const tag of uniq) tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+              for (let i = 0; i < uniq.length; i++) {
+                for (let j = i + 1; j < uniq.length; j++) {
+                  const [a, b] = uniq[i] < uniq[j] ? [uniq[i], uniq[j]] : [uniq[j], uniq[i]];
+                  if (!coocc.has(a)) coocc.set(a, new Map());
+                  coocc.get(a).set(b, (coocc.get(a).get(b) || 0) + 1);
+                }
+              }
+            }
+            c.continue();
+          };
+          cur.onerror = () => rej(cur.error);
+        });
+      }
       const tagCountArr = [...tagCount.entries()];
       const coArr = [];
       for (const [a, m] of coocc) for (const [b, n] of m) coArr.push([a, b, n]);
       const sampleArr = [...tagToTweetIds.entries()];
       const out = { version: SCHEMA_VERSION, tagCount: tagCountArr, coocc: coArr, samples: sampleArr, computed_at: Date.now() };
-      try { await store.metaSet('topics_coocc', out); } catch (e) { console.warn('topics cache write failed:', e); }
-      cooccCache = out;
-      return out;
+      try { await store.metaSet(cacheKey, out); } catch (e) { console.warn('topics cache write failed:', e); }
+      cooccCache = { ...out, _key: cacheKey };
+      return cooccCache;
     })().finally(() => { inflight = null; });
     return inflight;
   }
@@ -2726,7 +2908,6 @@ const topics = (() => {
     function find(x) {
       let r = x;
       while (parent.get(r) !== r) r = parent.get(r);
-      // path compression
       while (parent.get(x) !== r) { const next = parent.get(x); parent.set(x, r); x = next; }
       return r;
     }
@@ -2737,19 +2918,17 @@ const topics = (() => {
     return { find, union, parent };
   }
 
-  async function cluster({ threshold = 3, minTagCount = 3 } = {}) {
-    const data = await buildCoocc();
+  async function cluster({ threshold = 3, minTagCount = 3, includeLikes = false } = {}) {
+    const data = await buildCoocc({ includeLikes });
     const tagCount = new Map(data.tagCount);
     const samples = new Map(data.samples);
-    // Filter to tags with enough volume to be worth clustering.
     const eligible = [...tagCount.entries()].filter(([, n]) => n >= minTagCount).map(([t]) => t);
     const eligibleSet = new Set(eligible);
-    if (!eligible.length) return [];
+    if (!eligible.length) return { clusters: [], eligibleCount: 0 };
     const uf = unionFind(eligible);
     for (const [a, b, n] of data.coocc) {
       if (n >= threshold && eligibleSet.has(a) && eligibleSet.has(b)) uf.union(a, b);
     }
-    // Bucket by root.
     const groups = new Map();
     for (const tag of eligible) {
       const r = uf.find(tag);
@@ -2759,11 +2938,88 @@ const topics = (() => {
       g.size += tagCount.get(tag) || 0;
       for (const id of (samples.get(tag) || [])) g.sampleIds.add(id);
     }
-    // Sort each cluster's tags by freq, sort clusters by total size desc.
     const clusters = [...groups.values()].map(g => ({
       tags: g.tags.sort((a, b) => (tagCount.get(b) || 0) - (tagCount.get(a) || 0)),
       size: g.size,
       sampleIds: [...g.sampleIds].slice(0, 50)
+    }));
+    clusters.sort((a, b) => b.size - a.size);
+    return { clusters, eligibleCount: eligible.length };
+  }
+
+  async function tfidfClusters({ maxTokens = 50, minDocFreq = 3, threshold = 3 } = {}) {
+    const db = await store.open();
+    const docFreq = new Map();
+    const docList = [];
+    let N = 0;
+    await new Promise((res, rej) => {
+      const tx = db.transaction('tweets', 'readonly');
+      const cur = tx.objectStore('tweets').openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c) return res();
+        const t = c.value;
+        N++;
+        const tokens = tokenizeText(t.text || '');
+        const uniq = [...new Set(tokens)];
+        for (const tok of uniq) docFreq.set(tok, (docFreq.get(tok) || 0) + 1);
+        docList.push({ id: t.id, tokens: uniq });
+        c.continue();
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+    if (!N) return [];
+    // Score tokens by sqrt(df) * idf — balances frequency with distinctiveness.
+    const scored = [...docFreq.entries()]
+      .filter(([, df]) => df >= minDocFreq && df < N * 0.6)
+      .map(([tok, df]) => ({ tok, score: Math.sqrt(df) * Math.log(N / (df + 1)) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, maxTokens);
+    if (scored.length < 2) return [];
+    const topTokSet = new Set(scored.map(x => x.tok));
+    const tokCount = new Map();
+    const coocc = new Map();
+    const tokToIds = new Map();
+    const CAP = 50;
+    for (const { id, tokens } of docList) {
+      const rel = tokens.filter(t => topTokSet.has(t));
+      if (!rel.length) continue;
+      for (const tok of rel) {
+        tokCount.set(tok, (tokCount.get(tok) || 0) + 1);
+        if (!tokToIds.has(tok)) tokToIds.set(tok, []);
+        if (tokToIds.get(tok).length < CAP) tokToIds.get(tok).push(id);
+      }
+      for (let i = 0; i < rel.length; i++) {
+        for (let j = i + 1; j < rel.length; j++) {
+          const [a, b] = rel[i] < rel[j] ? [rel[i], rel[j]] : [rel[j], rel[i]];
+          if (!coocc.has(a)) coocc.set(a, new Map());
+          coocc.get(a).set(b, (coocc.get(a).get(b) || 0) + 1);
+        }
+      }
+    }
+    const coArr = [];
+    for (const [a, m] of coocc) for (const [b, n] of m) coArr.push([a, b, n]);
+    const eligible = scored.map(x => x.tok).filter(tok => (tokCount.get(tok) || 0) >= minDocFreq);
+    if (!eligible.length) return [];
+    const eligibleSet = new Set(eligible);
+    const uf = unionFind(eligible);
+    for (const [a, b, n] of coArr) {
+      if (n >= threshold && eligibleSet.has(a) && eligibleSet.has(b)) uf.union(a, b);
+    }
+    const groups = new Map();
+    for (const tok of eligible) {
+      const r = uf.find(tok);
+      if (!groups.has(r)) groups.set(r, { tags: [], size: 0, sampleIds: new Set() });
+      const g = groups.get(r);
+      g.tags.push(tok);
+      g.size += tokCount.get(tok) || 0;
+      for (const id of (tokToIds.get(tok) || [])) g.sampleIds.add(id);
+    }
+    const clusters = [...groups.values()].map(g => ({
+      tags: g.tags.sort((a, b) => (tokCount.get(b) || 0) - (tokCount.get(a) || 0)),
+      size: g.size,
+      sampleIds: [...g.sampleIds].slice(0, 50),
+      isTfidf: true
     }));
     clusters.sort((a, b) => b.size - a.size);
     return clusters;
@@ -2790,7 +3046,7 @@ const topics = (() => {
     });
   }
 
-  return { buildCoocc, cluster, samplesFor };
+  return { buildCoocc, cluster, samplesFor, tfidfClusters, invalidateCache };
 })();
 
 // ── patterns (algorithmic deep analysis, no AI) ─────────────────────────────
@@ -3802,10 +4058,10 @@ const search = (() => {
     return MS;
   }
   const TWEET_FIELDS = ['text', 'hashtags_joined', 'mentions_joined', 'phonetic_text'];
-  const TWEET_STORED = ['id', 'created_at', 'text', 'is_reply', 'is_retweet', 'favorite_count', 'retweet_count', 'has_media', 'hashtags', 'mentions'];
+  const TWEET_STORED = ['id', 'created_at', 'text', 'is_reply', 'is_retweet', 'favorite_count', 'retweet_count', 'has_media', 'hashtags', 'mentions', 'tags'];
   const LIKE_FIELDS = ['text', 'phonetic_text'];
-  const LIKE_STORED = ['tweet_id', 'expanded_url', 'text', 'has_text'];
-  const MS_CACHE_VERSION = 3; // bump when fields change to force one-time re-index
+  const LIKE_STORED = ['tweet_id', 'expanded_url', 'text', 'has_text', 'tags'];
+  const MS_CACHE_VERSION = 4; // bump when fields change to force one-time re-index
 
   // ── Phonetic + cross-script encoding ─────────────────────────────────
   // Cross-script transliteration → consonant skeleton.
@@ -4201,6 +4457,11 @@ const search = (() => {
       const t = (item.text || '').toLowerCase();
       if (!eff.phrases.every(p => t.includes(p))) return false;
     }
+    // tag filter
+    if (eff.tag) {
+      const itemTags = (item.tags || []).map(x => x.toLowerCase());
+      if (!itemTags.includes(eff.tag.toLowerCase())) return false;
+    }
     return true;
   }
 
@@ -4218,10 +4479,11 @@ const search = (() => {
       has: new Set([...parsed.has, ...((filters.has || []))]),
       lang: new Set([...parsed.lang, ...((filters.lang || []))]),
       exclude: [...parsed.exclude, ...((filters.exclude || []))],
-      phrases: parsed.phrases
+      phrases: parsed.phrases,
+      tag: filters.tag || null
     };
     const hasFilters = (eff.since !== null || eff.until !== null || eff.from.length || eff.to.length || eff.minFav || eff.minRT
-                     || eff.has.size || eff.lang.size || eff.exclude.length || eff.phrases.length
+                     || eff.has.size || eff.lang.size || eff.exclude.length || eff.phrases.length || eff.tag
                      || chips.originals || chips.replies || chips.retweets || chips.media || chips.link);
     const text = parsed.text.trim();
     if (!text && !hasFilters) {
@@ -4461,6 +4723,8 @@ const indexer = (() => {
 
 // ── ui orchestration ────────────────────────────────────────────────────────
 const ui = (() => {
+  let currentUsername = null; // set on renderSummary; used for handle-aware tweet URLs
+
   function setProgress(info) {
     const { tweetCount, likeCount, fileIdx, fileTotal, path, scope } = info;
     if (scope === 'tweets') {
@@ -4481,8 +4745,9 @@ const ui = (() => {
   }
   async function renderSummary(account) {
     const [tStats, lStats] = await Promise.all([store.tweetStats(), store.likeStats()]);
+    currentUsername = (account && account.username) || null;
     $('summary-name').textContent = (account && account.accountDisplayName) || 'Unknown account';
-    $('summary-handle').textContent = account && account.username ? '@' + account.username : '@—';
+    $('summary-handle').textContent = currentUsername ? '@' + currentUsername : '@—';
     $('stat-total').textContent = tStats.total.toLocaleString();
     $('stat-first').textContent = tStats.firstDate ? new Date(tStats.firstDate).toISOString().slice(0, 10) : '—';
     $('stat-last').textContent = tStats.lastDate ? new Date(tStats.lastDate).toISOString().slice(0, 10) : '—';
@@ -4496,7 +4761,7 @@ const ui = (() => {
     renderCharts().catch(e => {
       console.error('charts failed:', e);
       const host = $('stats-charts');
-      if (host) host.innerHTML = '<div class="top-empty">Couldn’t compute detailed stats: ' + safe(e.message || e) + '</div>';
+      if (host) host.innerHTML = '<div class="top-empty">Could not compute detailed stats: ' + safe(e.message || e) + '</div>';
     });
   }
 
@@ -4517,12 +4782,14 @@ const ui = (() => {
     if (r < 0.75) return 'h3';
     return 'h4';
   }
-  function topListHTML(items, total, formatLabel) {
+  function topListHTML(items, total, formatLabel, drillFn) {
     if (!items.length) return '<div class="top-empty">— none —</div>';
     const max = items[0][1];
     return '<div class="top-list">' + items.map(([k, v]) => {
       const width = Math.max(2, Math.round((v / max) * 120));
-      return `<div class="top-row">
+      const drillAttr = drillFn ? ` data-drill-q="${safe(drillFn(k))}"` : '';
+      const tipAttr = drillFn ? ` title="Search for ${safe(formatLabel ? formatLabel(k) : k)}"` : '';
+      return `<div class="top-row"${drillAttr}${tipAttr}>
         <span class="top-label" title="${safe(k)}">${formatLabel ? formatLabel(k) : safe(k)}</span>
         <div class="top-bar-wrap">
           <div class="top-bar" style="width:${width}px"></div>
@@ -4578,12 +4845,15 @@ const ui = (() => {
     cols += '</div>';
     return rows + cols;
   }
-  function engHistHTML(buckets) {
+  function engHistHTML(buckets, engType) {
     const labels = ['0', '1', '2–4', '5–9', '10–49', '50–249', '250–999', '1k+'];
+    const minThresholds = [0, 1, 2, 5, 10, 50, 250, 1000];
     const max = Math.max(...buckets) || 1;
+    const drillAttr = engType === 'fav' ? 'data-drill-min-fav' : engType === 'rt' ? 'data-drill-min-rt' : null;
     return '<div class="top-list">' + buckets.map((v, i) => {
       const width = Math.max(2, Math.round((v / max) * 120));
-      return `<div class="top-row" data-tip-title="bucket ${labels[i]}" data-tip-stat="${v.toLocaleString()} tweets">
+      const drill = drillAttr && i > 0 ? ` ${drillAttr}="${minThresholds[i]}" title="Search with min ${engType === 'fav' ? '♥' : '↻'} ≥ ${minThresholds[i]}"` : '';
+      return `<div class="top-row" data-tip-title="bucket ${labels[i]}" data-tip-stat="${v.toLocaleString()} tweets"${drill}>
         <span class="top-label">${labels[i]}</span>
         <div class="top-bar-wrap">
           <div class="top-bar" style="width:${width}px"></div>
@@ -4617,11 +4887,19 @@ const ui = (() => {
       <div class="charts-grid" id="stats-topn-grid">
         <div class="chart-card">
           <h3>Top hashtags</h3>
-          <div id="stats-top-hashtags">${topListHTML(s.topHashtags, s.total, (k) => '#' + safe(k))}</div>
+          <div id="stats-top-hashtags">${topListHTML(s.topHashtags, s.total, (k) => '#' + safe(k), (k) => '#' + k)}</div>
         </div>
         <div class="chart-card">
           <h3>Top mentions</h3>
-          <div id="stats-top-mentions">${topListHTML(s.topMentions, s.total, (k) => '@' + safe(k))}</div>
+          <div id="stats-top-mentions">${topListHTML(s.topMentions, s.total, (k) => '@' + safe(k), (k) => 'from:' + k)}</div>
+        </div>
+        <div class="chart-card">
+          <h3>Top users replied to</h3>
+          <div id="stats-top-replied-to">${topListHTML(s.topRepliedTo, s.total, (k) => '@' + safe(k), (k) => 'to:' + k)}</div>
+        </div>
+        <div class="chart-card">
+          <h3>Top accounts liked</h3>
+          <div id="stats-top-liked-from">${topListHTML(s.topLikedFrom || [], s.total, (k) => '@' + safe(k))}</div>
         </div>
         <div class="chart-card">
           <h3>Source clients</h3>
@@ -4643,37 +4921,63 @@ const ui = (() => {
         </div>
         <div class="chart-card">
           <h3>Favorites distribution</h3>
-          ${engHistHTML(s.engBuckets.fav)}
+          ${engHistHTML(s.engBuckets.fav, 'fav')}
         </div>
         <div class="chart-card">
           <h3>Retweets distribution</h3>
-          ${engHistHTML(s.engBuckets.rt)}
+          ${engHistHTML(s.engBuckets.rt, 'rt')}
         </div>
       </div>`;
     bindStatsRangePicker(s);
     bindHeatmapDrillDown();
   }
 
+  function jumpToSearch({ q, minFav, minRT, since, until } = {}) {
+    const searchTabBtn = document.querySelector('#screen-summary .tab[data-tab="tab-search"]');
+    searchTabBtn?.click();
+    const sInput = $('search-input');
+    const sinceEl = $('search-since'), untilEl = $('search-until');
+    const minFavEl = $('search-min-fav'), minRTEl = $('search-min-rt');
+    if (sInput && q != null) sInput.value = q;
+    if (sinceEl && since != null) sinceEl.value = since;
+    if (untilEl && until != null) untilEl.value = until;
+    if (minFavEl && minFav != null) { minFavEl.value = minFav; minFavEl.dispatchEvent(new Event('change')); }
+    if (minRTEl && minRT != null) { minRTEl.value = minRT; minRTEl.dispatchEvent(new Event('change')); }
+    if (since != null) sinceEl?.dispatchEvent(new Event('change'));
+    else if (until != null) untilEl?.dispatchEvent(new Event('change'));
+    else if (q != null) sInput?.dispatchEvent(new Event('input'));
+  }
+
   function bindHeatmapDrillDown() {
     const host = $('stats-charts');
     if (!host) return;
     host.addEventListener('click', (e) => {
+      // Heatmap cell → filter by day
       const cell = e.target.closest('.heatmap-cell[data-day]');
-      if (!cell) return;
-      const day = cell.dataset.day;
-      const count = parseInt(cell.dataset.count || '0', 10);
-      if (!day || count === 0) return;
-      // Switch to Search tab + set since=until=day + clear text + trigger.
-      const searchTabBtn = document.querySelector('#screen-summary .tab[data-tab="tab-search"]');
-      searchTabBtn?.click();
-      const since = $('search-since'), until = $('search-until');
-      if (since) since.value = day;
-      if (until) until.value = day;
-      const sInput = $('search-input');
-      if (sInput) { sInput.value = ''; }
-      // Dispatch 'change' so the bindSearch listeners pick it up + run.
-      since?.dispatchEvent(new Event('change'));
-      until?.dispatchEvent(new Event('change'));
+      if (cell) {
+        const day = cell.dataset.day;
+        const count = parseInt(cell.dataset.count || '0', 10);
+        if (!day || count === 0) return;
+        jumpToSearch({ q: '', since: day, until: day });
+        return;
+      }
+      // Top-list row → run query
+      const row = e.target.closest('.top-row[data-drill-q]');
+      if (row) {
+        jumpToSearch({ q: row.dataset.drillQ });
+        return;
+      }
+      // Engagement histogram bin → set min-fav or min-rt
+      const favRow = e.target.closest('.top-row[data-drill-min-fav]');
+      if (favRow) {
+        jumpToSearch({ q: '', minFav: parseInt(favRow.dataset.drillMinFav, 10) });
+        return;
+      }
+      const rtRow = e.target.closest('.top-row[data-drill-min-rt]');
+      if (rtRow) {
+        jumpToSearch({ q: '', minRT: parseInt(rtRow.dataset.drillMinRt, 10) });
+        return;
+      }
     });
   }
 
@@ -4696,8 +5000,10 @@ const ui = (() => {
       const isFull = sv === firstISO && uv === lastISO;
       if (isFull) {
         // Restore from cache directly
-        $('stats-top-hashtags').innerHTML = topListHTML(fullStats.topHashtags, fullStats.total, (k) => '#' + safe(k));
-        $('stats-top-mentions').innerHTML = topListHTML(fullStats.topMentions, fullStats.total, (k) => '@' + safe(k));
+        $('stats-top-hashtags').innerHTML = topListHTML(fullStats.topHashtags, fullStats.total, (k) => '#' + safe(k), (k) => '#' + k);
+        $('stats-top-mentions').innerHTML = topListHTML(fullStats.topMentions, fullStats.total, (k) => '@' + safe(k), (k) => 'from:' + k);
+        $('stats-top-replied-to').innerHTML = topListHTML(fullStats.topRepliedTo, fullStats.total, (k) => '@' + safe(k), (k) => 'to:' + k);
+        $('stats-top-liked-from').innerHTML = topListHTML(fullStats.topLikedFrom || [], fullStats.total, (k) => '@' + safe(k));
         $('stats-top-sources').innerHTML = topListHTML(fullStats.topSources, fullStats.total);
         $('stats-top-languages').innerHTML = topListHTML(fullStats.topLanguages, fullStats.total);
         if (status) status.textContent = '';
@@ -4706,8 +5012,10 @@ const ui = (() => {
       if (status) status.textContent = 'filtering…';
       try {
         const filt = await stats.filteredTopLists({ since: lo, until: hi });
-        $('stats-top-hashtags').innerHTML = topListHTML(filt.topHashtags, filt.total, (k) => '#' + safe(k));
-        $('stats-top-mentions').innerHTML = topListHTML(filt.topMentions, filt.total, (k) => '@' + safe(k));
+        $('stats-top-hashtags').innerHTML = topListHTML(filt.topHashtags, filt.total, (k) => '#' + safe(k), (k) => '#' + k);
+        $('stats-top-mentions').innerHTML = topListHTML(filt.topMentions, filt.total, (k) => '@' + safe(k), (k) => 'from:' + k);
+        $('stats-top-replied-to').innerHTML = topListHTML(filt.topRepliedTo, filt.total, (k) => '@' + safe(k), (k) => 'to:' + k);
+        $('stats-top-liked-from')?.innerHTML && ($('stats-top-liked-from').innerHTML = '<div class="top-empty">— range filter only covers tweets —</div>');
         $('stats-top-sources').innerHTML = topListHTML(filt.topSources, filt.total);
         $('stats-top-languages').innerHTML = topListHTML(filt.topLanguages, filt.total);
         if (status) status.textContent = `${filt.total.toLocaleString()} tweets · ${sv} → ${uv}`;
@@ -4779,14 +5087,51 @@ const ui = (() => {
     topicsRendering = true;
     const host = $('topics-host');
     if (!host) { topicsRendering = false; return; }
+    const includeLikes = !!$('topics-include-likes')?.checked;
     host.innerHTML = '<div class="stats-loading">Computing hashtag co-occurrence…</div>';
     try {
-      const clusters = await topics.cluster({ threshold });
+      const { clusters, eligibleCount } = await topics.cluster({ threshold, includeLikes });
       const useful = clusters.filter(c => c.tags.length >= 2);
-      if (!useful.length) {
+      const singletons = clusters.filter(c => c.tags.length === 1);
+
+      // TF-IDF fallback when the archive is hashtag-poor.
+      const hashtagPoor = eligibleCount < 5;
+      let tfidfHtml = '';
+      if (hashtagPoor && !useful.length) {
+        host.innerHTML = '<div class="stats-loading">Few hashtags found — computing TF-IDF word clusters…</div>';
+        const tfidf = await topics.tfidfClusters({ threshold: Math.max(2, threshold - 1) });
+        const tUseful = tfidf.filter(c => c.tags.length >= 2);
+        if (tUseful.length) {
+          const rendered = await Promise.all(tUseful.slice(0, 20).map(async (c) => {
+            const samples = await topics.samplesFor(c.sampleIds, 3);
+            const lead = c.tags[0];
+            const tagPills = c.tags.slice(0, 10).map((t, i) =>
+              `<span class="tag-pill${i === 0 ? ' is-lead' : ''}">${safe(t)}</span>`).join('');
+            const sampleHtml = samples.map(s => `<div class="cluster-sample">${safe(s.text)}</div>`).join('');
+            return `<div class="cluster-card">
+              <div class="cluster-head"><strong>${safe(lead)}</strong>
+                <span class="cluster-size">${c.tags.length} words · ${c.size.toLocaleString()} tweets</span>
+              </div>
+              <div class="cluster-tags">${tagPills}</div>
+              <div class="cluster-samples">${sampleHtml}</div>
+              <div class="cluster-actions">
+                <button type="button" data-cluster-search="${safe(lead)}">Search this cluster</button>
+              </div>
+            </div>`;
+          }));
+          host.innerHTML = `<div class="topics-note" style="font-size:12px;color:var(--muted);margin-bottom:10px;">Hashtag-poor archive — showing TF-IDF word clusters instead.</div><div class="topics-grid">${rendered.join('')}</div>`;
+          bindClusterSearchButtons(host);
+          return;
+        }
+        host.innerHTML = '<div class="topics-empty">Not enough hashtags or distinctive words to cluster. Try adding some tags to your tweets first.</div>';
+        return;
+      }
+
+      if (!useful.length && !singletons.length) {
         host.innerHTML = '<div class="topics-empty">No hashtag clusters at this threshold. Lower the slider to widen the net.</div>';
         return;
       }
+
       const rendered = await Promise.all(useful.slice(0, 30).map(async (c) => {
         const samples = await topics.samplesFor(c.sampleIds, 4);
         const lead = c.tags[0];
@@ -4802,31 +5147,48 @@ const ui = (() => {
           <div class="cluster-tags">${tags}</div>
           <div class="cluster-samples">${sampleHtml}</div>
           <div class="cluster-actions">
-            <button type="button" data-cluster-search="${c.tags.map(t => '#' + t).join(' ')}">Search this cluster</button>
+            <button type="button" data-cluster-search="#${safe(lead)}">Search this cluster</button>
           </div>
         </div>`;
       }));
-      host.innerHTML = `<div class="topics-grid">${rendered.join('')}</div>`;
-      host.querySelectorAll('button[data-cluster-search]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const q = btn.dataset.clusterSearch.split(' ')[0]; // search on the lead hashtag
-          // Activate the search tab and run the query.
-          const navBtn = document.querySelector('#screen-summary .tab[data-tab="tab-search"]');
-          navBtn?.click();
-          const input = $('search-input');
-          if (input) {
-            input.value = q.replace(/^#/, '');
-            input.dispatchEvent(new Event('input'));
-            input.focus();
-          }
-        });
-      });
+
+      // Singletons: hashtags that didn't co-occur above threshold with anything.
+      if (singletons.length) {
+        const pills = singletons.map(c =>
+          `<span class="tag-pill" data-cluster-search="#${safe(c.tags[0])}" style="cursor:pointer;" title="${c.size.toLocaleString()} tweets">#${safe(c.tags[0])}</span>`
+        ).join('');
+        tfidfHtml = `<div class="cluster-card" style="margin-top:10px;">
+          <div class="cluster-head"><strong>Other hashtags</strong>
+            <span class="cluster-size">${singletons.length} standalone tags</span>
+          </div>
+          <div class="cluster-tags">${pills}</div>
+        </div>`;
+      }
+
+      host.innerHTML = `<div class="topics-grid">${rendered.join('')}</div>${tfidfHtml}`;
+      bindClusterSearchButtons(host);
     } catch (e) {
       console.error('topics failed:', e);
-      host.innerHTML = '<div class="topics-empty">Couldn’t compute topics: ' + safe(e.message || e) + '</div>';
+      host.innerHTML = '<div class="topics-empty">Couldn\'t compute topics: ' + safe(e.message || e) + '</div>';
     } finally {
       topicsRendering = false;
     }
+  }
+
+  function bindClusterSearchButtons(host) {
+    host.querySelectorAll('[data-cluster-search]').forEach(el => {
+      el.addEventListener('click', () => {
+        const q = el.dataset.clusterSearch;
+        const navBtn = document.querySelector('#screen-summary .tab[data-tab="tab-search"]');
+        navBtn?.click();
+        const input = $('search-input');
+        if (input) {
+          input.value = q.replace(/^#/, '');
+          input.dispatchEvent(new Event('input'));
+          input.focus();
+        }
+      });
+    });
   }
 
   // ── Engagement tab — rich engagement-focused view ───────────────────────
@@ -4947,7 +5309,7 @@ const ui = (() => {
       `;
     } catch (e) {
       console.error('engagement render failed:', e);
-      host.innerHTML = '<div class="topics-empty">Couldn’t render engagement: ' + safe(e.message || String(e)) + '</div>';
+      host.innerHTML = '<div class="topics-empty">Could not render engagement: ' + safe(e.message || String(e)) + '</div>';
     } finally {
       engagementRendering = false;
     }
@@ -5189,7 +5551,7 @@ const ui = (() => {
       renderAnniversary();
     } catch (e) {
       console.error('patterns render failed:', e);
-      host.innerHTML = '<div class="topics-empty">Couldn’t compute patterns: ' + safe(e.message || e) + '</div>';
+      host.innerHTML = '<div class="topics-empty">Could not compute patterns: ' + safe(e.message || e) + '</div>';
     } finally {
       patternsRendering = false;
     }
@@ -5410,7 +5772,7 @@ const ui = (() => {
         </div>`).join('');
     } catch (e) {
       console.error('anniversary failed', e);
-      host.innerHTML = '<div class="when-empty">Couldn’t load anniversaries.</div>';
+      host.innerHTML = '<div class="when-empty">Could not load anniversaries.</div>';
     }
   }
 
@@ -5434,7 +5796,7 @@ const ui = (() => {
           `<div class="compact-list">${items.map(t => zeroSampleHTML({ id: t.id, text: t.text, date: t.date, is_reply: t.is_reply })).join('')}</div>`;
       } catch (e) {
         console.error('byDate failed', e);
-        host.innerHTML = '<div class="when-empty">Couldn’t fetch tweets.</div>';
+        host.innerHTML = '<div class="when-empty">Could not fetch tweets.</div>';
       }
     });
   }
@@ -5914,7 +6276,7 @@ const ui = (() => {
       host.innerHTML = wrappedCardHTML(data, account?.username);
     } catch (e) {
       console.error('wrapped failed:', e);
-      host.innerHTML = '<div class="topics-empty">Couldn’t render Wrapped: ' + safe(e.message || e) + '</div>';
+      host.innerHTML = '<div class="topics-empty">Could not render Wrapped: ' + safe(e.message || e) + '</div>';
     } finally {
       wrappedRendering = false;
     }
@@ -5931,16 +6293,16 @@ const ui = (() => {
     const title = `Bakwaas Wrapped — ${label}` + (accountHandle ? ` — @${accountHandle}` : '');
     // Pull the wrapped-card CSS only (plus base tokens) to keep the export self-contained.
     const css = `
-      :root { --bg:#0d1117; --panel:#161b22; --panel-2:#1c232c; --border:#2a323d; --text:#e6e8eb; --muted:#8b95a6; --accent:#7d8aef; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      :root { --bg:#1a0e08; --panel:#261408; --panel-2:#2a1a0a; --border:#3e2814; --text:#f0d090; --muted:#9a8060; --accent:#4a6aa0; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
       *,*::before,*::after { box-sizing: border-box; }
       html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: var(--sans); }
       body { min-height:100vh; padding: 40px 20px; display:flex; align-items:center; justify-content:center; }
       .wr-page { max-width: 1100px; width: 100%; }
       .wr-attribution { text-align:center; margin-top: 16px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
       .wr-attribution a { color: var(--accent); text-decoration: none; }
-      .wrapped-card { background: linear-gradient(160deg, #0d1117 0%, #1a1f3a 60%, #2a2050 100%); border: 1px solid var(--border); border-radius: 18px; padding: 36px 40px; position: relative; overflow: hidden; }
-      .wrapped-card::before { content:''; position:absolute; top:-120px; right:-120px; width:300px; height:300px; border-radius:50%; background: radial-gradient(circle, rgba(125,138,239,0.35), transparent 70%); pointer-events:none; }
-      .wrapped-card::after { content:''; position:absolute; bottom:-100px; left:-100px; width:260px; height:260px; border-radius:50%; background: radial-gradient(circle, rgba(108,123,191,0.22), transparent 70%); pointer-events:none; }
+      .wrapped-card { background: linear-gradient(160deg, #1a0e08 0%, #2a1208 60%, #3a1c0a 100%); border: 1px solid var(--border); border-radius: 18px; padding: 36px 40px; position: relative; overflow: hidden; }
+      .wrapped-card::before { content:''; position:absolute; top:-120px; right:-120px; width:300px; height:300px; border-radius:50%; background: radial-gradient(circle, rgba(216,72,42,0.25), transparent 70%); pointer-events:none; }
+      .wrapped-card::after { content:''; position:absolute; bottom:-100px; left:-100px; width:260px; height:260px; border-radius:50%; background: radial-gradient(circle, rgba(74,106,160,0.18), transparent 70%); pointer-events:none; }
       .wr-header { display:flex; align-items:baseline; gap:12px; margin-bottom:24px; position:relative; z-index:1; flex-wrap:wrap; }
       .wr-brand { font-size:22px; font-weight:800; color: var(--accent); letter-spacing: 0.5px; }
       .wr-period { font-size:36px; font-weight:800; color:#fff; margin-left:auto; font-family: var(--mono); }
@@ -5953,7 +6315,7 @@ const ui = (() => {
       .wr-tile .wr-sub { font-size:12px; color: rgba(255,255,255,0.7); margin-top:4px; line-height:1.5; }
       .wr-tile.wr-quote .wr-value { font-size:16px; font-family: var(--sans); line-height:1.5; font-weight:500; overflow:hidden; display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; }
       .wr-tile.wr-era .wr-value { color: var(--accent); }
-      .wr-archetype { background: rgba(125,138,239,0.18); border: 1px solid rgba(125,138,239,0.3); color:#fff; border-radius:999px; padding:4px 12px; font-size:12px; display:inline-block; margin-top:6px; font-family: var(--mono); }
+      .wr-archetype { background: rgba(74,106,160,0.25); border: 1px solid rgba(74,106,160,0.4); color:#fff; border-radius:999px; padding:4px 12px; font-size:12px; display:inline-block; margin-top:6px; font-family: var(--mono); }
       .wr-footer { margin-top:28px; font-size:11px; color: rgba(255,255,255,0.5); display:flex; gap:14px; flex-wrap:wrap; position:relative; z-index:1; }
       .wr-footer .wr-tag { background: rgba(255,255,255,0.05); padding:2px 8px; border-radius:6px; font-family: var(--mono); }
     `.trim();
@@ -5986,12 +6348,12 @@ const ui = (() => {
     const account = await store.metaGet('account');
     const handle = account?.username || 'me';
     const W = 1200, H = 1500;
-    const inlineCSS = (`:root { --accent:#7d8aef; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; } *,*::before,*::after { box-sizing: border-box; } html,body{margin:0;padding:0;font-family:var(--sans);} .wr-page{padding:24px;background:#0d1117;color:#e6e8eb;width:${W}px;height:${H}px;} ` +
-      `.wrapped-card{background:linear-gradient(160deg,#0d1117 0%,#1a1f3a 60%,#2a2050 100%);border:1px solid #2a323d;border-radius:18px;padding:36px 40px;position:relative;overflow:hidden;height:100%;}` +
+    const inlineCSS = (`:root { --accent:#4a6aa0; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; } *,*::before,*::after { box-sizing: border-box; } html,body{margin:0;padding:0;font-family:var(--sans);} .wr-page{padding:24px;background:#1a0e08;color:#f0d090;width:${W}px;height:${H}px;} ` +
+      `.wrapped-card{background:linear-gradient(160deg,#1a0e08 0%,#2a1208 60%,#3a1c0a 100%);border:1px solid #3e2814;border-radius:18px;padding:36px 40px;position:relative;overflow:hidden;height:100%;}` +
       `.wr-header{display:flex;align-items:baseline;gap:12px;margin-bottom:24px;position:relative;z-index:1;flex-wrap:wrap;}` +
-      `.wr-brand{font-size:28px;font-weight:800;color:#7d8aef;letter-spacing:0.5px;}` +
-      `.wr-period{font-size:56px;font-weight:800;color:#fff;margin-left:auto;font-family:var(--mono);}` +
-      `.wr-handle{font-size:16px;color:#8b95a6;font-family:var(--mono);width:100%;margin-top:-8px;}` +
+      `.wr-brand{font-size:28px;font-weight:800;color:#4a6aa0;letter-spacing:0.5px;}` +
+      `.wr-period{font-size:56px;font-weight:800;color:#f0d090;margin-left:auto;font-family:var(--mono);}` +
+      `.wr-handle{font-size:16px;color:#9a8060;font-family:var(--mono);width:100%;margin-top:-8px;}` +
       `.wr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}` +
       `.wr-tile{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;}` +
       `.wr-tile.wide{grid-column:span 2;}` +
@@ -5999,8 +6361,8 @@ const ui = (() => {
       `.wr-tile .wr-value{font-size:28px;font-weight:700;color:#fff;font-family:var(--mono);line-height:1.15;}` +
       `.wr-tile .wr-sub{font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;line-height:1.5;}` +
       `.wr-tile.wr-quote .wr-value{font-size:18px;font-family:var(--sans);font-weight:500;}` +
-      `.wr-tile.wr-era .wr-value{color:#7d8aef;}` +
-      `.wr-archetype{background:rgba(125,138,239,0.18);border:1px solid rgba(125,138,239,0.3);color:#fff;border-radius:999px;padding:4px 12px;font-size:13px;display:inline-block;margin-top:6px;font-family:var(--mono);}` +
+      `.wr-tile.wr-era .wr-value{color:#4a6aa0;}` +
+      `.wr-archetype{background:rgba(74,106,160,0.25);border:1px solid rgba(74,106,160,0.4);color:#fff;border-radius:999px;padding:4px 12px;font-size:13px;display:inline-block;margin-top:6px;font-family:var(--mono);}` +
       `.wr-footer{margin-top:28px;font-size:12px;color:rgba(255,255,255,0.5);display:flex;gap:14px;flex-wrap:wrap;}` +
       `.wr-footer .wr-tag{background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:6px;font-family:var(--mono);}`);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${inlineCSS}</style><div class="wr-page">${card.outerHTML}</div></div></foreignObject></svg>`;
@@ -6012,7 +6374,7 @@ const ui = (() => {
       const canvas = document.createElement('canvas');
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#1a0e08'; ctx.fillRect(0, 0, W, H);
       ctx.drawImage(img, 0, 0);
       const out = await new Promise(r => canvas.toBlob(r, 'image/png'));
       if (!out) throw new Error('toBlob returned null');
@@ -6034,11 +6396,18 @@ const ui = (() => {
     const val = $('topics-threshold-val');
     if (!slider || !val) return;
     let debounce = null;
+    function rerender() {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => renderTopics(currentTopicsThreshold), 220);
+    }
     slider.addEventListener('input', () => {
       currentTopicsThreshold = parseInt(slider.value, 10) || 3;
       val.textContent = currentTopicsThreshold;
-      clearTimeout(debounce);
-      debounce = setTimeout(() => renderTopics(currentTopicsThreshold), 220);
+      rerender();
+    });
+    $('topics-include-likes')?.addEventListener('change', () => {
+      topics.invalidateCache();
+      rerender();
     });
   }
 
@@ -6069,7 +6438,9 @@ const ui = (() => {
 
   function renderTweetCard(t) {
     const dt = t.created_at ? new Date(t.created_at).toISOString().slice(0, 10) : '—';
-    const url = `https://twitter.com/i/web/status/${t.id}`;
+    const url = currentUsername
+      ? `https://twitter.com/${currentUsername}/status/${t.id}`
+      : `https://twitter.com/i/web/status/${t.id}`;
     const badges = [];
     if (t.is_retweet) badges.push('<span class="badge is-rt">RT</span>');
     else if (t.is_reply) badges.push('<span class="badge is-rep">reply</span>');
@@ -6081,12 +6452,17 @@ const ui = (() => {
       ...badges
     ].join(' · ');
     const key = 'tweet:' + t.id;
+    const tagPills = (t.tags || []).map(tag =>
+      `<span class="card-tag" data-remove-tag="${safe(tag)}" title="Click to remove tag">${safe(tag)}</span>`
+    ).join('');
     return `<div class="card-item ${cardStateClass({ ...t, __scope: 'tweet' })}" data-key="${key}" data-scope="tweet" data-id="${safe(t.id)}">
       <label class="card-select"><input type="checkbox" data-role="select" /></label>
       <div class="card-text">${safe(t.text)}</div>
       <div class="card-meta">${meta}</div>
+      ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
       <div class="card-actions">
         <a href="${url}" target="_blank" rel="noopener" data-role="open">Open on X →</a>
+        <button type="button" class="btn-tag" data-role="tag" title="Add/remove tags">🏷 Tag</button>
         <button type="button" class="btn-mark" data-role="mark">Mark deleted</button>
         <button type="button" class="btn-undo" data-role="undo">Undo</button>
       </div>
@@ -6099,12 +6475,17 @@ const ui = (() => {
       ? safe(l.text)
       : '<em style="color:var(--muted);">(text unavailable in archive)</em>';
     const key = 'like:' + l.tweet_id;
+    const tagPills = (l.tags || []).map(tag =>
+      `<span class="card-tag" data-remove-tag="${safe(tag)}" title="Click to remove tag">${safe(tag)}</span>`
+    ).join('');
     return `<div class="card-item ${cardStateClass({ ...l, __scope: 'like' })}" data-key="${key}" data-scope="like" data-id="${safe(l.tweet_id)}">
       <label class="card-select"><input type="checkbox" data-role="select" /></label>
       <div class="card-text">${text}</div>
       <div class="card-meta"><span class="badge is-like-marker">like</span> · <span>${safe(l.tweet_id)}</span></div>
+      ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
       <div class="card-actions">
         <a href="${url}" target="_blank" rel="noopener" data-role="open">Open on X →</a>
+        <button type="button" class="btn-tag" data-role="tag" title="Add/remove tags">🏷 Tag</button>
         <button type="button" class="btn-mark" data-role="mark">Mark unliked</button>
         <button type="button" class="btn-undo" data-role="undo">Undo</button>
       </div>
@@ -6217,6 +6598,166 @@ const ui = (() => {
       items.push({ scope, id });
     }
     return items;
+  }
+
+  // ── Tag popup ────────────────────────────────────────────────────────────────
+  let tagPopupTarget = null; // { scope, id, cardEl }
+
+  function bindTagPopup() {
+    const popup = $('tag-popup');
+    const pillsEl = $('tag-popup-pills');
+    const input = $('tag-popup-input');
+    const addBtn = $('tag-popup-add');
+    if (!popup) return;
+
+    async function openPopup(scope, id, cardEl) {
+      tagPopupTarget = { scope, id, cardEl };
+      const allTags = await tags.getDistinct();
+      const rec = await store.getById(scope === 'tweet' ? 'tweets' : 'likes', id);
+      const current = new Set((rec && rec.tags) || []);
+      pillsEl.innerHTML = allTags.map(t =>
+        `<span class="tag-popup-pill${current.has(t) ? ' is-applied' : ''}" data-tag="${safe(t)}">${safe(t)}</span>`
+      ).join('') || '<span style="color:var(--muted);font-size:11px;">No tags yet — type below to add</span>';
+      input.value = '';
+      // Position near the trigger button
+      const rect = cardEl.querySelector('.btn-tag')?.getBoundingClientRect() || cardEl.getBoundingClientRect();
+      popup.style.top = (rect.bottom + 6 + window.scrollY) + 'px';
+      popup.style.left = Math.min(rect.left, window.innerWidth - 240) + 'px';
+      popup.classList.add('is-open');
+      input.focus();
+    }
+
+    function closePopup() {
+      popup.classList.remove('is-open');
+      tagPopupTarget = null;
+    }
+
+    async function toggleTag(tagStr) {
+      if (!tagPopupTarget) return;
+      const { scope, id, cardEl } = tagPopupTarget;
+      const storeName = scope === 'tweet' ? 'tweets' : 'likes';
+      const rec = await store.getById(storeName, id);
+      const current = new Set((rec && rec.tags) || []);
+      if (current.has(tagStr)) current.delete(tagStr); else current.add(tagStr);
+      await tags.setTags(scope, id, [...current]);
+      // Re-render the card in place
+      const fresh = await store.getById(storeName, id);
+      if (fresh && cardEl) {
+        const updated = { ...fresh, __scope: scope };
+        const newHtml = renderCard(updated);
+        const tmp = document.createElement('div');
+        tmp.innerHTML = newHtml;
+        cardEl.replaceWith(tmp.firstElementChild);
+      }
+      // Refresh popup pills
+      await openPopup(scope, id, document.querySelector(`[data-scope="${scope}"][data-id="${id}"]`) || cardEl);
+    }
+
+    async function addNewTag() {
+      const tagStr = input.value.trim().toLowerCase().replace(/\s+/g, '-');
+      if (!tagStr || !tagPopupTarget) return;
+      const { scope, id } = tagPopupTarget;
+      const storeName = scope === 'tweet' ? 'tweets' : 'likes';
+      const rec = await store.getById(storeName, id);
+      const current = new Set((rec && rec.tags) || []);
+      current.add(tagStr);
+      await tags.setTags(scope, id, [...current]);
+      // Update datalist
+      const allTags = await tags.getDistinct();
+      const dl = $('search-tag-datalist');
+      if (dl) dl.innerHTML = allTags.map(t => `<option value="${safe(t)}">`).join('');
+      // Refresh
+      const cardEl = document.querySelector(`[data-scope="${scope}"][data-id="${id}"]`) || tagPopupTarget.cardEl;
+      await openPopup(scope, id, cardEl);
+    }
+
+    pillsEl.addEventListener('click', (e) => {
+      const pill = e.target.closest('.tag-popup-pill[data-tag]');
+      if (pill) toggleTag(pill.dataset.tag);
+    });
+    addBtn.addEventListener('click', addNewTag);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addNewTag(); } });
+
+    // Tag button click on any card
+    document.addEventListener('click', async (e) => {
+      const tagBtn = e.target.closest('[data-role="tag"]');
+      if (tagBtn) {
+        e.preventDefault();
+        const card = tagBtn.closest('.card-item');
+        if (!card) return;
+        const scope = card.dataset.scope;
+        const id = card.dataset.id;
+        if (popup.classList.contains('is-open') && tagPopupTarget?.id === id) {
+          closePopup(); return;
+        }
+        await openPopup(scope, id, card);
+        return;
+      }
+      // Remove-tag pill click on a card
+      const removePill = e.target.closest('.card-tag[data-remove-tag]');
+      if (removePill) {
+        e.preventDefault();
+        const card = removePill.closest('.card-item');
+        if (!card) return;
+        const scope = card.dataset.scope;
+        const id = card.dataset.id;
+        const tagStr = removePill.dataset.removeTag;
+        const storeName = scope === 'tweet' ? 'tweets' : 'likes';
+        const rec = await store.getById(storeName, id);
+        const current = new Set((rec && rec.tags) || []);
+        current.delete(tagStr);
+        await tags.setTags(scope, id, [...current]);
+        const fresh = await store.getById(storeName, id);
+        if (fresh) {
+          const updated = { ...fresh, __scope: scope };
+          const tmp = document.createElement('div');
+          tmp.innerHTML = renderCard(updated);
+          card.replaceWith(tmp.firstElementChild);
+        }
+        return;
+      }
+      // Close popup on outside click
+      if (!popup.contains(e.target)) closePopup();
+    });
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); });
+  }
+
+  // ── Named saved selections ──────────────────────────────────────────────────
+  async function renderSavedSelections() {
+    const host = $('saved-selections-host');
+    if (!host) return;
+    const saved = (await store.metaGet('saved_selections')) || [];
+    if (!saved.length) { host.style.display = 'none'; return; }
+    host.style.display = '';
+    host.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Saved selections</div>'
+      + saved.map((s, i) =>
+        `<div class="saved-sel-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="flex:1;font-size:13px;">${safe(s.name)}</span>
+          <span style="font-size:11px;color:var(--muted);">${s.keys.length} items</span>
+          <button type="button" class="btn-ghost btn-sm" data-sel-load="${i}">Load</button>
+          <button type="button" class="btn-ghost btn-sm" data-sel-del="${i}" style="color:var(--danger);">×</button>
+        </div>`
+      ).join('');
+    host.querySelectorAll('[data-sel-load]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.selLoad, 10);
+        const s = saved[idx];
+        if (!s) return;
+        selectionSet.clear();
+        for (const k of s.keys) selectionSet.add(k);
+        refreshSelectionBar();
+        syncCheckboxes($('search-results'));
+      });
+    });
+    host.querySelectorAll('[data-sel-del]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const idx = parseInt(btn.dataset.selDel, 10);
+        const updated = saved.filter((_, i) => i !== idx);
+        await store.metaSet('saved_selections', updated);
+        renderSavedSelections();
+      });
+    });
   }
 
   // Modal helper.
@@ -6458,7 +6999,7 @@ const ui = (() => {
       renderThreadsList();
     } catch (e) {
       console.error('thread explorer failed:', e);
-      $('threads-list-host').innerHTML = '<div class="top-empty">Couldn’t load threads: ' + safe(e.message || String(e)) + '</div>';
+      $('threads-list-host').innerHTML = '<div class="top-empty">Could not load threads: ' + safe(e.message || String(e)) + '</div>';
     }
   }
   function renderThreadsList() {
@@ -6518,7 +7059,7 @@ const ui = (() => {
         ${descHTML}
       </div>`;
     } catch (e) {
-      host.innerHTML = '<div class="top-empty">Couldn’t expand thread: ' + safe(e.message || String(e)) + '</div>';
+      host.innerHTML = '<div class="top-empty">Could not expand thread: ' + safe(e.message || String(e)) + '</div>';
     }
   }
   // Tiny helper exposed for the inline onclick on the 'back' button.
@@ -6557,7 +7098,7 @@ const ui = (() => {
       $('convo-body').innerHTML = convoModalHTML(data);
     } catch (e) {
       console.error('conversationsWith failed:', e);
-      $('convo-body').innerHTML = '<div class="top-empty">Couldn’t load conversation: ' + safe(e.message || String(e)) + '</div>';
+      $('convo-body').innerHTML = '<div class="top-empty">Could not load conversation: ' + safe(e.message || String(e)) + '</div>';
     }
   }
   function convoModalHTML(d) {
@@ -6807,6 +7348,18 @@ const ui = (() => {
       refreshSelectionBar();
       await refreshCardsAfterUpdate(keys);
     });
+    $('sel-save')?.addEventListener('click', async () => {
+      const n = selectionSet.size;
+      if (!n) return;
+      const name = prompt(`Name this selection (${n} items):`);
+      if (!name || !name.trim()) return;
+      const saved = (await store.metaGet('saved_selections')) || [];
+      saved.push({ name: name.trim(), keys: [...selectionSet], created_at: new Date().toISOString() });
+      await store.metaSet('saved_selections', saved);
+      renderSavedSelections();
+    });
+    // Show saved selections on load if any exist
+    renderSavedSelections();
   }
 
   async function renderTray() {
@@ -6816,7 +7369,7 @@ const ui = (() => {
     const [pending, deleted] = await Promise.all([deletion.listPending(), deletion.listDeleted()]);
     stats.textContent = `${pending.length.toLocaleString()} pending · ${deleted.length.toLocaleString()} deleted`;
     if (!pending.length && !deleted.length) {
-      host.innerHTML = '<div class="empty-sel">Items you’ve opened or marked deleted appear here. Use the Search tab to add things.</div>';
+      host.innerHTML = '<div class="empty-sel">Items you\'ve opened or marked deleted appear here. Use the Search tab to add things.</div>';
       return;
     }
     const allItems = [
@@ -6849,7 +7402,7 @@ const ui = (() => {
     const state = {
       q: '', scope: 'tweets',
       chips: { originals: false, replies: false, retweets: false, media: false, link: false },
-      filters: { since: null, until: null, minFav: 0, minRT: 0, lang: [], has: [], from: [], exclude: [] },
+      filters: { since: null, until: null, minFav: 0, minRT: 0, lang: [], has: [], from: [], exclude: [], tag: null },
       near: false
     };
     let debounce = null;
@@ -6862,6 +7415,7 @@ const ui = (() => {
       if (state.filters.minFav > 0) f.push(`♥≥${state.filters.minFav}`);
       if (state.filters.minRT > 0) f.push(`↻≥${state.filters.minRT}`);
       if (state.filters.lang.length) f.push(`lang:${state.filters.lang.join('|')}`);
+      if (state.filters.tag) f.push(`tag:${state.filters.tag}`);
       const parts = [...on, ...f];
       return parts.length ? ` · filters: ${parts.join(', ')}` : '';
     }
@@ -6871,7 +7425,7 @@ const ui = (() => {
       const hasAnyFilter = Object.values(state.chips).some(Boolean)
         || state.filters.since !== null || state.filters.until !== null
         || state.filters.minFav > 0 || state.filters.minRT > 0
-        || state.filters.lang.length;
+        || state.filters.lang.length || state.filters.tag;
       if (!hasText && !hasAnyFilter) {
         $('search-results').innerHTML = '';
         setSearchMeta(`Type to search across ${state.scope}${activeChipsLabel()}.`);
@@ -6923,6 +7477,7 @@ const ui = (() => {
     const sinceEl = $('search-since'), untilEl = $('search-until');
     const minFavEl = $('search-min-fav'), minRTEl = $('search-min-rt');
     const langEl = $('search-lang');
+    const tagFilterEl = $('search-tag-filter');
     const resetEl = $('search-filter-reset');
 
     function syncFiltersFromInputs() {
@@ -6932,6 +7487,7 @@ const ui = (() => {
       state.filters.minFav = parseInt(minFavEl?.value || '0', 10) || 0;
       state.filters.minRT = parseInt(minRTEl?.value || '0', 10) || 0;
       state.filters.lang = (langEl?.value ? [langEl.value] : []);
+      state.filters.tag = tagFilterEl?.value?.trim() || null;
     }
     function scheduleRun() {
       syncFiltersFromInputs();
@@ -6943,6 +7499,7 @@ const ui = (() => {
     minFavEl?.addEventListener('change', scheduleRun);
     minRTEl?.addEventListener('change', scheduleRun);
     langEl?.addEventListener('change', scheduleRun);
+    tagFilterEl?.addEventListener('input', scheduleRun);
     const nearEl = $('search-near');
     nearEl?.addEventListener('change', () => { state.near = !!nearEl.checked; run(); });
     resetEl?.addEventListener('click', () => {
@@ -6951,6 +7508,7 @@ const ui = (() => {
       if (minFavEl) minFavEl.value = '0';
       if (minRTEl) minRTEl.value = '0';
       if (langEl) langEl.value = '';
+      if (tagFilterEl) tagFilterEl.value = '';
       $('search-preset-bar')?.querySelectorAll('.preset.active').forEach(el => el.classList.remove('active'));
       scheduleRun();
     });
@@ -6998,6 +7556,13 @@ const ui = (() => {
         }
         mountScrubber(s, () => { syncFiltersFromInputs(); scheduleRun(); });
       } catch { /* stats not ready yet — filter bar still works without min/max hints */ }
+      try {
+        const knownTags = await tags.getDistinct();
+        const datalist = $('search-tag-datalist');
+        if (datalist && knownTags.length) {
+          datalist.innerHTML = knownTags.map(t => `<option value="${safe(t)}">`).join('');
+        }
+      } catch { /* no tags yet */ }
     })();
   }
 
@@ -7223,7 +7788,7 @@ const ui = (() => {
   return { setProgress, setPhase, renderSummary, showError, bindDropZone, bindFolderButton, bindBlueskyButton,
            bindTabs, bindSearch, bindTopicsControls, bindResultsActions, bindSelectionBar, bindTrayControls, renderTray,
            bindHelp, bindWrappedControls, bindXapiModal, refreshXapiButtonVisibility, bindConvoModal, bindThreadsExplorer,
-           bindMarkButtons, bindChartTooltips };
+           bindMarkButtons, bindChartTooltips, bindTagPopup };
 })();
 
 // ── controller ──────────────────────────────────────────────────────────────
@@ -7326,6 +7891,7 @@ async function bootstrap() {
   ui.bindThreadsExplorer();
   ui.bindMarkButtons();
   ui.bindChartTooltips();
+  ui.bindTagPopup();
   // Convo modal's 'Open in Search' link delegation
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-convo-search]');
