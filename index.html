@@ -117,6 +117,22 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 #screen-drop .help a { color: var(--accent); }
 #screen-index .count-row { display: flex; justify-content: center; gap: 32px; }
 #screen-index .count-cell { text-align: center; }
+#screen-index .pulse {
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); margin-right: 8px; vertical-align: middle;
+  animation: bkPulse 1.2s ease-in-out infinite;
+}
+@keyframes bkPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.4; }
+}
+#screen-index .freeze-note {
+  margin-top: 14px; padding: 10px 12px;
+  background: rgba(255, 200, 87, 0.08); border: 1px solid rgba(255, 200, 87, 0.25);
+  border-radius: 8px; color: var(--warn); font-size: 12px; line-height: 1.55;
+  text-align: left;
+}
+#screen-index .freeze-note strong { color: var(--warn); }
 
 /* Indexing */
 #screen-index .card {
@@ -731,7 +747,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 
   <section id="screen-index" class="screen">
     <div class="card">
-      <h2>Indexing archive…</h2>
+      <h2><span class="pulse" aria-hidden="true"></span>Indexing archive…</h2>
       <div class="phase-label" id="phase-label">Reading…</div>
       <div class="bar-wrap"><div class="bar" id="progress-bar"></div></div>
       <div class="count-row">
@@ -743,6 +759,9 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
           <div class="count" id="count-likes">0</div>
           <div class="count-label">likes</div>
         </div>
+      </div>
+      <div class="freeze-note">
+        <strong>Heads up:</strong> while large tweet files parse, the tab will look frozen for 2–3 seconds at a time. The pulsing dot at the top stays alive on the compositor — if it's still pulsing, Bakwaas is still working. Status updates between freezes.
       </div>
       <div class="resume-hint">You can close this tab — we'll pick up where we left off when you reopen it.</div>
     </div>
@@ -2716,7 +2735,7 @@ const patterns = (() => {
           };
         });
       }
-      const cohorts = buildCohorts(perYearStats);
+      // (cohorts computed below, after perYearStats is built — avoid TDZ)
 
       // Polarity timeline (word-list based).
       const polarityArr = [...polarityByMonth.entries()].sort().map(([m, v]) => {
@@ -2801,6 +2820,9 @@ const patterns = (() => {
           sleep: (yearHours.find(x => x.year === yr) || {}).sleep || null
         };
       });
+
+      // Cohorts can be built now that perYearStats exists.
+      const cohorts = buildCohorts(perYearStats);
 
       const out = {
         version: SCHEMA_VERSION,
