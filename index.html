@@ -773,6 +773,53 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
 }
 .cohort-q-meta { margin-top: 4px; font-family: var(--mono); font-size: 11px; }
 
+/* Best friends — bubble cards */
+.best-friends { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.bf-card {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 12px 12px; text-align: center; position: relative;
+  transition: transform .15s, border-color .15s;
+}
+.bf-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.bf-rank { position: absolute; top: 6px; left: 8px; font-size: 10px; font-family: var(--mono); color: var(--muted); }
+.bf-avatar {
+  width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+}
+.bf-handle { font-family: var(--mono); font-size: 12px; color: var(--text); font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bf-count { font-size: 11px; color: var(--accent); font-family: var(--mono); margin-bottom: 6px; }
+.bf-partners { font-size: 10px; color: var(--muted); line-height: 1.4; min-height: 14px; }
+
+/* Long conversations — thread trees */
+.thread-trees { display: flex; flex-direction: column; gap: 16px; }
+.thread-tree {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px;
+}
+.thread-tree .tt-head {
+  display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap;
+  font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 10px;
+  padding-bottom: 8px; border-bottom: 1px dashed var(--border);
+}
+.thread-tree .tt-count { color: var(--accent); font-weight: 700; }
+.thread-tree .tt-open { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); margin-left: auto; }
+.thread-tree .tt-open:hover { color: var(--accent); border-color: var(--accent); }
+.thread-tree .tt-node {
+  font-size: 13px; line-height: 1.5; padding: 6px 0;
+  border-left: 2px solid transparent;
+}
+.thread-tree .tt-root {
+  font-weight: 600; color: var(--text); padding-left: 8px;
+  border-left-color: var(--accent); margin-bottom: 4px;
+}
+.thread-tree .tt-bullet { color: var(--muted); font-family: var(--mono); margin-right: 6px; }
+.thread-tree .tt-text { color: var(--text); }
+.thread-tree .tt-meta { color: var(--muted); font-size: 10px; font-family: var(--mono); margin-left: 8px; }
+.thread-tree .tt-meta a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); padding: 0 2px; }
+.thread-tree .tt-meta a:hover { color: var(--accent); }
+
 .footer-nav {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
@@ -797,7 +844,7 @@ header .tag { color: var(--muted); font-size: 13px; margin-top: 6px; line-height
   <header>
     <div class="title-row">
       <span class="brand" title="Hindi/Urdu — बकवास — nonsense, drivel, chitchat. Click ? for the full story.">Bakwaas</span>
-      <span class="phase" id="phase-tag">v0.15 · scrubber + select-all</span>
+      <span class="phase" id="phase-tag">v0.15.1 · social circles</span>
       <button class="help-btn" id="help-btn" type="button" aria-label="About Bakwaas">?</button>
     </div>
     <div class="tag">explore your Twitter archive · spot the patterns · keep what's worth keeping</div>
@@ -2330,7 +2377,7 @@ const patterns = (() => {
     if (inflight) return inflight;
     inflight = (async () => {
       const cached = await store.metaGet('patterns_cache');
-      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth && cached.cohorts) return cached;
+      if (cached && cached.version === SCHEMA_VERSION && cached.perYearStats && cached.polarityByMonth && cached.cohorts && cached.topThreadTrees) return cached;
 
       const db = await store.open();
       const TOP_VIRAL = 30;
@@ -2657,9 +2704,12 @@ const patterns = (() => {
 
       // Resolve self-reply threads against ownIds.
       const threadCounts = new Map();           // rootId → reply count
+      const childMap = new Map();               // parentId → [childIds]
       for (const sr of selfReplies) {
         if (ownIds.has(sr.replyTo)) {
           threadCounts.set(sr.replyTo, (threadCounts.get(sr.replyTo) || 0) + 1);
+          if (!childMap.has(sr.replyTo)) childMap.set(sr.replyTo, []);
+          childMap.get(sr.replyTo).push(sr.id);
         }
       }
       const topThreadRoots = [...threadCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
@@ -2676,6 +2726,43 @@ const patterns = (() => {
           };
         })
         .filter(Boolean);
+      // Build full descendant trees for the top 10 threads (BFS from each root).
+      // Pre-compute so renderPatterns doesn't have to do a per-thread scan.
+      const topTreeIds = topThreads.slice(0, 10).map(t => t.rootId);
+      const treeDescendants = new Map();        // rootId → [{id, depth}]
+      for (const root of topTreeIds) {
+        const visited = new Set([root]);
+        const queue = [[root, 0]];
+        const order = [];
+        let safe = 0;
+        while (queue.length && safe++ < 500) {
+          const [pid, d] = queue.shift();
+          if (d > 0) order.push({ id: pid, depth: d });
+          const kids = childMap.get(pid) || [];
+          for (const k of kids) {
+            if (!visited.has(k)) { visited.add(k); queue.push([k, d + 1]); }
+          }
+        }
+        treeDescendants.set(root, order);
+      }
+      // Fetch records for every descendant id across all trees in one batch.
+      const allDescIds = [...new Set([].concat(...[...treeDescendants.values()].map(arr => arr.map(o => o.id))))];
+      const descDocs = allDescIds.length ? await store.getManyByIds('tweets', allDescIds) : [];
+      const descById = new Map(descDocs.map(r => [r.id, r]));
+      const topThreadTrees = topThreads.slice(0, 10).map(t => {
+        const root = rootMap.get(t.rootId);
+        const desc = (treeDescendants.get(t.rootId) || []).map(o => {
+          const r = descById.get(o.id);
+          if (!r) return null;
+          return { id: r.id, depth: o.depth, text: (r.text || '').slice(0, 180), date: r.created_at, fav: r.favorite_count || 0, rt: r.retweet_count || 0 };
+        }).filter(Boolean).sort((a, b) => (a.date || 0) - (b.date || 0));
+        return {
+          rootId: t.rootId,
+          root: root ? { id: root.id, text: (root.text || '').slice(0, 200), date: root.created_at, fav: root.favorite_count || 0, rt: root.retweet_count || 0 } : null,
+          replies: t.replies,
+          descendants: desc
+        };
+      }).filter(t => t.root);
 
       // Bursts: hashtags whose use is temporally concentrated.
       const bursts = [];
@@ -3014,6 +3101,7 @@ const patterns = (() => {
         sparklineMonths: months,
         piiCandidates: piiCandidates.slice(0, PII_CAP),
         cohorts,
+        topThreadTrees,
         computed_at: Date.now()
       };
 
@@ -3895,6 +3983,8 @@ const ui = (() => {
     try {
       const p = await patterns.aggregate();
       patterns.setProgressHandler(null);
+      const accountForViz = await store.metaGet('account');
+      const myHandle = (accountForViz && accountForViz.username) || 'you';
       host.innerHTML = `
         <div class="patterns-section">
           <h2>Activity rhythm</h2>
@@ -3990,11 +4080,15 @@ const ui = (() => {
         </div>
 
         <div class="patterns-section">
-          <h2>Threads & relationships</h2>
+          <h2>Relationships — who you talk to most</h2>
           <div class="charts-grid">
             <div class="chart-card" style="grid-column: 1 / -1;">
-              <h3>Longest self-reply threads</h3>
-              <div class="threads-list">${(p.topThreads || []).map(threadRowHTML).join('') || '<div class="top-empty">— no self-reply chains found —</div>'}</div>
+              <h3>Best friends — your top 12</h3>
+              ${bestFriendsHTML(p.topMentions || [], p.topCoMentions || [])}
+            </div>
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <h3>Distance circles — orbit by interaction count</h3>
+              <div class="chart-wrap">${distanceCirclesHTML(p.topMentions || [], myHandle)}</div>
             </div>
             <div class="chart-card" style="grid-column: 1 / -1;">
               <h3>Top co-mention pairs</h3>
@@ -4007,6 +4101,11 @@ const ui = (() => {
               <div class="chart-wrap">${conversationGraphHTML(p.topCoMentions || [])}</div>
             </div>
           </div>
+        </div>
+
+        <div class="patterns-section">
+          <h2>Long conversations — your biggest threads</h2>
+          ${threadTreesHTML(p.topThreadTrees || [])}
         </div>
 
         <div class="patterns-section">
@@ -4455,6 +4554,117 @@ const ui = (() => {
         </div>
       </div>`;
     }).join('');
+  }
+
+  // Best friends — top mentions rendered as polished bubble cards with
+  // colour-coded initials. Co-mention partners get a small constellation badge.
+  function colorForHandle(h) {
+    let hash = 0;
+    for (let i = 0; i < h.length; i++) hash = ((hash * 31) + h.charCodeAt(i)) | 0;
+    return Math.abs(hash) % 360;
+  }
+  function initialsFor(h) {
+    if (!h) return '?';
+    const clean = h.replace(/^@/, '');
+    return clean.slice(0, 2).toUpperCase();
+  }
+  function bestFriendsHTML(topMentions, topCoMentions) {
+    if (!topMentions || !topMentions.length) return '<div class="top-empty">— nobody mentioned more than once —</div>';
+    const coPartners = new Map(); // user → set of co-partners
+    for (const c of (topCoMentions || [])) {
+      if (!coPartners.has(c.a)) coPartners.set(c.a, new Set());
+      if (!coPartners.has(c.b)) coPartners.set(c.b, new Set());
+      coPartners.get(c.a).add(c.b);
+      coPartners.get(c.b).add(c.a);
+    }
+    const top12 = topMentions.slice(0, 12);
+    return '<div class="best-friends">' + top12.map(([handle, count], i) => {
+      const hue = colorForHandle(handle);
+      const partners = coPartners.get(handle);
+      const partnerHint = partners && partners.size ? `often with ${[...partners].slice(0, 2).map(x => '@' + safe(x)).join(', ')}` : 'solo';
+      return `<div class="bf-card">
+        <div class="bf-rank">#${i + 1}</div>
+        <div class="bf-avatar" style="background: linear-gradient(135deg, hsl(${hue},65%,55%), hsl(${(hue + 30) % 360},65%,40%));">${safe(initialsFor(handle))}</div>
+        <div class="bf-handle">@${safe(handle)}</div>
+        <div class="bf-count">${count.toLocaleString()} mentions</div>
+        <div class="bf-partners">${safe(partnerHint)}</div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  // Distance circles — you at the centre, top connections at radii
+  // inverse to interaction count. Three concentric rings = inner / trusted /
+  // acquaintances. Pure SVG, no library.
+  function distanceCirclesHTML(topMentions, myHandle) {
+    const list = topMentions.slice(0, 24);
+    if (!list.length) return '<div class="top-empty">— no connections to plot —</div>';
+    const W = 720, H = 480;
+    const cx = W / 2, cy = H / 2;
+    const maxR = Math.min(W, H) * 0.43;
+    const minR = 60;
+    const maxC = list[0][1];
+    const minC = list[list.length - 1][1];
+    const guideRings = [maxR * 0.35, maxR * 0.7, maxR];
+    const guideLabels = ['Inner circle', 'Trusted', 'Acquaintances'];
+    let guides = '';
+    for (let i = 0; i < guideRings.length; i++) {
+      guides += `<circle cx="${cx}" cy="${cy}" r="${guideRings[i]}" fill="none" stroke="var(--border)" stroke-dasharray="3 3" opacity="0.6"/>`;
+      guides += `<text x="${cx + 6}" y="${cy - guideRings[i] - 4}" fill="var(--muted)" font-size="10" font-family="var(--mono)">${guideLabels[i]}</text>`;
+    }
+    // Center "you" node
+    const youHue = colorForHandle(myHandle || 'you');
+    let center = `<g><circle cx="${cx}" cy="${cy}" r="26" fill="hsl(${youHue}, 70%, 50%)"/>
+      <text x="${cx}" y="${cy + 5}" text-anchor="middle" fill="#fff" font-size="13" font-weight="700" font-family="var(--sans)">${safe(initialsFor(myHandle))}</text>
+      <text x="${cx}" y="${cy + 44}" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="var(--mono)">@${safe(myHandle || 'you')}</text></g>`;
+    // Place each handle at radius inversely proportional to count (log scale)
+    const nodes = [];
+    list.forEach(([handle, count], i) => {
+      // log-scale: more interactions → smaller radius (closer to centre)
+      const t = Math.log(count + 1) / Math.log(maxC + 1); // 0..1, higher = more
+      const r = minR + (1 - t) * (maxR - minR);
+      // Spread evenly around the circle, jittered slightly
+      const angle = (i / list.length) * Math.PI * 2 - Math.PI / 2 + (Math.random() - 0.5) * 0.15;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      const hue = colorForHandle(handle);
+      const dotR = 8 + Math.min(14, Math.sqrt(count) * 0.6);
+      nodes.push({ x, y, handle, count, hue, dotR, angle });
+    });
+    let dots = '';
+    for (const n of nodes) {
+      dots += `<g><circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${n.dotR.toFixed(1)}" fill="hsl(${n.hue}, 60%, 50%)" opacity="0.9"><title>@${safe(n.handle)} — ${n.count.toLocaleString()} mentions</title></circle>
+        <text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1) + 3}" text-anchor="middle" fill="#fff" font-size="9" font-weight="700" font-family="var(--sans)" pointer-events="none">${safe(initialsFor(n.handle))}</text>
+        <text x="${n.x.toFixed(1)}" y="${(n.y + n.dotR + 12).toFixed(1)}" text-anchor="middle" fill="var(--muted)" font-size="9" font-family="var(--mono)" pointer-events="none">@${safe(n.handle)}</text></g>`;
+    }
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;background:var(--panel-2);border-radius:12px;" preserveAspectRatio="xMidYMid meet">
+      ${guides}${dots}${center}
+    </svg>`;
+  }
+
+  // Long conversations — render top thread trees as indented vertical lists.
+  function threadTreesHTML(trees) {
+    if (!trees || !trees.length) return '<div class="top-empty">— no self-reply threads found —</div>';
+    return '<div class="thread-trees">' + trees.slice(0, 5).map(t => {
+      const rootUrl = `https://twitter.com/i/web/status/${t.root.id}`;
+      const rootDate = t.root.date ? new Date(t.root.date).toISOString().slice(0, 10) : '—';
+      const head = `<div class="tt-head">
+        <span class="tt-count">${t.replies} replies</span>
+        <span class="tt-date">${rootDate}</span>
+        <span class="tt-eng">♥ ${t.root.fav} · ↻ ${t.root.rt}</span>
+        <a href="${rootUrl}" target="_blank" rel="noopener" class="tt-open">open on X →</a>
+      </div>`;
+      const rootHTML = `<div class="tt-node tt-root">${safe(t.root.text)}</div>`;
+      const descHTML = (t.descendants || []).map(d => {
+        const url = `https://twitter.com/i/web/status/${d.id}`;
+        const dt = d.date ? new Date(d.date).toISOString().slice(0, 10) : '';
+        return `<div class="tt-node" style="margin-left:${Math.min(d.depth, 6) * 18}px;">
+          <span class="tt-bullet">↳</span>
+          <span class="tt-text">${safe(d.text)}</span>
+          <span class="tt-meta">${dt}${d.fav || d.rt ? ` · ♥${d.fav}/↻${d.rt}` : ''} · <a href="${url}" target="_blank" rel="noopener">↗</a></span>
+        </div>`;
+      }).join('');
+      return `<div class="thread-tree">${head}${rootHTML}${descHTML}</div>`;
+    }).join('') + '</div>';
   }
 
   // Force-directed graph: top co-mention pairs become nodes + weighted edges.
